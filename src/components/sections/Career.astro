@@ -1,9 +1,1160 @@
 ---
-// STUB — owned by the "driver" builder. Replace this file entirely.
+/**
+ * 02 — CAREER.
+ * Desktop (motion OK): pinned horizontal scroll. A cat-head-shaped circuit
+ * paints one colour per lap (stroke-dashoffset), a tiny cat-car rides the
+ * racing line, and the lore.timeline cards slide past with a LAP n/5 HUD.
+ * Mobile: vertical timeline with a CSS scroll-driven progress line (JS
+ * fallback where animation-timeline is unsupported).
+ * Reduced motion / no JS: static vertical list beside a fully drawn map.
+ */
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import { timeline } from '@/data/lore';
+
+const laps = timeline.length;
+
+// One colour per lap — the circuit is repainted in this colour as you drive it.
+const lapColors = ['var(--c-gold)', 'var(--c-saffron)', 'var(--c-red)', 'var(--c-teal)', 'var(--c-purple)'];
+
+// Obviously-fictional tyre strategy, one stint per lap.
+const tyres = [
+  { c: 'S', name: 'Socks on tiles', color: 'var(--c-red)' },
+  { c: 'I', name: 'Inters · essential travel only', color: 'var(--c-teal)' },
+  { c: 'S', name: 'Softs · buffet spec', color: 'var(--c-red)' },
+  { c: 'M', name: 'Mediums · budget: zero', color: 'var(--c-gold)' },
+  { c: 'P', name: 'Pillows', color: 'var(--c-purple)' },
+];
+
+const cards = timeline.map((t, i) => ({
+  ...t,
+  n: i + 1,
+  real: t.tag === 'Real story',
+  color: lapColors[i % lapColors.length],
+  tyre: tyres[i % tyres.length]!,
+}));
+
+/*
+ * The Autodromo Nove Vite: a closed loop shaped like a cat's head.
+ * Starts at the chin (start/finish) heading left, clockwise.
+ * Left ear hairpin → tuft chicane → right ear hairpin → whisker sweep.
+ */
+const track =
+  'M200 318 C150 318 96 304 70 268 C48 238 40 200 46 164 C50 140 56 124 62 112 L66 46 ' +
+  'C67 32 80 27 89 35 L140 86 C160 78 176 78 188 86 C196 92 204 92 212 86 C224 78 240 78 260 86 ' +
+  'L311 35 C320 27 333 32 334 46 L338 112 C344 124 350 140 354 164 C360 200 352 238 330 268 ' +
+  'C304 304 250 318 200 318 Z';
 ---
 
-<section class="section stub" id="career" aria-label="Career">
+<section class="section career" id="career" aria-labelledby="career-title" data-career>
   <div class="container">
-    <p class="t-mono t-mute">[driver] Career — coming soon</p>
+    <SectionHeading
+      index="02"
+      kicker="Career"
+      title="Five laps. <em>Zero poles.</em>"
+      lead="From cement-floor karting to the World Championship of napping. Two of these laps actually happened — they’re marked in gold, for legal reasons."
+      id="career-title"
+    />
+  </div>
+
+  <div class="stage" data-stage>
+    <div class="wm" aria-hidden="true">
+      {cards.map((c) => <span class="wm-y t-condensed" style={`--lap-c:${c.color}`} data-wm>{c.year}</span>)}
+    </div>
+    <aside class="panel" aria-label="Circuit map">
+      <div class="hud" aria-hidden="true">
+        <div class="hud-lap">
+          <span class="hud-k t-mono">Lap</span>
+          <span class="lap-now t-condensed"><span class="lap-digit" data-lap>{laps}</span></span>
+          <span class="lap-of t-condensed">/{laps}</span>
+        </div>
+        <div class="hud-side">
+          <div class="sectors">
+            {
+              ['S1', 'S2', 'S3'].map((s) => (
+                <span class="sector">
+                  <span class="t-mono">{s}</span>
+                  <span class="sector-bar">
+                    <span class="sector-fill" data-sector />
+                  </span>
+                </span>
+              ))
+            }
+          </div>
+          <p class="hud-now t-mono">
+            <span class="hud-k">Now</span>
+            <span class="hud-year" data-lap-year>{timeline[laps - 1]?.year}</span>
+          </p>
+        </div>
+        <span class="chequer t-mono"><span class="chequer-flag"></span>Chequered flag</span>
+      </div>
+
+      <figure class="circuit" data-circuit>
+        <svg
+          class="circuit-svg"
+          viewBox="0 0 400 350"
+          role="img"
+          aria-labelledby="career-circuit-title"
+          data-circuit-svg
+        >
+          <title id="career-circuit-title">
+            Map of the Autodromo Nove Vite: a race circuit shaped suspiciously like a cat’s head, with two ear
+            hairpins and a start line on the chin.
+          </title>
+          <defs>
+            <pattern id="career-checker" width="4" height="4" patternUnits="userSpaceOnUse">
+              <rect width="4" height="4" fill="#07070b"></rect>
+              <rect width="2" height="2" fill="#f4f1ea"></rect>
+              <rect x="2" y="2" width="2" height="2" fill="#f4f1ea"></rect>
+            </pattern>
+            <pattern id="career-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M20 0H0V20" fill="none" stroke="rgb(255 255 255 / 0.05)" stroke-width="0.6"></path>
+            </pattern>
+          </defs>
+
+          <rect class="c-grid" width="400" height="350" fill="url(#career-grid)"></rect>
+
+          <!-- face furniture (sits under the tarmac) -->
+          <g class="c-face" aria-hidden="true">
+            <path
+              class="c-whisker"
+              d="M150 236 L6 214 M150 246 L2 250 M152 256 L10 286 M250 236 L394 214 M250 246 L398 250 M248 256 L390 286"
+            ></path>
+            <path class="c-eye" d="M114 190 Q146 158 178 190 Q146 214 114 190 Z"></path>
+            <path class="c-eye" d="M222 190 Q254 158 286 190 Q254 214 222 190 Z"></path>
+            <ellipse class="c-pupil" cx="146" cy="189" rx="3.2" ry="12"></ellipse>
+            <ellipse class="c-pupil" cx="254" cy="189" rx="3.2" ry="12"></ellipse>
+            <path class="c-nose" d="M190 226 H210 L200 238 Z"></path>
+            <path class="c-mouth" d="M200 238 Q200 252 186 252 M200 238 Q200 252 214 252"></path>
+          </g>
+
+          <!-- track -->
+          <path class="c-kerb-base" d={track}></path>
+          <path class="c-kerb" d={track}></path>
+          <path class="c-tarmac" d={track} data-track></path>
+          <path class="c-centre" d={track}></path>
+          <path class="c-pit" d="M150 304 C170 296 230 296 250 304"></path>
+
+          <!-- one racing line per lap -->
+          <g class="c-traces">
+            {
+              cards.map((c, i) => (
+                <path
+                  class:list={['c-trace', `c-trace-${i + 1}`]}
+                  d={track}
+                  pathLength="1"
+                  style={`--lap-c:${c.color}`}
+                  data-trace
+                />
+              ))
+            }
+          </g>
+
+          <!-- start / finish -->
+          <rect class="c-start" x="197" y="309" width="6" height="18" fill="url(#career-checker)"></rect>
+
+          <g class="c-labels" aria-hidden="true">
+            <text x="30" y="20">T1 · LEFT EAR</text>
+            <text x="200" y="118" text-anchor="middle">T2 · TUFT CHICANE</text>
+            <text x="370" y="20" text-anchor="end">T3 · RIGHT EAR</text>
+            <text x="200" y="344" text-anchor="middle">START / FINISH</text>
+            <text x="200" y="290" text-anchor="middle" class="c-pit-label">PIT · BOX, BOX</text>
+          </g>
+
+          <!-- the cat-car -->
+          <g class="c-marker" data-marker transform="translate(200 318) rotate(180)">
+            <circle class="c-marker-glow" r="15"></circle>
+            <g class="c-car" transform="scale(1.25)">
+              <rect x="-12" y="-6.5" width="3.6" height="13" rx="1"></rect>
+              <rect x="-7.5" y="-6" width="4.2" height="2.6" rx="0.8"></rect>
+              <rect x="-7.5" y="3.4" width="4.2" height="2.6" rx="0.8"></rect>
+              <rect x="3" y="-5.8" width="3.6" height="2.4" rx="0.8"></rect>
+              <rect x="3" y="3.4" width="3.6" height="2.4" rx="0.8"></rect>
+              <path class="c-car-body" d="M-10 -2.6 L4 -2.1 L11.5 0 L4 2.1 L-10 2.6 Z"></path>
+              <rect x="8.2" y="-5.8" width="2.4" height="11.6" rx="0.8"></rect>
+              <circle class="c-car-head" cx="-2.6" cy="0" r="2.1"></circle>
+              <path class="c-car-head" d="M-4.4 -1.2 L-5.6 -3.4 L-3.2 -1.9 Z M-4.4 1.2 L-5.6 3.4 L-3.2 1.9 Z"></path>
+            </g>
+          </g>
+        </svg>
+        <figcaption class="circuit-cap t-mono">
+          <span class="t-gold">Autodromo Nove Vite</span> · {laps} laps · 3 turns. Any resemblance to the driver is
+          entirely intentional.
+        </figcaption>
+      </figure>
+    </aside>
+
+    <div class="rail-viewport" data-viewport>
+      <div class="rail-line" aria-hidden="true"><span class="rail-fill" data-fill></span></div>
+      <ol class="rail" data-rail>
+        {
+          cards.map((c) => (
+            <li
+              class:list={['lap-card', { 'is-real': c.real }]}
+              style={`--lap-c:${c.color}`}
+              data-card
+              data-year={c.year}
+            >
+              <article class="lc" data-reveal="up">
+                <header class="lc-head">
+                  <span class="lc-lap t-mono">
+                    Lap {c.n}
+                    <span class="t-mute">/{laps}</span>
+                  </span>
+                  <span class:list={['lc-tag', 't-mono', { 'is-gold': c.real }]}>
+                    {c.real && (
+                      <svg viewBox="0 0 12 12" aria-hidden="true">
+                        <path d="M6 0.6 7.6 4.2 11.4 4.5 8.5 7 9.4 10.8 6 8.8 2.6 10.8 3.5 7 0.6 4.5 4.4 4.2Z" />
+                      </svg>
+                    )}
+                    {c.tag}
+                  </span>
+                </header>
+                <p class="lc-year t-condensed">{c.year}</p>
+                <h3 class="lc-title">{c.title}</h3>
+                <p class="lc-body">{c.body}</p>
+                <footer class="lc-foot t-mono">
+                  <span class="tyre" style={`--tc:${c.tyre.color}`} aria-hidden="true">
+                    {c.tyre.c}
+                  </span>
+                  <span class="tyre-name">
+                    <span class="visually-hidden">Tyres: </span>
+                    {c.tyre.name}
+                  </span>
+                  {c.real && <span class="lc-stamp">Based on true events</span>}
+                </footer>
+              </article>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
   </div>
 </section>
+
+<style>
+  .career {
+    --card-w: clamp(19rem, 26vw, 25rem);
+    --rail-gap: clamp(1.5rem, 3vw, 3rem);
+    overflow-x: clip;
+  }
+
+  /* ================= Stage (static / mobile default) ================= */
+  .stage {
+    width: min(100% - 2 * var(--gutter), var(--maxw));
+    margin-inline: auto;
+    display: grid;
+    gap: var(--space-7);
+  }
+
+  @media (min-width: 60em) {
+    .stage {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: clamp(2rem, 5vw, 5rem);
+      align-items: start;
+    }
+
+    .panel {
+      position: sticky;
+      top: calc(var(--nav-h) + var(--space-6));
+    }
+  }
+
+  @media (min-width: 60em) and (height < 48em) {
+    .panel {
+      position: static;
+    }
+
+
+  }
+
+  .panel {
+    display: grid;
+    gap: var(--space-5);
+    min-width: 0;
+  }
+
+  /* Giant lap-year watermark (horizontal mode only). */
+  .wm {
+    display: none;
+  }
+
+  /* ---- HUD ---- */
+  .hud {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--c-line-strong);
+  }
+
+  .hud-k {
+    color: var(--c-mute);
+  }
+
+  .hud-lap {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+    line-height: 0.8;
+  }
+
+  .hud-lap .hud-k {
+    align-self: flex-start;
+    writing-mode: vertical-rl;
+    rotate: 180deg;
+    color: var(--c-gold);
+  }
+
+  .lap-now {
+    display: inline-block;
+    overflow: clip;
+    font-size: clamp(4rem, 3rem + 4vw, 7.5rem);
+    font-weight: 900;
+    line-height: 0.8;
+    padding-top: 0.04em;
+  }
+
+  .lap-digit {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lap-of {
+    font-size: clamp(1.75rem, 1.2rem + 2vw, 3rem);
+    font-weight: 700;
+    color: var(--c-faint);
+    line-height: 0.9;
+  }
+
+  .hud-side {
+    display: grid;
+    gap: var(--space-3);
+    justify-items: end;
+  }
+
+  .sectors {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .sector {
+    display: grid;
+    gap: 0.3rem;
+    color: var(--c-mute);
+    font-size: 0.6rem;
+  }
+
+  .sector-bar {
+    display: block;
+    width: clamp(2.5rem, 5vw, 4rem);
+    height: 4px;
+    border-radius: 2px;
+    background: var(--c-steel);
+    overflow: hidden;
+  }
+
+  .sector-fill {
+    display: block;
+    height: 100%;
+    background: var(--c-purple);
+    box-shadow: 0 0 8px var(--c-purple);
+    transform-origin: left;
+  }
+
+  .hud-now {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .hud-year {
+    color: var(--c-chalk);
+  }
+
+  .chequer {
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-3));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-chalk);
+    font-size: 0.62rem;
+  }
+
+  .chequer-flag {
+    width: 1.1rem;
+    height: 0.8rem;
+    background: repeating-conic-gradient(var(--c-chalk) 0 25%, var(--c-carbon) 0 50%) 0 0 / 0.4rem 0.4rem;
+    outline: 1px solid var(--c-line-strong);
+  }
+
+  /* ---- Circuit ---- */
+  .circuit {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    view-timeline: --career-circuit block;
+  }
+
+  .circuit-svg {
+    width: 100%;
+    max-width: 30rem;
+    margin-inline: auto;
+    overflow: visible;
+  }
+
+  .c-grid {
+    opacity: 0.8;
+  }
+
+  .c-face {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .c-whisker {
+    stroke: var(--c-faint);
+    stroke-width: 1;
+    stroke-dasharray: 3 4;
+    opacity: 0.7;
+  }
+
+  .c-eye {
+    stroke: color-mix(in oklab, var(--c-gold) 55%, transparent);
+    stroke-width: 1.4;
+    fill: rgb(255 197 46 / 0.06);
+  }
+
+  .c-pupil {
+    fill: color-mix(in oklab, var(--c-gold) 70%, transparent);
+    stroke: none;
+  }
+
+  .c-nose {
+    fill: var(--c-maroon);
+    stroke: none;
+  }
+
+  .c-mouth {
+    stroke: var(--c-faint);
+    stroke-width: 1.4;
+  }
+
+  .c-kerb-base,
+  .c-kerb,
+  .c-tarmac,
+  .c-centre,
+  .c-trace,
+  .c-pit {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .c-kerb-base {
+    stroke: rgb(244 241 234 / 0.5);
+    stroke-width: 19;
+  }
+
+  .c-kerb {
+    stroke: var(--c-red);
+    stroke-width: 19;
+    stroke-dasharray: 4 4;
+    opacity: 0.85;
+  }
+
+  .c-tarmac {
+    stroke: #22222d;
+    stroke-width: 15;
+  }
+
+  .c-centre {
+    stroke: rgb(255 255 255 / 0.22);
+    stroke-width: 0.8;
+    stroke-dasharray: 3 6;
+  }
+
+  .c-pit {
+    stroke: var(--c-steel);
+    stroke-width: 5;
+  }
+
+  .c-trace {
+    stroke: var(--lap-c);
+    stroke-width: 3.6;
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    filter: drop-shadow(0 0 3px var(--lap-c));
+  }
+
+  /* Static default: lap one fully painted. */
+  .c-trace-1 {
+    stroke-dashoffset: 0;
+  }
+
+  .c-labels {
+    font-family: var(--f-mono);
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    fill: var(--c-mute);
+  }
+
+  .c-pit-label {
+    font-size: 6.5px;
+    fill: var(--c-faint);
+  }
+
+  .c-marker-glow {
+    fill: rgb(255 197 46 / 0.2);
+  }
+
+  .c-car rect {
+    fill: var(--c-carbon);
+    stroke: var(--c-gold);
+    stroke-width: 0.5;
+  }
+
+  .c-car-body {
+    fill: var(--c-gold);
+  }
+
+  .c-car-head {
+    fill: var(--c-carbon);
+  }
+
+  .circuit-cap {
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    line-height: 1.7;
+    text-transform: none;
+    letter-spacing: 0.06em;
+    text-align: center;
+  }
+
+  @media (width < 60em) {
+    .circuit-svg {
+      max-width: 20rem;
+    }
+  }
+
+  /* ================= Timeline (vertical default) ================= */
+  .rail-viewport {
+    position: relative;
+    min-width: 0;
+    padding-left: 2.4rem;
+  }
+
+  .rail-line {
+    position: absolute;
+    left: 0.7rem;
+    top: 0.6rem;
+    bottom: 0.6rem;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--c-line-strong);
+    overflow: hidden;
+  }
+
+  .rail-fill {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      var(--c-gold),
+      var(--c-saffron) 30%,
+      var(--c-red) 50%,
+      var(--c-teal) 72%,
+      var(--c-purple)
+    );
+    transform-origin: top;
+  }
+
+  .rail {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .lap-card {
+    --d: 0;
+    position: relative;
+    view-timeline: --career-lap block;
+    view-timeline-inset: 42% 42%;
+  }
+
+  /* timeline node */
+  .lap-card::before {
+    content: '';
+    position: absolute;
+    top: 1.4rem;
+    left: calc(-2.4rem + 0.7rem + 1px);
+    width: 0.9rem;
+    height: 0.9rem;
+    translate: -50% 0;
+    rotate: 45deg;
+    background: var(--lap-c);
+    border: 2px solid var(--c-carbon);
+    box-shadow: 0 0 0 1px var(--lap-c), 0 0 14px var(--lap-c);
+  }
+
+  .lc {
+    position: relative;
+    display: grid;
+    gap: var(--space-3);
+    padding: clamp(1.25rem, 1rem + 1.5vw, 2rem);
+    border-radius: var(--radius-m);
+    border: 1px solid var(--c-line-strong);
+    background:
+      radial-gradient(90% 60% at 100% 0%, color-mix(in oklab, var(--lap-c) 14%, transparent), transparent 70%),
+      linear-gradient(180deg, var(--c-graphite), var(--c-asphalt));
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .lc::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--lap-c);
+    box-shadow: 0 0 12px var(--lap-c);
+  }
+
+  .is-real .lc {
+    border-color: color-mix(in oklab, var(--c-gold) 60%, transparent);
+    box-shadow:
+      0 0 0 1px rgb(255 197 46 / 0.25),
+      0 1.5rem 3rem -1.5rem rgb(255 197 46 / 0.35);
+  }
+
+  .lc-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .lc-lap {
+    color: var(--lap-c);
+    font-weight: 700;
+  }
+
+  .lc-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: 999px;
+    color: var(--c-mute);
+    font-size: 0.62rem;
+  }
+
+  .lc-tag.is-gold {
+    background: var(--c-gold);
+    border-color: var(--c-gold);
+    color: var(--c-on-gold);
+    font-weight: 800;
+    box-shadow: var(--glow-gold);
+  }
+
+  .lc-tag svg {
+    width: 0.7rem;
+    height: 0.7rem;
+    fill: currentColor;
+  }
+
+  .lc-year {
+    font-size: clamp(2.75rem, 2rem + 3vw, 4.5rem);
+    font-weight: 900;
+    line-height: 0.85;
+    text-transform: uppercase;
+    color: transparent;
+    -webkit-text-stroke: 1.5px color-mix(in oklab, var(--lap-c) 85%, white);
+  }
+
+  .is-real .lc-year {
+    color: var(--c-gold);
+    -webkit-text-stroke: 0;
+    text-shadow: 0 0 1.5rem rgb(255 197 46 / 0.35);
+  }
+
+  .lc-title {
+    font-size: var(--fs-h3);
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    font-stretch: 82%;
+    font-variation-settings: 'wdth' 82;
+  }
+
+  .lc-body {
+    color: var(--c-mute);
+    line-height: 1.55;
+  }
+
+  .lc-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    margin-top: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px dashed var(--c-line-strong);
+    color: var(--c-mute);
+    font-size: 0.62rem;
+  }
+
+  .tyre {
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    border: 3px solid var(--tc);
+    background: var(--c-carbon);
+    color: var(--c-chalk);
+    font-weight: 800;
+    font-size: 0.62rem;
+    letter-spacing: 0;
+    box-shadow: inset 0 0 0 2px var(--c-steel);
+  }
+
+  .lc-stamp {
+    margin-left: auto;
+    padding: 0.15rem 0.5rem;
+    border: 1.5px solid var(--c-gold);
+    color: var(--c-gold);
+    font-weight: 800;
+    transform: rotate(-4deg);
+  }
+
+  /* ================= Scroll-driven vertical timeline (CSS) ================= */
+  @keyframes career-fill {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  @keyframes career-node {
+    from {
+      background: var(--c-carbon);
+      box-shadow: 0 0 0 1px var(--c-steel);
+      scale: 0.7;
+    }
+    to {
+      background: var(--lap-c);
+      box-shadow: 0 0 0 1px var(--lap-c), 0 0 14px var(--lap-c);
+      scale: 1;
+    }
+  }
+
+  @keyframes career-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .rail-fill {
+        animation: career-fill linear both;
+        animation-timeline: view(block 45% 45%);
+        animation-range: cover 0% cover 100%;
+      }
+
+      .lap-card::before {
+        animation: career-node linear both;
+        animation-timeline: --career-lap;
+        animation-range: cover 0% cover 12%;
+      }
+
+    }
+
+    /* Map draws itself as it scrolls in — only where the map isn't JS-driven. */
+    @media (width < 60em), (height < 37.5em) {
+      @supports (animation-timeline: view()) {
+        .c-trace-1 {
+          animation: career-draw linear both;
+          animation-timeline: --career-circuit;
+          animation-range: entry 20% cover 60%;
+        }
+      }
+    }
+
+    /* JS fallback (no animation-timeline): classes toggled by ScrollTrigger. */
+    .career.is-fallback .lap-card::before {
+      background: var(--c-carbon);
+      box-shadow: 0 0 0 1px var(--c-steel);
+      scale: 0.7;
+      transition:
+        background var(--dur-med) linear,
+        box-shadow var(--dur-med) linear,
+        scale var(--dur-med) var(--ease-out-back);
+    }
+
+    .career.is-fallback .lap-card.is-passed::before {
+      background: var(--lap-c);
+      box-shadow: 0 0 0 1px var(--lap-c), 0 0 14px var(--lap-c);
+      scale: 1;
+    }
+  }
+
+  /* ================= Pinned horizontal mode (desktop + motion) ================= */
+  @media (min-width: 60em) and (min-height: 37.5em) and (prefers-reduced-motion: no-preference) {
+    :global(.js-motion) .stage {
+      width: 100%;
+      height: 100svh;
+      margin: 0;
+      grid-template-columns: minmax(20rem, 34%) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+      align-items: center;
+      gap: clamp(1rem, 3vw, 3rem);
+      padding: calc(var(--nav-h) + var(--space-4)) 0 var(--space-5)
+        max(var(--gutter), calc((100% - var(--maxw)) / 2));
+      overflow: clip;
+    }
+
+    :global(.js-motion) .stage {
+      position: relative;
+    }
+
+    :global(.js-motion) .wm {
+      position: absolute;
+      inset: var(--nav-h) 0 0 30%;
+      display: grid;
+      place-items: end center;
+      pointer-events: none;
+      overflow: clip;
+    }
+
+    :global(.js-motion) .wm-y {
+      grid-area: 1 / 1;
+      font-size: min(17vw, 38svh);
+      font-weight: 900;
+      line-height: 0.8;
+      text-transform: uppercase;
+      white-space: nowrap;
+      color: transparent;
+      -webkit-text-stroke: 1.5px color-mix(in oklab, var(--lap-c) 32%, transparent);
+      opacity: 0;
+      translate: 0 22%;
+      transform: translate3d(8%, 0, 0);
+      transition:
+        opacity var(--dur-slow) var(--ease-out-expo),
+        transform 1.4s var(--ease-out-expo);
+    }
+
+    :global(.js-motion) .wm-y.is-on {
+      opacity: 1;
+      transform: none;
+    }
+
+    :global(.js-motion) .rail-viewport {
+      position: relative;
+      z-index: 1;
+    }
+
+    :global(.js-motion) .panel {
+      position: relative;
+      top: auto;
+      align-self: center;
+      z-index: 2;
+    }
+
+    :global(.js-motion) .circuit-svg {
+      max-height: calc(100svh - var(--nav-h) - 17rem);
+    }
+
+    :global(.js-motion) .chequer {
+      opacity: 0;
+      transform: translateY(-0.4rem);
+      transition:
+        opacity var(--dur-med) var(--ease-out-expo),
+        transform var(--dur-med) var(--ease-out-expo);
+    }
+
+    :global(.js-motion) .career.is-finished .chequer {
+      opacity: 1;
+      transform: none;
+    }
+
+    :global(.js-motion) .rail-viewport {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 0;
+      overflow-x: auto;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 92%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 10%, #000 92%, transparent);
+    }
+
+    :global(.js-motion) .career.is-driven .rail-viewport {
+      overflow: clip;
+    }
+
+    :global(.js-motion) .career.is-driven .c-trace {
+      animation: none;
+    }
+
+    :global(.js-motion) .career.is-lite .c-trace {
+      filter: none;
+    }
+
+    :global(.js-motion) .rail-line {
+      display: none;
+    }
+
+    :global(.js-motion) .rail {
+      display: flex;
+      align-items: center;
+      gap: var(--rail-gap);
+      width: max-content;
+      padding-inline: calc(50% - var(--card-w) / 2);
+      will-change: transform;
+    }
+
+    :global(.js-motion) .lap-card {
+      flex: none;
+      width: var(--card-w);
+      transform: scale(calc(1 - var(--d) * 0.07));
+    }
+
+    /* Dim neighbours with an opaque veil (keeps cards solid over the watermark). */
+    :global(.js-motion) .lc::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      background: var(--c-carbon);
+      opacity: calc(var(--d) * 0.62);
+      pointer-events: none;
+    }
+
+    :global(.js-motion) .lap-card::before {
+      display: none;
+    }
+
+    :global(.js-motion) .career.is-driven .lap-card.is-active .lc {
+      border-color: var(--lap-c);
+      box-shadow:
+        0 0 0 1px var(--lap-c),
+        0 2rem 4rem -2rem color-mix(in oklab, var(--lap-c) 70%, transparent);
+    }
+
+    :global(.js-motion) .career.is-driven .lap-card.is-real.is-active .lc {
+      border-color: var(--c-gold);
+      box-shadow:
+        0 0 0 1px var(--c-gold),
+        0 0 3rem -0.5rem rgb(255 197 46 / 0.45);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .c-trace-1 {
+      stroke-dashoffset: 0;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, ScrollTrigger, isLowPowerDevice } from '@/scripts/motion';
+  import { sound } from '@/scripts/audio';
+  import { emit } from '@/scripts/bus';
+
+  const HORIZONTAL =
+    '(min-width: 60em) and (min-height: 37.5em) and (prefers-reduced-motion: no-preference)';
+  const VERTICAL =
+    '(prefers-reduced-motion: no-preference) and (width < 60em), (prefers-reduced-motion: no-preference) and (height < 37.5em)';
+  const DWELL = 0.1; // share of the pin spent parked on the first/last card
+
+  const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+  const root = document.querySelector<HTMLElement>('[data-career]');
+  if (root) initCareer(root);
+
+  function initCareer(section: HTMLElement): void {
+    const stage = section.querySelector<HTMLElement>('[data-stage]');
+    const viewport = section.querySelector<HTMLElement>('[data-viewport]');
+    const rail = section.querySelector<HTMLElement>('[data-rail]');
+    const track = section.querySelector<SVGPathElement>('[data-track]');
+    const marker = section.querySelector<SVGGElement>('[data-marker]');
+    const lapEl = section.querySelector<HTMLElement>('[data-lap]');
+    const yearEl = section.querySelector<HTMLElement>('[data-lap-year]');
+    const fill = section.querySelector<HTMLElement>('[data-fill]');
+    const circuit = section.querySelector<HTMLElement>('[data-circuit]');
+    const cards = Array.from(section.querySelectorAll<HTMLElement>('[data-card]'));
+    const traces = Array.from(section.querySelectorAll<SVGPathElement>('[data-trace]'));
+    const sectors = Array.from(section.querySelectorAll<HTMLElement>('[data-sector]'));
+    const marks = Array.from(section.querySelectorAll<HTMLElement>('[data-wm]'));
+    if (!stage || !viewport || !rail || !track || !marker || !cards.length) return;
+
+    const mm = gsap.matchMedia();
+
+    /* ---------- Desktop: pinned horizontal drive ---------- */
+    mm.add(HORIZONTAL, () => {
+      const laps = cards.length;
+      const years = cards.map((c) => c.dataset.year ?? '');
+      const total = track.getTotalLength();
+      const initialMarker = marker.getAttribute('transform') ?? '';
+      let maxShift = 0;
+      let lap = -1;
+      let armed = false;
+      let flagged = false;
+
+      section.classList.add('is-driven');
+      section.classList.toggle('is-lite', isLowPowerDevice());
+      viewport.scrollLeft = 0;
+
+      const measure = () => {
+        maxShift = Math.max(0, rail.scrollWidth - viewport.clientWidth);
+      };
+
+      const placeMarker = (frac: number) => {
+        const len = frac * total;
+        const a = track.getPointAtLength(len);
+        const b = track.getPointAtLength((len + 1) % total);
+        const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+        marker.setAttribute(
+          'transform',
+          `translate(${a.x.toFixed(2)} ${a.y.toFixed(2)}) rotate(${angle.toFixed(1)})`,
+        );
+      };
+
+      const setLap = (idx: number) => {
+        lap = idx;
+        cards.forEach((c, i) => c.classList.toggle('is-active', i === idx));
+        marks.forEach((m, i) => m.classList.toggle('is-on', i === idx));
+        if (yearEl) yearEl.textContent = years[idx] ?? '';
+        if (lapEl) {
+          lapEl.textContent = String(idx + 1);
+          gsap.fromTo(
+            lapEl,
+            { yPercent: 80, opacity: 0 },
+            { yPercent: 0, opacity: 1, duration: 0.55, ease: 'expo.out', overwrite: true },
+          );
+        }
+        if (armed) sound.play('whoosh', { volume: 0.35 });
+      };
+
+      const state = { p: 0 };
+      const render = () => {
+        const p = state.p;
+        const t = clamp01((p - DWELL) / (1 - 2 * DWELL));
+        rail.style.transform = `translate3d(${(-t * maxShift).toFixed(2)}px, 0, 0)`;
+
+        const lf = p * laps;
+        traces.forEach((el, i) => {
+          el.style.strokeDashoffset = (1 - clamp01(lf - i)).toFixed(4);
+        });
+
+        const idx = Math.min(laps - 1, Math.floor(lf));
+        const frac = clamp01(lf - idx);
+        placeMarker(frac);
+        sectors.forEach((s, k) => {
+          s.style.transform = `scaleX(${clamp01(frac * 3 - k).toFixed(3)})`;
+        });
+
+        const pos = t * (laps - 1);
+        cards.forEach((c, i) => c.style.setProperty('--d', Math.min(1, Math.abs(pos - i)).toFixed(3)));
+
+        if (idx !== lap) setLap(idx);
+        const finished = p > 0.99;
+        section.classList.toggle('is-finished', finished);
+        if (finished && armed && !flagged) {
+          flagged = true;
+          emit('bilal:toast', {
+            message: 'Chequered flag! P1 in the World Napping Championship (provisional).',
+            tone: 'gold',
+          });
+        }
+      };
+
+      measure();
+      render();
+      armed = true;
+
+      gsap.to(state, {
+        p: 1,
+        ease: 'none',
+        onUpdate: render,
+        scrollTrigger: {
+          trigger: stage,
+          start: 'top top',
+          end: () => {
+            measure();
+            return `+=${Math.round(Math.max(window.innerHeight * 3.6, maxShift * 1.5))}`;
+          },
+          pin: true,
+          scrub: 0.5,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onRefresh: render,
+        },
+      });
+
+      return () => {
+        section.classList.remove('is-driven', 'is-finished', 'is-lite');
+        rail.style.transform = '';
+        cards.forEach((c) => {
+          c.style.removeProperty('--d');
+          c.classList.remove('is-active');
+        });
+        marks.forEach((m) => m.classList.remove('is-on'));
+        traces.forEach((el) => (el.style.strokeDashoffset = ''));
+        sectors.forEach((s) => (s.style.transform = ''));
+        marker.setAttribute('transform', initialMarker);
+        if (lapEl) lapEl.textContent = String(cards.length);
+        if (yearEl) yearEl.textContent = cards[cards.length - 1]?.dataset.year ?? '';
+      };
+    });
+
+    /* ---------- Mobile: JS fallback where CSS scroll timelines are missing ---------- */
+    mm.add(VERTICAL, () => {
+      if (CSS.supports('animation-timeline: view()')) return;
+      section.classList.add('is-fallback');
+      if (fill) {
+        gsap.fromTo(
+          fill,
+          { scaleY: 0 },
+          {
+            scaleY: 1,
+            ease: 'none',
+            scrollTrigger: { trigger: rail, start: 'top 55%', end: 'bottom 55%', scrub: true },
+          },
+        );
+      }
+      cards.forEach((card) =>
+        ScrollTrigger.create({ trigger: card, start: 'top 58%', toggleClass: 'is-passed' }),
+      );
+      const first = traces[0];
+      if (first && circuit) {
+        gsap.fromTo(
+          first,
+          { strokeDashoffset: 1 },
+          {
+            strokeDashoffset: 0,
+            ease: 'none',
+            scrollTrigger: { trigger: circuit, start: 'top 85%', end: 'bottom 45%', scrub: true },
+          },
+        );
+      }
+      return () => {
+        section.classList.remove('is-fallback');
+        cards.forEach((c) => c.classList.remove('is-passed'));
+      };
+    });
+  }
+</script>
