@@ -121,7 +121,8 @@ const shards = [
     animation: loader-failsafe 400ms ease 7s forwards;
   }
 
-  :global(html[data-intro='running']) .loader {
+  /* Same specificity as the failsafe rule above (and later), so a running intro keeps it. */
+  :global(html.js[data-intro='running']) .loader {
     animation: none;
   }
 
@@ -447,7 +448,19 @@ const shards = [
     }
   })();
 
-  if (!loader || seen || root.dataset.intro === 'skip') {
+  // JS that arrives this late (slow network, cold cache) would start the intro just as the CSS
+  // failsafe hides it: the page would sit inert and invisible. Skip it instead.
+  const tooLate =
+    performance.now() > 6000 || (loader !== null && getComputedStyle(loader).visibility === 'hidden');
+
+  if (!loader || seen || root.dataset.intro === 'skip' || tooLate) {
+    if (tooLate) {
+      try {
+        sessionStorage.setItem(KEY, '1');
+      } catch {
+        /* storage blocked: nothing to remember */
+      }
+    }
     loader?.remove();
     markReady();
   } else {

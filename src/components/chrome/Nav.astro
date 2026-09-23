@@ -24,6 +24,9 @@ const links = [
   { id: 'calendar', label: 'Calendar', sub: 'Races & nap windows' },
   { id: 'lights-out', label: 'Lights Out', sub: 'Beat his reaction time' },
   { id: 'radio', label: 'Radio', sub: 'He is not listening' },
+  // `extra`: always in the pit-lane menu, but only in the desktop bar where there's room.
+  { id: 'sponsors', label: 'Partners', sub: 'Imaginary. Grateful.', extra: true },
+  { id: 'tech', label: 'Tech regs', sub: 'The rulebook', extra: true },
 ];
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
@@ -51,12 +54,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
       <ul class="nav-links" data-nav-list>
         {
           links.map((link, i) => (
-            <li>
+            <li class:list={[{ 'nav-item--extra': link.extra }]}>
               <a class="nav-link" href={`${base}#${link.id}`} data-nav-link={link.id}>
                 <span class="nav-idx t-mono" aria-hidden="true">{pad(i + 1)}</span>
                 <span class="nav-roll">
-                  <span class="nav-roll-in" data-text={link.label}>
-                    {link.label}
+                  <span class="nav-roll-in">
+                    {link.label}<span class="nav-roll-dup" aria-hidden="true">{link.label}</span>
                   </span>
                 </span>
               </a>
@@ -84,7 +87,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   </div>
 </header>
 
-<dialog class="menu" id="pit-menu" aria-labelledby="pit-menu-title" data-menu>
+<dialog class="menu" id="pit-menu" aria-labelledby="pit-menu-title" data-menu data-lenis-prevent>
   <div class="menu-bg" aria-hidden="true"></div>
   <div class="menu-inner">
     <div class="menu-top">
@@ -203,7 +206,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(to bottom, rgb(7 7 11 / 0.72), rgb(7 7 11 / 0.55)),
+      linear-gradient(to bottom, rgb(7 7 11 / 0.9), rgb(7 7 11 / 0.82)),
       radial-gradient(60% 140% at 0% 0%, rgb(255 197 46 / 0.08), transparent 60%);
     -webkit-backdrop-filter: blur(16px) saturate(170%);
     backdrop-filter: blur(16px) saturate(170%);
@@ -305,7 +308,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   }
 
   /* Links + sound toggle get tight just above the burger breakpoint. */
-  @media (min-width: 75em) and (max-width: 87.5em) {
+  @media (min-width: 75em) and (max-width: 89.99em) {
     .brand-code {
       display: none;
     }
@@ -324,6 +327,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
     display: flex;
     align-items: center;
     gap: 0.125rem;
+  }
+
+  /* All ten only fit from ~1320px; below that, 09-10 live in the pit-lane menu only. */
+  @media (max-width: 84.99em) {
+    .nav-item--extra {
+      display: none;
+    }
   }
 
   .nav-link {
@@ -363,8 +373,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     display: block;
   }
 
-  .nav-roll-in::after {
-    content: attr(data-text);
+  .nav-roll-dup {
     position: absolute;
     inset: 100% 0 auto;
     color: var(--c-gold);
