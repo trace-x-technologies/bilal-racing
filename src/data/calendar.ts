@@ -81,7 +81,7 @@ export const races: Race[] = [
     // A cat head. The "ω" at the bottom is the Whisker Chicane; the infield has eyes.
     path: 'M122 106 L146 106 Q170 106 172 82 L175 56 L168 12 L139 34 Q100 26 61 34 L32 12 L25 56 L28 82 Q30 106 54 106 L86 106 Q93 95 100 106 Q107 95 114 106 Z',
     decor: 'M66 66 Q78 55 90 66 Q78 77 66 66 Z M110 66 Q122 55 134 66 Q122 77 110 66 Z M78 60 V72 M122 60 V72',
-    turn1: 'T1 · The Left Ear',
+    turn1: 'T1 · Whisker Kink',
     result: 'P9 — stopped at HQ for a snack on lap 2',
   },
   {
