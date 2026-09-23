@@ -1,11 +1,688 @@
 ---
-// STUB — owned by the "chrome" builder. Replace this file entirely.
+/**
+ * 404 = DNF. The #9 car loses it at Turn 4, spins into the gravel and the
+ * driver immediately falls asleep. Pure CSS/SVG animation (no JS needed);
+ * "Watch the replay" restarts it. Reduced motion: the aftermath, frozen.
+ */
 import Base from '@/layouts/Base.astro';
+import Nav from '@/components/chrome/Nav.astro';
+import { driver } from '@/data/lore';
 ---
 
-<Base title="DNF — Bilal Racing">
-  <main class="section container">
-    <h1>DNF</h1>
-    <p>This page retired to the garage. <a href="/">Back to the pit lane</a>.</p>
+<Base title="DNF · Bilal Racing" description="This page retired to the garage. Probably napping.">
+  <Nav base="/" />
+  <main id="main" class="dnf">
+    <div class="dnf-bg" aria-hidden="true"></div>
+    <section class="dnf-hero" aria-labelledby="dnf-title">
+      <div class="dnf-head">
+        <p class="dnf-kicker t-mono">
+          <span class="dnf-flag" aria-hidden="true"></span>
+          Race control · Error 404 · Lap 404
+        </p>
+        <h1 class="dnf-title t-condensed" id="dnf-title">
+          <span class="dnf-word" aria-hidden="true">DNF</span>
+          <span class="visually-hidden">Did not finish: page not found</span>
+        </h1>
+        <p class="dnf-lead">This page retired to the garage. <span class="t-gold">Probably napping.</span></p>
+      </div>
+
+      <div class="dnf-foot">
+        <div class="timing">
+          <p class="timing-row">
+            <span class="tpos t-mono"><span class="visually-hidden">Position </span>P—</span>
+            <span class="tnum"><span class="visually-hidden">car </span>{driver.number}</span>
+            <span class="tcode t-condensed">{driver.code}</span>
+            <span class="tgap t-mono">Stopped · T4 gravel</span>
+            <span class="tstat t-condensed">DNF</span>
+          </p>
+        </div>
+
+        <div class="dnf-actions">
+          <a class="pit-btn" href="/">
+            <span class="pit-btn-label t-condensed">Back to the pit lane</span>
+            <span class="pit-btn-arrow" aria-hidden="true">→</span>
+          </a>
+          <button type="button" class="replay t-mono" data-replay>
+            <span aria-hidden="true">↺</span> Watch the replay
+          </button>
+        </div>
+
+        <p class="dnf-note t-mono">
+          Race control: car {driver.number} beached at Turn 4. Driver reports he is “comfy” and will not move until someone
+          brings tuna.
+        </p>
+      </div>
+
+      <figure class="scene-wrap">
+        <div class="scene-hud t-mono" aria-hidden="true">
+          <span class="live"><i></i> Replay</span>
+          <span>T4 · Gravel trap</span>
+        </div>
+        <svg
+          class="scene"
+          data-scene
+          viewBox="0 0 800 460"
+          role="img"
+          aria-labelledby="scene-title"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <title id="scene-title">
+            Animation: the cat-eared number 9 car spins off the track into the gravel, where its driver falls asleep.
+          </title>
+          <defs>
+            <pattern id="gravel" width="18" height="18" patternUnits="userSpaceOnUse">
+              <rect width="18" height="18" fill="#3a2f22"></rect>
+              <circle cx="4" cy="5" r="1.6" fill="#6b5a44"></circle>
+              <circle cx="12" cy="3" r="1.1" fill="#56483a"></circle>
+              <circle cx="14" cy="12" r="1.7" fill="#77654c"></circle>
+              <circle cx="6" cy="14" r="1.2" fill="#4d4034"></circle>
+            </pattern>
+            <linearGradient id="body" x1="0" x2="1">
+              <stop offset="0" stop-color="#a0153e"></stop>
+              <stop offset="0.55" stop-color="#ff6a13"></stop>
+              <stop offset="1" stop-color="#ffc52e"></stop>
+            </linearGradient>
+            <radialGradient id="dust" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#b39a78" stop-opacity="0.9"></stop>
+              <stop offset="1" stop-color="#b39a78" stop-opacity="0"></stop>
+            </radialGradient>
+          </defs>
+
+          <!-- Gravel trap on the outside of the corner -->
+          <path d="M470 150 C 610 150, 790 210, 800 330 L 800 460 L 380 460 C 420 380, 470 300, 470 150 Z" fill="url(#gravel)"></path>
+
+          <!-- Track -->
+          <path class="asphalt" d="M -40 120 L 360 120 C 520 120, 540 200, 470 300 C 420 380, 330 440, 300 520" fill="none"></path>
+          <path class="kerb-base" d="M -40 172 L 340 172 C 470 172, 470 230, 420 290 C 380 350, 300 420, 250 520" fill="none"></path>
+          <path class="kerb" d="M -40 172 L 340 172 C 470 172, 470 230, 420 290 C 380 350, 300 420, 250 520" fill="none"></path>
+          <path class="kerb-base" d="M -40 66 L 360 66 C 580 66, 610 200, 520 320 C 480 380, 400 440, 370 520" fill="none"></path>
+          <path class="kerb" d="M -40 66 L 360 66 C 580 66, 610 200, 520 320 C 480 380, 400 440, 370 520" fill="none"></path>
+          <path class="racing-line" d="M -40 120 L 360 120 C 520 120, 540 200, 470 300" fill="none"></path>
+          <text class="corner-no" x="628" y="112">T4</text>
+
+          <!-- Skid marks: drawn as the car slides -->
+          <g class="skids">
+            <path class="skid" pathLength="1" d="M 330 108 C 430 102, 520 148, 582 204 C 626 244, 648 284, 660 304"></path>
+            <path class="skid" pathLength="1" d="M 330 132 C 425 128, 505 170, 562 222 C 604 262, 626 300, 640 330"></path>
+          </g>
+
+          <!-- Dust -->
+          <g class="dust" transform="translate(655 336)">
+            <circle class="puff p1" r="46" fill="url(#dust)"></circle>
+            <circle class="puff p2" r="34" cx="-40" cy="-12" fill="url(#dust)"></circle>
+            <circle class="puff p3" r="30" cx="36" cy="-20" fill="url(#dust)"></circle>
+          </g>
+
+          <!-- The car (drawn pointing right, centred on 0,0) -->
+          <g class="car">
+            <g class="car-body" transform="scale(1.3)">
+              <!-- tail (it has a tail) -->
+              <path class="tail" d="M -58 0 C -76 -2, -84 -16, -96 -14 C -108 -12, -110 2, -102 6" fill="none"></path>
+              <!-- rear wing -->
+              <rect x="-62" y="-26" width="12" height="52" rx="2" fill="#07070b" stroke="#ffc52e" stroke-width="2"></rect>
+              <!-- tyres -->
+              <rect x="-50" y="-34" width="26" height="14" rx="4" class="tyre"></rect>
+              <rect x="-50" y="20" width="26" height="14" rx="4" class="tyre"></rect>
+              <rect x="22" y="-31" width="22" height="12" rx="4" class="tyre"></rect>
+              <rect x="22" y="19" width="22" height="12" rx="4" class="tyre"></rect>
+              <!-- floor + body -->
+              <path d="M -52 -14 L -10 -20 L 30 -12 L 64 -6 L 70 0 L 64 6 L 30 12 L -10 20 L -52 14 Z" fill="url(#body)"></path>
+              <!-- sidepod ears -->
+              <path d="M -30 -17 L -6 -30 L 4 -16 Z" fill="#a0153e" stroke="#ffc52e" stroke-width="1.5" stroke-linejoin="round"></path>
+              <path d="M -30 17 L -6 30 L 4 16 Z" fill="#a0153e" stroke="#ffc52e" stroke-width="1.5" stroke-linejoin="round"></path>
+              <!-- engine cover stripe -->
+              <path d="M -48 -3 H 10 V 3 H -48 Z" fill="#07070b" opacity="0.5"></path>
+              <!-- front wing -->
+              <rect x="62" y="-28" width="10" height="56" rx="2" fill="#ffc52e"></rect>
+              <!-- number -->
+              <text class="car-no" x="40" y="4.5">9</text>
+              <!-- cockpit + helmet with ears -->
+              <ellipse cx="4" cy="0" rx="14" ry="9" fill="#07070b"></ellipse>
+              <path d="M -4 -8 L -12 -15 L -1 -10 Z M -4 8 L -12 15 L -1 10 Z" fill="#ffc52e"></path>
+              <circle cx="2" cy="0" r="7.5" fill="#1b1b25" stroke="#ffc52e" stroke-width="1.5"></circle>
+              <path d="M 5 -5 Q 10 0 5 5" stroke="#ff6a13" stroke-width="3" fill="none" stroke-linecap="round"></path>
+            </g>
+          </g>
+
+          <!-- Zzz -->
+          <g class="zzz" transform="translate(664 290)">
+            <text class="z z1" x="0" y="0">z</text>
+            <text class="z z2" x="16" y="-18">z</text>
+            <text class="z z3" x="34" y="-40">Z</text>
+          </g>
+        </svg>
+        <figcaption class="scene-cap t-mono">
+          Onboard replay · car {driver.number} ({driver.code}) · cause: laser pointer in the braking zone
+        </figcaption>
+      </figure>
+    </section>
   </main>
 </Base>
+
+<style>
+  .dnf {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    align-items: center;
+    padding: calc(var(--nav-h) + var(--space-6)) var(--gutter) var(--space-8);
+    isolation: isolate;
+    overflow: clip;
+  }
+
+  .dnf-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(60% 50% at 80% 40%, rgb(255 106 19 / 0.12), transparent 70%),
+      radial-gradient(50% 60% at 0% 100%, rgb(160 21 62 / 0.3), transparent 70%),
+      repeating-linear-gradient(90deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 88px),
+      var(--c-carbon);
+  }
+
+  .dnf-hero {
+    width: min(100%, var(--maxw));
+    margin-inline: auto;
+    display: grid;
+    grid-template-areas: 'head' 'scene' 'foot';
+    gap: var(--space-6);
+    align-items: center;
+  }
+
+  .dnf-head {
+    grid-area: head;
+  }
+
+  .dnf-foot {
+    grid-area: foot;
+  }
+
+  .scene-wrap {
+    grid-area: scene;
+  }
+
+  @media (min-width: 60em) {
+    .dnf-hero {
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      grid-template-areas: 'head scene' 'foot scene';
+      grid-template-rows: auto 1fr;
+      column-gap: var(--space-7);
+      row-gap: 0;
+    }
+
+    .dnf-head {
+      align-self: end;
+    }
+
+    .dnf-foot {
+      align-self: start;
+    }
+  }
+
+  .dnf-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .dnf-flag {
+    width: 1.3rem;
+    height: 0.9rem;
+    background: repeating-conic-gradient(var(--c-chalk) 0 25%, var(--c-carbon) 0 50%) 0 0 / 0.45rem 0.45rem;
+    border: 1px solid var(--c-line-strong);
+    transform: skewX(var(--skew));
+  }
+
+  .dnf-title {
+    margin-block: var(--space-3) var(--space-4);
+    line-height: 0.8;
+  }
+
+  .dnf-word {
+    display: inline-block;
+    font-size: clamp(8rem, 4rem + 22vw, 17rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    transform: skewX(var(--skew));
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.25), transparent 40%),
+      var(--g-livery);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 10px 40px rgb(255 106 19 / 0.25));
+  }
+
+  :global(.js-motion) .dnf-word {
+    animation: dnf-shudder 0.5s var(--ease-out-expo) 1.25s both;
+  }
+
+  @keyframes dnf-shudder {
+    0% {
+      transform: skewX(var(--skew)) translateX(0);
+    }
+    20% {
+      transform: skewX(-14deg) translateX(-0.05em);
+    }
+    45% {
+      transform: skewX(-3deg) translateX(0.03em);
+    }
+    70% {
+      transform: skewX(-10deg) translateX(-0.01em);
+    }
+    100% {
+      transform: skewX(var(--skew)) translateX(0);
+    }
+  }
+
+  .dnf-lead {
+    font-size: var(--fs-lead);
+    line-height: 1.35;
+    max-width: 26ch;
+    font-weight: 600;
+  }
+
+  /* ---------- Timing row ---------- */
+  .timing {
+    margin-block: 0 var(--space-6);
+    max-width: 30rem;
+  }
+
+  @media (min-width: 60em) {
+    .timing {
+      margin-top: var(--space-6);
+    }
+  }
+
+  .timing-row {
+    display: grid;
+    grid-template-columns: auto auto auto 1fr auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0.55rem 0.8rem;
+    background: linear-gradient(90deg, var(--c-graphite), var(--c-asphalt));
+    border: 1px solid var(--c-line-strong);
+    border-left: 4px solid var(--c-gold);
+    border-radius: var(--radius-s);
+  }
+
+  .tpos {
+    color: var(--c-mute);
+  }
+
+  .tnum {
+    display: grid;
+    place-items: center;
+    min-width: 1.6rem;
+    padding: 0 0.3rem;
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    font-weight: 900;
+    border-radius: 3px;
+    line-height: 1.4;
+  }
+
+  .tcode {
+    font-weight: 850;
+    font-size: 1.25rem;
+    letter-spacing: 0.04em;
+  }
+
+  .tgap {
+    color: var(--c-mute);
+    font-size: 0.6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tstat {
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    background: var(--c-red);
+    color: #fff;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+  }
+
+  /* ---------- Actions ---------- */
+  .dnf-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4) var(--space-5);
+  }
+
+  .pit-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0.95rem 1.6rem;
+    color: var(--c-on-gold);
+    text-decoration: none;
+    isolation: isolate;
+  }
+
+  .pit-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--c-gold);
+    border-radius: var(--radius-s);
+    transform: skewX(var(--skew));
+    box-shadow: var(--glow-gold);
+    transition: transform var(--dur-med) var(--ease-out-back);
+  }
+
+  .pit-btn-label {
+    font-size: 1.35rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .pit-btn-arrow {
+    font-weight: 800;
+    transition: transform var(--dur-med) var(--ease-out-back);
+  }
+
+  .pit-btn:hover::before,
+  .pit-btn:focus-visible::before {
+    transform: skewX(var(--skew)) scale(1.04);
+  }
+
+  .pit-btn:hover .pit-btn-arrow {
+    transform: translateX(0.3rem);
+  }
+
+  .replay {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--c-line-strong);
+    color: var(--c-chalk);
+  }
+
+  .replay:hover {
+    border-color: var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  :global(html:not(.js-motion)) .replay {
+    display: none;
+  }
+
+  .dnf-note {
+    margin-top: var(--space-6);
+    color: var(--c-mute);
+    max-width: 44ch;
+    line-height: 1.8;
+    text-transform: none;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---------- Scene ---------- */
+  .scene-wrap {
+    position: relative;
+    margin: 0;
+    border-radius: var(--radius-l);
+    border: 1px solid var(--c-line-strong);
+    background: #121219;
+    overflow: hidden;
+    box-shadow: 0 40px 80px -40px #000, inset 0 0 0 1px rgb(255 255 255 / 0.03);
+  }
+
+  .scene-hud {
+    position: absolute;
+    inset: var(--space-3) var(--space-4) auto;
+    display: flex;
+    justify-content: space-between;
+    color: var(--c-chalk);
+    z-index: 1;
+    text-shadow: 0 1px 2px #000;
+  }
+
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .live i {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+  }
+
+  .scene {
+    width: 100%;
+    height: auto;
+  }
+
+  .scene-cap {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--c-line);
+    color: var(--c-mute);
+    font-size: 0.6rem;
+    text-transform: none;
+    letter-spacing: 0.06em;
+  }
+
+  .asphalt {
+    stroke: #22222c;
+    stroke-width: 106;
+  }
+
+  .kerb-base {
+    stroke: #f4f1ea;
+    stroke-width: 9;
+  }
+
+  .kerb {
+    stroke: var(--c-red);
+    stroke-width: 9;
+    stroke-dasharray: 16 16;
+  }
+
+  .racing-line {
+    stroke: rgb(255 255 255 / 0.12);
+    stroke-width: 2;
+    stroke-dasharray: 2 10;
+    stroke-linecap: round;
+  }
+
+  .corner-no {
+    font-family: var(--f-mono);
+    font-size: 18px;
+    fill: rgb(244 241 234 / 0.55);
+    letter-spacing: 2px;
+  }
+
+  .skid {
+    fill: none;
+    stroke: #07070b;
+    stroke-opacity: 0.75;
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+
+  .tyre {
+    fill: #0b0b10;
+    stroke: #3a3a48;
+    stroke-width: 1.5;
+  }
+
+  .tail {
+    stroke: #ff6a13;
+    stroke-width: 6;
+    stroke-linecap: round;
+  }
+
+  .car-no {
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: 14px;
+    fill: #120d00;
+    text-anchor: middle;
+  }
+
+  .z {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: 22px;
+    fill: var(--c-chalk);
+  }
+
+  .z3 {
+    font-size: 30px;
+    fill: var(--c-gold);
+  }
+
+  /* Final resting pose (also the reduced-motion / no-JS state). */
+  .car {
+    transform: translate(655px, 318px) rotate(572deg);
+  }
+
+  .dust {
+    opacity: 0;
+  }
+
+  /* ---------- Motion ---------- */
+  :global(.js-motion) .scene .car {
+    animation: spin-out 2.1s both;
+  }
+
+  :global(.js-motion) .scene .skid {
+    animation: skid-draw 2.1s both;
+  }
+
+  :global(.js-motion) .scene .puff {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: puff 1.3s ease-out 1.45s both;
+  }
+
+  :global(.js-motion) .scene .dust {
+    opacity: 1;
+  }
+
+  :global(.js-motion) .scene .tail {
+    transform-box: fill-box;
+    transform-origin: 100% 60%;
+    animation: wag 1.6s ease-in-out 2.2s infinite alternate;
+  }
+
+  :global(.js-motion) .scene .z {
+    animation: snooze 2.4s ease-in-out infinite both;
+  }
+
+  :global(.js-motion) .scene .z1 {
+    animation-delay: 2.3s;
+  }
+
+  :global(.js-motion) .scene .z2 {
+    animation-delay: 2.7s;
+  }
+
+  :global(.js-motion) .scene .z3 {
+    animation-delay: 3.1s;
+  }
+
+  @keyframes spin-out {
+    0% {
+      transform: translate(-120px, 120px) rotate(0deg);
+      animation-timing-function: linear;
+    }
+    30% {
+      transform: translate(300px, 120px) rotate(0deg);
+      animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1);
+    }
+    42% {
+      transform: translate(420px, 128px) rotate(40deg);
+      animation-timing-function: linear;
+    }
+    62% {
+      transform: translate(560px, 214px) rotate(262deg);
+      animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1);
+    }
+    100% {
+      transform: translate(655px, 318px) rotate(572deg);
+    }
+  }
+
+  @keyframes skid-draw {
+    0%,
+    34% {
+      stroke-dashoffset: 1;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes puff {
+    0% {
+      transform: scale(0.2);
+      opacity: 0;
+    }
+    25% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1.8);
+      opacity: 0;
+    }
+  }
+
+  @keyframes wag {
+    from {
+      transform: rotate(-10deg);
+    }
+    to {
+      transform: rotate(14deg);
+    }
+  }
+
+  @keyframes snooze {
+    0% {
+      opacity: 0;
+      transform: translate(0, 10px);
+    }
+    30% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(14px, -26px);
+    }
+  }
+
+  :global(html:not(.js-motion)) .scene .z {
+    opacity: 0.9;
+  }
+</style>
+
+<script>
+  const scene = document.querySelector<SVGSVGElement>('[data-scene]');
+  const replay = document.querySelector<HTMLButtonElement>('[data-replay]');
+
+  replay?.addEventListener('click', () => {
+    if (!scene) return;
+    // Restart every CSS animation inside the scene.
+    for (const anim of scene.getAnimations({ subtree: true })) {
+      anim.cancel();
+      anim.play();
+    }
+  });
+</script>
