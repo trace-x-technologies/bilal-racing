@@ -10,7 +10,7 @@ import SectionHeading from '@/components/ui/SectionHeading.astro';
 import PhotoSlot from '@/components/ui/PhotoSlot.astro';
 import Emblem from '@/components/ui/Emblem.astro';
 import { driver, stats, sinhala, team } from '@/data/lore';
-import { driverPortrait } from '@/data/photos';
+import { driverPortrait, resolvePhoto } from '@/data/photos';
 
 const surname = driver.lastName.toUpperCase();
 const codeLen = driver.code.length;
@@ -40,11 +40,14 @@ const statRows = stats.map((s, i) => {
   };
 });
 
+// Until a real portrait lands, the placeholder shows the emblem — copy must not point at a photo.
+const hasPortrait = Boolean(resolvePhoto(driverPortrait).src);
+
 const pick = (label: string) => stats.find((s) => s.label === label)?.value ?? 0;
 const cardStats = [
   { k: 'Lives', v: pick('Lives remaining') },
   { k: 'Naps', v: pick('Naps per race weekend') },
-  { k: 'Laps', v: pick('Fastest laps') },
+  { k: 'Fast laps', v: pick('Fastest laps') },
 ];
 ---
 
@@ -91,7 +94,7 @@ const cardStats = [
               <span class="portrait-corner br" aria-hidden="true"></span>
             </div>
           </div>
-          <figcaption class="portrait-cap t-mono">{driverPortrait.caption}</figcaption>
+          {hasPortrait && <figcaption class="portrait-cap t-mono">{driverPortrait.caption}</figcaption>}
         </figure>
       </div>
 
@@ -144,7 +147,7 @@ const cardStats = [
             </p>
             <ol class="nick-senses">
               <li>{driver.nicknameMeaning}.</li>
-              <li>this guy. <span class="t-mute">(see photo)</span></li>
+              <li>this guy. <span class="t-mute">({hasPortrait ? 'see photo' : 'see emblem'})</span></li>
             </ol>
             <p class="nick-etym">
               The formal word is <span class="t-si" lang="si">{sinhala.balala.si}</span>{' '}
@@ -230,13 +233,15 @@ const cardStats = [
         <div class="tcard-float">
           <div
             class="tcard"
+            id="driver-tcard"
             data-tcard
-            role="img"
+            role="group"
+            aria-roledescription="trading card"
             aria-label={`Collectible driver card: ${driver.firstName} “${driver.nicknameLatin}” ${driver.lastName}, #${driver.number}, ${team.name}. Nine Lives Edition, 1 of 1.`}
           >
             <div class="tcard-inner">
               <!-- front -->
-              <div class="tcard-face tcard-front">
+              <div class="tcard-face tcard-front" data-tcard-front>
                 <span class="tcard-foil" aria-hidden="true"></span>
                 <div class="tcard-body">
                   <header class="tcard-top">
@@ -267,27 +272,27 @@ const cardStats = [
                     <span class="tcard-seal">1/1</span>
                   </footer>
                 </div>
-                <span class="tcard-glare"></span>
+                <span class="tcard-glare" aria-hidden="true"></span>
               </div>
-              <!-- back -->
-              <div class="tcard-face tcard-back">
+              <!-- back: hidden from assistive tech until the card is flipped -->
+              <div class="tcard-face tcard-back" data-tcard-back aria-hidden="true">
                 <span class="tcard-foil" aria-hidden="true"></span>
                 <div class="tcard-body tcard-body--back">
-                  <p class="t-mono tcard-serial">Card #009 of 009</p>
+                  <p class="t-mono tcard-serial">Card #009 · 1 of 1</p>
                   <Emblem size="6.5rem" title="" />
-                  <blockquote class="tcard-quote">“{driver.radioCatchphrase}”</blockquote>
+                  <blockquote class="tcard-quote">“If I fits, I sits. If I sits, I wins.”</blockquote>
                   <p class="t-mono tcard-small">
                     Collect all 1. Trade value: one (1) tuna can. Do not bend. Do not leave on a warm bonnet.
                   </p>
-                  <span class="tcard-barcode"></span>
+                  <span class="tcard-barcode" aria-hidden="true"></span>
                 </div>
-                <span class="tcard-glare"></span>
+                <span class="tcard-glare" aria-hidden="true"></span>
               </div>
             </div>
           </div>
         </div>
         <span class="tcard-shadow" aria-hidden="true"></span>
-        <button class="flip-btn t-mono" type="button" data-flip aria-pressed="false">
+        <button class="flip-btn t-mono" type="button" data-flip aria-pressed="false" aria-controls="driver-tcard">
           <span class="flip-ico" aria-hidden="true">↻</span>
           <span data-flip-label>Flip the card</span>
         </button>
@@ -963,7 +968,7 @@ const cardStats = [
   }
 
   .stat-note::before {
-    content: 'Stewards: ';
+    content: 'Telemetry: ';
     font-family: var(--f-mono);
     font-size: 0.62rem;
     letter-spacing: 0.12em;
@@ -1784,12 +1789,18 @@ const cardStats = [
     const card = section.querySelector<HTMLElement>('[data-tcard]');
     const btn = section.querySelector<HTMLButtonElement>('[data-flip]');
     const label = section.querySelector<HTMLElement>('[data-flip-label]');
+    const front = card?.querySelector<HTMLElement>('[data-tcard-front]');
+    const back = card?.querySelector<HTMLElement>('[data-tcard-back]');
     if (!card) return;
 
     btn?.addEventListener('click', () => {
       const flipped = card.classList.toggle('is-flipped');
       btn.setAttribute('aria-pressed', String(flipped));
       if (label) label.textContent = flipped ? 'Show the front' : 'Flip the card';
+      // Only the face that is showing is exposed to assistive tech.
+      const [shown, hidden] = flipped ? [back, front] : [front, back];
+      shown?.removeAttribute('aria-hidden');
+      hidden?.setAttribute('aria-hidden', 'true');
       sound.play('whoosh', { volume: 0.5 });
     });
 
