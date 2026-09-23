@@ -49,6 +49,11 @@ src/scripts/three/               Three.js car model + scenes
   when offscreen (IntersectionObserver) or tab hidden. Use `isLowPowerDevice()` to scale effects down.
 - Declarative reveals: `data-reveal="up|fade|left|right|scale|clip"`, stagger children with
   `data-reveal-stagger="80"` on the parent.
+- Astro scopes compound selectors: `.js-motion .foo` in a component `<style>` never matches — write
+  `:global(.js-motion) .foo` (same for `html.zoomies`, `[data-ready]`).
+- Lightning CSS folds `animation` + `animation-timeline` into one shorthand that browsers reject.
+  Put `animation-timeline` in a separate, more specific rule.
+- `--g-livery-conic` resolves on `:root`; to animate `--livery-angle` redeclare the gradient locally.
 - Events: `emit('bilal:toast', { message })`, `on('bilal:zoomies', ...)`, `on('bilal:sound', ...)`.
   Intro handshake: Loader calls `markReady()` (from bus.ts) when lights go out; entrance animations
   use `whenReady(cb)`. Loader plays once per session (`sessionStorage['bilal:skip-intro']`).

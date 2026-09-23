@@ -40,7 +40,7 @@ const resolved = resolvePhoto(photo);
     />
   ) : (
     <div class:list={['photo-slot', 'photo-placeholder', className]} role="img" aria-label={`${resolved.alt} (photo coming soon)`}>
-      <Emblem size="28%" class="ph-emblem" title="" />
+      <Emblem size="100%" class="ph-emblem" title="" />
       <span class="ph-label t-mono">{resolved.placeholder ?? 'Photo incoming'}</span>
       <span class="ph-sub t-mono">Driver is napping · photo pending</span>
     </div>
@@ -87,7 +87,8 @@ const resolved = resolvePhoto(photo);
   }
 
   .photo-placeholder :global(.ph-emblem) {
-    max-width: 7rem;
+    width: clamp(3.5rem, 30%, 7rem);
+    height: auto;
     opacity: 0.85;
   }
 </style>

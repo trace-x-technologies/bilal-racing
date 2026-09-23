@@ -12,6 +12,8 @@
 }
 
 html {
+  /* Reserve the scrollbar lane so lockScroll() (loader, menu, lightbox) never shifts layout. */
+  scrollbar-gutter: stable;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-padding-top: var(--nav-h);
@@ -126,10 +128,13 @@ a:hover {
 body::after {
   content: '';
   position: fixed;
-  inset: -50%;
+  inset: 0;
   z-index: var(--z-overlay);
   pointer-events: none;
   opacity: 0.05;
+  /* Own compositor layer: rasterised once, never repainted with the page. */
+  will-change: transform;
+  transform: translateZ(0);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 

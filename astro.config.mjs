@@ -9,9 +9,12 @@ export default defineConfig({
   build: {
     inlineStylesheets: 'auto',
   },
-  image: {
-    // Re-encoding through sharp strips EXIF (incl. GPS) from every photo we ship.
-    responsiveStyles: true,
-  },
+  // Photos are re-encoded by sharp via astro:assets, which strips EXIF (incl. GPS).
   devToolbar: { enabled: false },
+  vite: {
+    build: {
+      // three.js is one lazy chunk (~620 kB), never part of the initial load.
+      chunkSizeWarningLimit: 800,
+    },
+  },
 });
