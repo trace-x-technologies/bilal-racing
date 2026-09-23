@@ -80,7 +80,7 @@ export const PART_INFO: readonly PartInfo[] = [
     id: 'monocoque',
     label: 'Carbon Litter-Tray Monocoque',
     real: 'Carbon survival cell',
-    joke: 'Survival cell rated for nine lives. Currently on life #4. Do not ask about lives 1–3.',
+    joke: 'Survival cell rated for nine lives. Officially all nine are intact. The kitchen counter disagrees.',
     explode: [0, 0, 0],
     anchor: [-0.34, 0.55, 0.75],
   },

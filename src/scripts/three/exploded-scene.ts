@@ -35,6 +35,10 @@ export interface ExplodedScene {
 }
 
 const N = 12;
+/** Phones and portrait tablets: numbered markers on the car (see CarExploded.astro). */
+const COMPACT_QUERY = '(max-width: 759px), (max-width: 1099px) and (orientation: portrait)';
+/** Minimum centre distance between compact markers (24 px discs, active one scaled up). */
+const MARKER_GAP = 26;
 const TOUR_START = 0.3;
 const TOUR_END = 0.86;
 
@@ -225,7 +229,10 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
     labelSizes = o.labels.map((l) => [l.offsetWidth, l.offsetHeight]);
   });
   o.labels.forEach((l) => ro.observe(l));
-  const compact = () => cw < 760;
+  // Numbered markers + bench card. Must be identical to the phone @media query in
+  // CarExploded.astro so JS marker mode and CSS marker styling always agree.
+  const compactMQ = window.matchMedia(COMPACT_QUERY);
+  const compact = () => compactMQ.matches;
   const v = new THREE.Vector3();
   const centerV = new THREE.Vector3();
   interface Placed {
@@ -239,8 +246,17 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
     side: number;
     alpha: number;
   }
+  let sizedActive = -2;
   const placeLabels = (st: ExplodeState, target: THREE.Vector3) => {
     const small = compact();
+    if (st.active !== sizedActive) {
+      // The active callout grows (joke text). Measure it now: the ResizeObserver
+      // would only report the new size a frame late, so the de-overlap below would
+      // place it with its old, smaller box for one frame. One layout read per switch.
+      sizedActive = st.active;
+      o.labels.forEach((el, i) => el.classList.toggle('is-active', i === st.active));
+      labelSizes = o.labels.map((l) => [l.offsetWidth, l.offsetHeight]);
+    }
     centerV.copy(target).project(camera);
     const ccx = ((centerV.x + 1) / 2) * cw;
     const ccy = ((1 - centerV.y) / 2) * ch;
@@ -275,6 +291,47 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
         }
         col.forEach((p) => (p.y = Math.max(p.h / 2 + 10, p.y)));
       }
+    } else {
+      // Markers sit on their anchors; nudge apart any that would hide each other.
+      const vis = placed.filter((p) => p.alpha > 0.02);
+      for (let it = 0; it < 3; it++) {
+        for (let a = 0; a < vis.length; a++) {
+          for (let b = a + 1; b < vis.length; b++) {
+            const A = vis[a];
+            const B = vis[b];
+            let dx = B.x - A.x;
+            let dy = B.y - A.y;
+            let d = Math.hypot(dx, dy);
+            if (d >= MARKER_GAP) continue;
+            if (d < 0.5) {
+              // coincident: split them along the ray from the car centre
+              dx = A.x - ccx;
+              dy = A.y - ccy;
+              d = Math.hypot(dx, dy);
+              if (d < 0.5) {
+                dx = 1;
+                dy = 0;
+                d = 1;
+              }
+              const k = MARKER_GAP / 2 / d;
+              A.x -= dx * k;
+              A.y -= dy * k;
+              B.x += dx * k;
+              B.y += dy * k;
+              continue;
+            }
+            const k = (MARKER_GAP - d) / 2 / d;
+            A.x -= dx * k;
+            A.y -= dy * k;
+            B.x += dx * k;
+            B.y += dy * k;
+          }
+        }
+      }
+      for (const p of vis) {
+        p.x = Math.min(Math.max(p.x, p.w / 2 + 2), cw - p.w / 2 - 2);
+        p.y = Math.min(Math.max(p.y, p.h / 2 + 2), ch - p.h / 2 - 2);
+      }
     }
     for (const p of placed) {
       const el = o.labels[p.i];
@@ -287,8 +344,8 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
       el.classList.toggle('is-left', p.side < 0);
       let lx = p.x;
       if (!small) lx = Math.min(Math.max(p.x, fx0 + (p.side > 0 ? 8 : p.w + 8)), fx1 - (p.side > 0 ? p.w + 8 : 8));
-      const tx = small ? p.ax - p.w / 2 : p.side > 0 ? lx : lx - p.w;
-      const ty = (small ? p.ay : p.y) - p.h / 2;
+      const tx = small ? p.x - p.w / 2 : p.side > 0 ? lx : lx - p.w;
+      const ty = p.y - p.h / 2;
       el.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0)`;
       line.setAttribute('x1', p.ax.toFixed(1));
       line.setAttribute('y1', p.ay.toFixed(1));

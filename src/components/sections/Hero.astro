@@ -37,7 +37,7 @@ const siMeaning = ((m: string) => {
       <span class="live-dot" aria-hidden="true"></span>
       <span>Live from the garage</span>
       <span class="kicker-sep" aria-hidden="true">/</span>
-      <span>Season {team.founded}</span>
+      <span>Season 2026/27</span>
       <span class="kicker-sep kicker-wide" aria-hidden="true">/</span>
       <span class="kicker-wide">{team.base}</span>
     </p>
@@ -496,8 +496,18 @@ const siMeaning = ((m: string) => {
     height: var(--size);
     border-radius: 50%;
     color: var(--c-chalk);
+    /* Gloss and bright red stay on the top rim, above the label (which spans ~30–70% of the
+       height). Behind the label it is crimson (≥ 5:1 with chalk), darkening to the edge. */
     background:
-      radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--c-red) 70%, white), var(--c-red) 45%, color-mix(in oklab, var(--c-red) 55%, black) 100%);
+      radial-gradient(ellipse 40% 14% at 44% 13%, color-mix(in oklab, var(--c-red) 50%, white), transparent),
+      radial-gradient(
+        120% 90% at 50% 0%,
+        var(--c-red) 0,
+        var(--c-red) 12%,
+        color-mix(in oklab, var(--c-red) 40%, var(--c-maroon)) 30%,
+        color-mix(in oklab, var(--c-maroon) 80%, black) 72%,
+        color-mix(in oklab, var(--c-maroon) 60%, black) 100%
+      );
     box-shadow:
       inset 0 -6px 12px rgb(0 0 0 / 0.45),
       0 0 0 4px var(--c-carbon),
@@ -832,7 +842,11 @@ const siMeaning = ((m: string) => {
   .hero-scroll {
     position: absolute !important;
     left: 50%;
-    bottom: var(--space-4);
+    /* 44px hit area around the ~1rem-tall cue: drop `bottom` by half the added height
+       ((2.75rem - 1rem) / 2) so the cue itself doesn't move */
+    bottom: calc(var(--space-4) - 0.875rem);
+    min-block-size: 2.75rem;
+    padding-block: 0.5rem;
     translate: -50% 0;
     display: flex;
     align-items: center;
@@ -1074,6 +1088,12 @@ const siMeaning = ((m: string) => {
   }
 
   @media (max-width: 380px) {
+    /* keep "Live from the garage / Season 2026/27" on one line */
+    .hero-kicker {
+      column-gap: var(--space-2);
+      letter-spacing: 0.08em;
+    }
+
     .driver-badge {
       width: 100%;
     }
@@ -1108,18 +1128,10 @@ const siMeaning = ((m: string) => {
   import { emit, on, whenReady } from '@/scripts/bus';
   import { sound } from '@/scripts/audio';
   import type { HeroScene } from '@/scripts/three/hero-scene';
+  import { webglAvailable } from '@/scripts/three/webgl-probe';
 
   const hero = document.querySelector<HTMLElement>('[data-hero]');
   if (hero) initHero(hero);
-
-  function supportsWebGL(): boolean {
-    try {
-      const c = document.createElement('canvas');
-      return Boolean(c.getContext('webgl2') ?? c.getContext('webgl'));
-    } catch {
-      return false;
-    }
-  }
 
   function initHero(hero: HTMLElement) {
     const reduced = prefersReducedMotion();
@@ -1147,7 +1159,7 @@ const siMeaning = ((m: string) => {
     const load = async () => {
       if (loading || scene || !canvas || !stage) return;
       loading = true;
-      if (!supportsWebGL()) {
+      if (!webglAvailable()) {
         hero.classList.add('is-fallback');
         return;
       }
@@ -1183,12 +1195,11 @@ const siMeaning = ((m: string) => {
       if (w.requestIdleCallback) w.requestIdleCallback(cb, { timeout: 900 });
       else setTimeout(cb, 120);
     };
-    let skipIntro = false;
-    try {
-      skipIntro = sessionStorage.getItem('bilal:skip-intro') === '1';
-    } catch {
-      /* storage blocked */
-    }
+    // The Loader flips html[data-intro] to 'running' synchronously before this runs
+    // (and the inline head script marks returning visitors 'skip'), so the DOM flag
+    // is the source of truth. Don't read sessionStorage: the Loader has already
+    // written the "seen" key by now, even on a first visit.
+    const skipIntro = document.documentElement.dataset.intro !== 'running';
     let loadQueued = false;
     const queueLoad = (delay: number) => {
       if (loadQueued) return;
@@ -1209,6 +1220,8 @@ const siMeaning = ((m: string) => {
 
     /* ---------------- ignition ---------------- */
     let revs = 0;
+    let revTimer = 0;
+    let rpmResetTimer = 0;
     let rpmTween: gsap.core.Tween | null = null;
     const rpm = { v: 0 };
     const paintRpm = () => {
@@ -1224,14 +1237,19 @@ const siMeaning = ((m: string) => {
       if (revsEl) revsEl.textContent = String(Math.min(revs, 9));
       const lives = Math.min(revs, 9);
       if (live) live.textContent = `Engine started. Purr-brid V6 at full meow. ${lives} of 9 lives used.`;
+      // Restart the shake/flash on every rev and let only the latest rev end it.
+      window.clearTimeout(revTimer);
+      hero.classList.remove('is-revving');
+      void hero.offsetWidth;
       hero.classList.add('is-revving');
-      window.setTimeout(() => hero.classList.remove('is-revving'), 1300);
+      revTimer = window.setTimeout(() => hero.classList.remove('is-revving'), 1300);
 
       rpmTween?.kill();
       if (reduced) {
+        window.clearTimeout(rpmResetTimer);
         rpm.v = 12500;
         paintRpm();
-        window.setTimeout(() => {
+        rpmResetTimer = window.setTimeout(() => {
           rpm.v = 0;
           paintRpm();
         }, 1400);
@@ -1326,7 +1344,8 @@ const siMeaning = ((m: string) => {
         startIntro(solid, outline);
         queueLoad(1300);
       };
-      const fontsReady = document.fonts?.ready ?? Promise.resolve();
+      // Only the display face matters for the split (fonts.ready would also wait on the Sinhala face).
+      const fontsReady = document.fonts ? document.fonts.load('800 1em "Saira Variable"').catch(() => undefined) : Promise.resolve();
       Promise.race([fontsReady, new Promise((r) => setTimeout(r, 1500))]).then(() => {
         try {
           prepare();
@@ -1334,8 +1353,14 @@ const siMeaning = ((m: string) => {
           console.warn('[hero] SplitText failed', err);
         }
         whenReady(go);
-        // Safety net if the intro loader never reports in (or was skipped without a handshake).
-        window.setTimeout(go, skipIntro ? 1200 : 7000);
+        // Safety net if the intro loader never reports in (or was skipped without a
+        // handshake). Never start the wordmark while the start lights are still up.
+        window.setTimeout(
+          () => {
+            if (document.documentElement.dataset.intro !== 'running') go();
+          },
+          skipIntro ? 1200 : 7000,
+        );
       });
       window.addEventListener('resize', () => {
         if (solid) paintCharGradients(solid);
@@ -1363,6 +1388,9 @@ const siMeaning = ((m: string) => {
       exitTl.to(wm, { yPercent: -45, opacity: 0.12, duration: 0.6 }, 0);
       const foot = hero.querySelectorAll('.hero-pitch, .hero-ignition, .hero-driver, .hero-scroll, .si-stamp, .hero-kicker');
       exitTl.to(foot, { y: -60, opacity: 0, duration: 0.22, stagger: 0.012 }, 0.02);
+      // Fade the stage wrapper (poster + "drag to spin" hint). Opacity only: hero-scene
+      // reads the stage rect to place the car, and .stage-hint has a delayed CSS transition.
+      if (stage) exitTl.to(stage, { opacity: 0, duration: 0.22, ease: 'none' }, 0.02);
       if (streaks) {
         exitTl.fromTo(streaks, { opacity: 0 }, { opacity: 1, duration: 0.25 }, 0.05);
         exitTl.fromTo(streaks.children, { xPercent: 60 }, { xPercent: -160, duration: 0.8, stagger: 0.015 }, 0.05);
