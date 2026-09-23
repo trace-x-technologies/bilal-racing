@@ -1,12 +1,13 @@
 /**
  * Easter-egg tracker. Every egg emits('bilal:egg', { id, label }); found ids
- * persist in localStorage ("bilal:eggs"). Other sections may emit their own
- * ids — unknown ids are counted too and grow the total.
+ * persist in localStorage ("bilal:eggs"). KNOWN_EGGS includes ids emitted by
+ * other sections (Hero's 'nine-revs'); any unlisted id is still counted and
+ * grows the total, so list new eggs here to keep the count stable.
  */
 import { on, store, type BilalEvents } from '@/scripts/bus';
 import { toast } from './util';
 
-export const KNOWN_EGGS = ['konami', 'nine-lives', 'meow', 'box', 'laser', 'nap'] as const;
+export const KNOWN_EGGS = ['konami', 'nine-lives', 'meow', 'box', 'laser', 'nap', 'nine-revs'] as const;
 
 type EggDetail = BilalEvents['bilal:egg'];
 

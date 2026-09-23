@@ -40,6 +40,7 @@ export function greet(): void {
       '  · the thing cats sit in (say it twice on the radio)\n' +
       '  · the letter that comes after K\n' +
       '  · nine lives, spent on the emblem\n' +
+      '  · rev the engine until you run out of lives\n' +
       '  · doing absolutely nothing for one minute',
     `color:${red};font-weight:700`,
     `color:${mute}`,
