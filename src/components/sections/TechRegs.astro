@@ -1567,16 +1567,41 @@ const foodMs = Math.round(foodSeconds * 1000);
     else window.addEventListener('load', () => window.setTimeout(measure, 0), { once: true });
 
     /* ---------------- Popover: modal-style scroll lock + sound ----------------
-       'toggle' fires for every close path (button, Esc, light dismiss). The popover
-       itself has data-lenis-prevent, so its own content still scrolls. */
+       The scroll lock follows the synchronous 'beforetoggle', which fires for every
+       open and close path (invoker, Close button, Esc, light dismiss). 'toggle' is
+       queued as a task, so it runs after the click that light-dismissed the popover:
+       that click's anchor scroll would hit a stopped Lenis, and a late unlock would
+       undo the lock set by a menu or dialog the same click opened. The popover has
+       data-lenis-prevent, so its own content still scrolls. */
     const pop = root.querySelector<HTMLElement>('#stewards-decision');
-    pop?.addEventListener('toggle', (e) => {
-      const open = (e as ToggleEvent).newState === 'open';
-      lockScroll(open);
-      if (!open) return;
-      pop.scrollTop = 0;
-      sound.play('radio');
-    });
+    if (pop) {
+      pop.addEventListener('beforetoggle', (e) => {
+        lockScroll((e as ToggleEvent).newState === 'open');
+      });
+      pop.addEventListener('toggle', (e) => {
+        if ((e as ToggleEvent).newState !== 'open') return;
+        pop.scrollTop = 0;
+        sound.play('radio');
+      });
+      /* Keyboard users can Tab out of a native popover (or Shift+Tab back past its
+         invoker) and it stays open, leaving the page locked with focus on a control
+         under the backdrop. Close it when focus leaves the popover + invoker pair.
+         Focus may move between the two: Tab from the invoker enters the popover, and
+         a click on the invoker must stay a plain toggle, not close-then-reopen.
+         `to` is null when a click lands on non-focusable text inside the popover or
+         the window loses focus, so those keep it open; the :popover-open guard makes
+         the focus-restore focusout after Close or Esc a no-op. */
+      const invokers = Array.from(
+        root.querySelectorAll<HTMLElement>('[popovertarget="stewards-decision"]'),
+      ).filter((el) => !pop.contains(el));
+      const closeIfFocusLeft = (e: FocusEvent) => {
+        const to = e.relatedTarget as Node | null;
+        if (!to || pop.contains(to) || invokers.some((el) => el.contains(to))) return;
+        if (pop.matches(':popover-open')) pop.hidePopover();
+      };
+      pop.addEventListener('focusout', closeIfFocusLeft);
+      for (const el of invokers) el.addEventListener('focusout', closeIfFocusLeft);
+    }
   }
 
   initTechRegs();
