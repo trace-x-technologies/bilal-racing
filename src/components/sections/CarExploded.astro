@@ -537,7 +537,7 @@ const poster = carPosterSVG('car-bp');
   }
 
   .spec-foot {
-    color: var(--c-faint);
+    color: var(--c-mute);
     font-size: 0.58rem;
     letter-spacing: 0.1em;
   }
@@ -613,7 +613,7 @@ const poster = carPosterSVG('car-bp');
 
   .part-real {
     color: var(--c-mute);
-    font-size: 0.6rem;
+    font-size: var(--fs-micro);
   }
 
   .part-joke {
@@ -623,8 +623,9 @@ const poster = carPosterSVG('car-bp');
     margin-top: 0.3rem;
   }
 
-  /* ---------------- phones: markers on the car, bench card below ---------------- */
-  @media (max-width: 759px) {
+  /* ---------------- phones + portrait tablets: markers on the car, bench card below ----------------
+     Keep this query identical to COMPACT_QUERY in exploded-scene.ts (JS marker mode). */
+  @media (max-width: 759px), (max-width: 1099px) and (orientation: portrait) {
     .car-scroll {
       height: 270svh;
     }
@@ -673,8 +674,8 @@ const poster = carPosterSVG('car-bp');
     }
   }
 
-  /* ---------------- desktop: pinned spec sheet beside the car ---------------- */
-  @media (min-width: 760px) {
+  /* ---------------- desktop + landscape tablets: pinned spec sheet beside the car ---------------- */
+  @media (min-width: 1100px), (min-width: 760px) and (orientation: landscape) {
     .car-scroll {
       height: 380svh;
     }
@@ -695,6 +696,7 @@ const poster = carPosterSVG('car-bp');
       top: 50%;
       translate: 0 -42%;
       width: clamp(17rem, 24vw, 22rem);
+      container: car-spec / inline-size;
     }
 
     .car-spec--flow {
@@ -719,7 +721,9 @@ const poster = carPosterSVG('car-bp');
     }
   }
 
-  @media (min-width: 760px) and (max-width: 1099px) {
+  /* narrow pinned card (24vw: landscape tablets and laptops up to ~1400px): a wider value
+     column and no footnotes, so the card fits between the HUD and the bottom of the stage */
+  @container car-spec (max-width: 18rem) {
     .spec-row {
       grid-template-columns: 6rem minmax(0, 1fr);
     }
@@ -728,8 +732,8 @@ const poster = carPosterSVG('car-bp');
       font-size: 0.82rem;
     }
 
-    .car-spec--pinned .spec-note,
-    .car-spec--pinned .spec-foot {
+    .spec-note,
+    .spec-foot {
       display: none;
     }
   }
@@ -777,18 +781,10 @@ const poster = carPosterSVG('car-bp');
   import { ScrollTrigger, prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
   import { PART_INFO } from '@/scripts/three/parts';
   import type { ExplodedScene } from '@/scripts/three/exploded-scene';
+  import { webglAvailable } from '@/scripts/three/webgl-probe';
 
   const root = document.querySelector<HTMLElement>('[data-car]');
   if (root) initCar(root);
-
-  function supportsWebGL(): boolean {
-    try {
-      const c = document.createElement('canvas');
-      return Boolean(c.getContext('webgl2') ?? c.getContext('webgl'));
-    } catch {
-      return false;
-    }
-  }
 
   function initCar(root: HTMLElement) {
     const reduced = prefersReducedMotion();
@@ -868,7 +864,7 @@ const poster = carPosterSVG('car-bp');
     const load = async () => {
       if (loading || scene) return;
       loading = true;
-      if (!supportsWebGL()) {
+      if (!webglAvailable()) {
         root.classList.add('is-fallback');
         return;
       }

@@ -6,15 +6,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-export function webglAvailable(): boolean {
-  try {
-    const c = document.createElement('canvas');
-    return Boolean(c.getContext('webgl2') ?? c.getContext('webgl'));
-  } catch {
-    return false;
-  }
-}
-
 export function createRenderer(canvas: HTMLCanvasElement, lowPower: boolean): THREE.WebGLRenderer | null {
   try {
     const renderer = new THREE.WebGLRenderer({
