@@ -257,6 +257,12 @@ const track =
       position: sticky;
       top: calc(var(--nav-h) + var(--space-6));
     }
+  }
+
+  @media (min-width: 60em) and (height < 48em) {
+    .panel {
+      position: static;
+    }
 
 
   }
@@ -531,7 +537,7 @@ const track =
 
   @media (width < 60em) {
     .circuit-svg {
-      max-width: 22rem;
+      max-width: 20rem;
     }
   }
 
@@ -775,10 +781,16 @@ const track =
         animation-range: cover 0% cover 12%;
       }
 
-      .c-trace-1 {
-        animation: career-draw linear both;
-        animation-timeline: --career-circuit;
-        animation-range: entry 20% cover 60%;
+    }
+
+    /* Map draws itself as it scrolls in — only where the map isn't JS-driven. */
+    @media (width < 60em), (height < 37.5em) {
+      @supports (animation-timeline: view()) {
+        .c-trace-1 {
+          animation: career-draw linear both;
+          animation-timeline: --career-circuit;
+          animation-range: entry 20% cover 60%;
+        }
       }
     }
 
@@ -836,7 +848,7 @@ const track =
       text-transform: uppercase;
       white-space: nowrap;
       color: transparent;
-      -webkit-text-stroke: 1.5px color-mix(in oklab, var(--lap-c) 42%, transparent);
+      -webkit-text-stroke: 1.5px color-mix(in oklab, var(--lap-c) 32%, transparent);
       opacity: 0;
       translate: 0 22%;
       transform: translate3d(8%, 0, 0);
@@ -891,6 +903,14 @@ const track =
 
     :global(.js-motion) .career.is-driven .rail-viewport {
       overflow: clip;
+    }
+
+    :global(.js-motion) .career.is-driven .c-trace {
+      animation: none;
+    }
+
+    :global(.js-motion) .career.is-lite .c-trace {
+      filter: none;
     }
 
     :global(.js-motion) .rail-line {
@@ -950,7 +970,7 @@ const track =
 </style>
 
 <script>
-  import { gsap, ScrollTrigger } from '@/scripts/motion';
+  import { gsap, ScrollTrigger, isLowPowerDevice } from '@/scripts/motion';
   import { sound } from '@/scripts/audio';
   import { emit } from '@/scripts/bus';
 
@@ -995,6 +1015,7 @@ const track =
       let flagged = false;
 
       section.classList.add('is-driven');
+      section.classList.toggle('is-lite', isLowPowerDevice());
       viewport.scrollLeft = 0;
 
       const measure = () => {
@@ -1085,7 +1106,7 @@ const track =
       });
 
       return () => {
-        section.classList.remove('is-driven', 'is-finished');
+        section.classList.remove('is-driven', 'is-finished', 'is-lite');
         rail.style.transform = '';
         cards.forEach((c) => {
           c.style.removeProperty('--d');
