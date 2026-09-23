@@ -14,7 +14,8 @@ import { timeline } from '@/data/lore';
 const laps = timeline.length;
 
 // One colour per lap — the circuit is repainted in this colour as you drive it.
-const lapColors = ['var(--c-gold)', 'var(--c-saffron)', 'var(--c-red)', 'var(--c-teal)', 'var(--c-purple)'];
+// Gold is reserved for the laps that really happened ('Real story'), so lap one is chalk.
+const lapColors = ['var(--c-chalk)', 'var(--c-saffron)', 'var(--c-red)', 'var(--c-teal)', 'var(--c-purple)'];
 
 // Obviously-fictional tyre strategy, one stint per lap.
 const tyres = [
@@ -233,8 +234,9 @@ const track =
 
 <style>
   .career {
-    --card-w: clamp(19rem, 26vw, 25rem);
+    --card-w: clamp(20rem, 29vw, 28rem);
     --rail-gap: clamp(1.5rem, 3vw, 3rem);
+    --rail-fade: 7%;
     overflow-x: clip;
   }
 
@@ -564,7 +566,7 @@ const track =
     inset: 0;
     background: linear-gradient(
       to bottom,
-      var(--c-gold),
+      var(--c-chalk),
       var(--c-saffron) 30%,
       var(--c-red) 50%,
       var(--c-teal) 72%,
@@ -641,7 +643,8 @@ const track =
   }
 
   .lc-lap {
-    color: var(--lap-c);
+    /* A touch of chalk keeps every lap colour above 4.5:1 on the card surface. */
+    color: color-mix(in oklab, var(--lap-c) 85%, var(--c-chalk));
     font-weight: 700;
   }
 
@@ -818,11 +821,13 @@ const track =
       width: 100%;
       height: 100svh;
       margin: 0;
-      grid-template-columns: minmax(20rem, 34%) minmax(0, 1fr);
+      /* A wider map column fills more of the height, and a deeper bottom inset balances the
+         nav clearance on top, so the panel sits near the optical centre of the stage. */
+      grid-template-columns: minmax(20rem, 38%) minmax(0, 1fr);
       grid-template-rows: minmax(0, 1fr);
       align-items: center;
-      gap: clamp(1rem, 3vw, 3rem);
-      padding: calc(var(--nav-h) + var(--space-4)) 0 var(--space-5)
+      gap: var(--space-4);
+      padding: calc(var(--nav-h) + var(--space-4)) 0 clamp(var(--space-5), 5svh, var(--space-7))
         max(var(--gutter), calc((100% - var(--maxw)) / 2));
       overflow: clip;
     }
@@ -833,7 +838,7 @@ const track =
 
     :global(.js-motion) .wm {
       position: absolute;
-      inset: var(--nav-h) 0 0 30%;
+      inset: var(--nav-h) 0 0 36%;
       display: grid;
       place-items: end center;
       pointer-events: none;
@@ -875,6 +880,7 @@ const track =
     }
 
     :global(.js-motion) .circuit-svg {
+      max-width: none;
       max-height: calc(100svh - var(--nav-h) - 17rem);
     }
 
@@ -897,8 +903,15 @@ const track =
       align-items: center;
       padding: 0;
       overflow-x: auto;
-      -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 92%, transparent);
-      mask-image: linear-gradient(90deg, transparent, #000 10%, #000 92%, transparent);
+      --rail-mask: linear-gradient(
+        90deg,
+        transparent,
+        #000 var(--rail-fade),
+        #000 calc(100% - var(--rail-fade)),
+        transparent
+      );
+      -webkit-mask-image: var(--rail-mask);
+      mask-image: var(--rail-mask);
     }
 
     :global(.js-motion) .career.is-driven .rail-viewport {
@@ -917,13 +930,21 @@ const track =
       display: none;
     }
 
+    /* Cards start just clear of the edge fade (lap one sits beside the map, the next lap
+       peeks in) and the drive ends with the last card against the right edge. Equal heights
+       keep the row tidy as it slides. */
     :global(.js-motion) .rail {
       display: flex;
-      align-items: center;
+      align-items: stretch;
       gap: var(--rail-gap);
       width: max-content;
-      padding-inline: calc(50% - var(--card-w) / 2);
+      padding-inline: calc(var(--rail-fade) + var(--space-3));
       will-change: transform;
+    }
+
+    :global(.js-motion) .lc {
+      height: 100%;
+      grid-template-rows: auto auto auto 1fr auto;
     }
 
     :global(.js-motion) .lap-card {
@@ -959,6 +980,22 @@ const track =
       box-shadow:
         0 0 0 1px var(--c-gold),
         0 0 3rem -0.5rem rgb(255 197 46 / 0.45);
+    }
+  }
+
+  /* Short pinned screens: tighter cards so the tallest lap still fits the stage. */
+  @media (min-width: 60em) and (min-height: 37.5em) and (max-height: 50em) and (prefers-reduced-motion: no-preference) {
+    :global(.js-motion) .lc {
+      gap: var(--space-2);
+      padding: var(--space-5);
+    }
+
+    :global(.js-motion) .lc-year {
+      font-size: clamp(2.5rem, 8svh, 3.75rem);
+    }
+
+    :global(.js-motion) .lc-body {
+      line-height: 1.45;
     }
   }
 
@@ -1013,6 +1050,12 @@ const track =
       let lap = -1;
       let armed = false;
       let flagged = false;
+      // How long the pin has been driven for. A programmatic jump past it (nav link,
+      // deep link, CTA) only passes through for a moment, so it earns no flag or whooshes.
+      let enteredAt = 0;
+      let leftAt = 0;
+      let lastWhoosh = 0;
+      const dwell = () => (enteredAt ? (leftAt || performance.now()) - enteredAt : 0);
 
       section.classList.add('is-driven');
       section.classList.toggle('is-lite', isLowPowerDevice());
@@ -1046,7 +1089,11 @@ const track =
             { yPercent: 0, opacity: 1, duration: 0.55, ease: 'expo.out', overwrite: true },
           );
         }
-        if (armed) sound.play('whoosh', { volume: 0.35 });
+        const now = performance.now();
+        if (armed && dwell() > 600 && now - lastWhoosh > 350) {
+          lastWhoosh = now;
+          sound.play('whoosh', { volume: 0.35 });
+        }
       };
 
       const state = { p: 0 };
@@ -1073,7 +1120,7 @@ const track =
         if (idx !== lap) setLap(idx);
         const finished = p > 0.99;
         section.classList.toggle('is-finished', finished);
-        if (finished && armed && !flagged) {
+        if (finished && armed && !flagged && dwell() > 2000) {
           flagged = true;
           emit('bilal:toast', {
             message: 'Chequered flag! P1 in the World Napping Championship (provisional).',
@@ -1098,10 +1145,22 @@ const track =
             return `+=${Math.round(Math.max(window.innerHeight * 3.6, maxShift * 1.5))}`;
           },
           pin: true,
+          // Measure the pin before everything below it, even when matchMedia re-creates it
+          // last (rotation / resize back into this query). Otherwise later triggers ignore
+          // the pin-spacer and fire a whole pin-length early.
+          refreshPriority: 1,
           scrub: 0.5,
           anticipatePin: 1,
           invalidateOnRefresh: true,
           onRefresh: render,
+          onToggle: (self) => {
+            if (self.isActive) {
+              enteredAt = performance.now();
+              leftAt = 0;
+            } else {
+              leftAt = performance.now();
+            }
+          },
         },
       });
 
