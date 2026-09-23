@@ -622,6 +622,23 @@ const paws = [
     }
   }
 
+  /* landscape phones: stacking the HUD over the box leaves a ~115px pit box, so put them side
+     by side and give the stage the full height under the nav */
+  @media (max-height: 30em) and (orientation: landscape) and (min-width: 40rem) and (max-width: 63.99rem) {
+    .crew {
+      --stage-w: min(calc((100svh - var(--nav-h) - 1.5rem) * 0.75), 40rem);
+    }
+
+    .crew-rig {
+      grid-template-columns: minmax(12rem, 1fr) minmax(0, var(--stage-w));
+      column-gap: var(--space-5);
+    }
+
+    :global(.js-motion) .crew-sticky {
+      padding-block: calc(var(--nav-h) + var(--space-1)) var(--space-2);
+    }
+  }
+
   /* ================= HUD ================= */
   .hud {
     position: relative;
@@ -1363,6 +1380,14 @@ const paws = [
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  /* the landscape-phone box is only ~230px wide: at the 2.3rem floor the tokens fill 16% of it
+     (10.5% in portrait) and the front jack's code tag slides under the right-front gunner */
+  @media (max-height: 30em) and (orientation: landscape) and (min-width: 40rem) and (max-width: 63.99rem) {
+    .formation {
+      --tok: clamp(2rem, 14cqi, 4.1rem);
+    }
   }
 
   .tok-slot {
