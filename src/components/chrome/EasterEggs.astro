@@ -1,4 +1,1387 @@
 ---
-// STUB — owned by the "eggs" builder. Replace this file entirely.
-// Global overlays: toasts, paw cursor trail, Konami "Zoomies mode", hidden eggs.
+/**
+ * Global overlays & easter eggs (rendered once, last thing in <body>).
+ *
+ *  - Race-control toasts: emit('bilal:toast', { message, tone }) from anywhere.
+ *  - Egg tracker: emit('bilal:egg', { id, label }) → "Easter egg 3/6 found".
+ *  - Lazy (after idle): paw-print cursor trail, Konami / nine-lives ZOOMIES MODE,
+ *    typed "meow" / "box", "l" laser pointer, 60 s idle nap, console greeting.
+ *
+ * All art is inline SVG, hidden until used; every decorative layer is aria-hidden.
+ */
+import { driver, stats, team } from '@/data/lore';
+
+const topSpeed = stats.find((s) => s.label === 'Top speed')?.value ?? 312;
+const carCode = team.car.split(' ')[0];
+
+// Deterministic speed-line field so SSR output is stable between builds.
+const streaks = Array.from({ length: 22 }, (_, i) => {
+  const r = (n: number) => {
+    const x = Math.sin((i + 1) * 12.9898 + n * 78.233) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  return {
+    y: (2 + r(1) * 96).toFixed(1),
+    x: Math.round(r(8) * 90),
+    w: (5 + r(2) * 16).toFixed(1),
+    d: Math.round(380 + r(3) * 560),
+    dl: -Math.round(r(4) * 900),
+    o: (0.3 + r(5) * 0.65).toFixed(2),
+    h: r(6) > 0.8 ? 3 : r(6) > 0.35 ? 2 : 1,
+    hot: r(7) > 0.68,
+  };
+});
 ---
+
+<div class="eggs" data-eggs>
+  <!-- ============ ZOOMIES overlay ============ -->
+  <div class="zl" data-zl aria-hidden="true">
+    <div class="zl-vignette"></div>
+    <div class="zl-leds">{Array.from({ length: 15 }, (_, i) => <i style={`--i:${i}`} />)}</div>
+    <div class="zl-streaks">
+      {
+        streaks.map((s) => (
+          <i
+            class:list={[s.hot && 'hot']}
+            style={`--y:${s.y}%;--x:${s.x};--w:${s.w}rem;--d:${s.d}ms;--dl:${s.dl}ms;--o:${s.o};--h:${s.h}px`}
+          />
+        ))
+      }
+    </div>
+    <p class="zl-word" data-zl-word>
+      <span>Zoomies</span>
+      <small>Mode engaged · {topSpeed} km/h · lap record pending</small>
+    </p>
+    <div class="zl-cat" data-zl-cat>
+      <div class="zl-bob">
+        <span class="zl-dust"></span>
+        <svg class="zl-svg" viewBox="0 0 240 120">
+          <g class="zl-smear">
+            <path d="M2 44 H56"></path>
+            <path d="M16 58 H54"></path>
+            <path d="M6 72 H58"></path>
+          </g>
+          <!-- far legs -->
+          <g class="zl-leg leg-back far">
+            <path class="limb-o" d="M80 64 L77 97"></path>
+            <path class="limb far" d="M80 64 L77 97"></path>
+            <ellipse class="f-deep ol-thin" cx="76" cy="100" rx="8" ry="5"></ellipse>
+          </g>
+          <g class="zl-leg leg-front far">
+            <path class="limb-o" d="M162 62 L165 95"></path>
+            <path class="limb far" d="M162 62 L165 95"></path>
+            <ellipse class="f-deep ol-thin" cx="167" cy="98" rx="8" ry="5"></ellipse>
+          </g>
+          <!-- tail -->
+          <g class="zl-tail">
+            <path class="limb-o" d="M66 56 C 46 54, 34 34, 12 30"></path>
+            <path class="limb" d="M66 56 C 46 54, 34 34, 12 30"></path>
+            <path class="tail-tip" d="M24 32 C 19 31, 15 30, 12 30"></path>
+          </g>
+          <!-- body -->
+          <path
+            class="f-fur ol"
+            d="M60 58 C 58 42, 84 36, 118 36 C 150 36, 170 34, 182 46 C 190 56, 182 72, 160 74 C 130 78, 92 78, 72 74 C 62 72, 60 66, 60 58 Z"
+          ></path>
+          <path class="f-light" d="M86 73 C 110 77, 140 77, 160 72 C 150 67, 102 67, 86 73 Z"></path>
+          <path class="s-stripe" d="M92 38 q3 8 -1 15 M106 37 q3 9 -1 17 M120 37 q3 9 -1 17 M78 43 q2 7 -2 12"></path>
+          <circle class="f-chalk ol-thin" cx="142" cy="55" r="11"></circle>
+          <text class="zl-num" x="142" y="60">{driver.number}</text>
+          <!-- near legs -->
+          <g class="zl-leg leg-back near">
+            <path class="limb-o" d="M88 66 L84 100"></path>
+            <path class="limb" d="M88 66 L84 100"></path>
+            <ellipse class="f-fur ol-thin" cx="83" cy="103" rx="8.5" ry="5"></ellipse>
+          </g>
+          <g class="zl-leg leg-front near">
+            <path class="limb-o" d="M170 62 L175 96"></path>
+            <path class="limb" d="M170 62 L175 96"></path>
+            <ellipse class="f-fur ol-thin" cx="177" cy="99" rx="8.5" ry="5"></ellipse>
+          </g>
+          <!-- head -->
+          <path class="f-fur ol" d="M176 34 L179 7 L197 23 Z"></path>
+          <path class="f-fur ol" d="M203 22 L217 4 L221 30 Z"></path>
+          <path class="f-stripe" d="M180 26 L181 13 L191 22 Z M207 21 L215 11 L217 25 Z"></path>
+          <circle class="f-fur ol" cx="198" cy="41" r="21"></circle>
+          <path class="f-gold ol-thin" d="M184 31 H224 L220 45 H187 Z"></path>
+          <ellipse class="f-ink" cx="210" cy="38" rx="2" ry="5"></ellipse>
+          <path class="f-chalk" d="M190 35 H200 L199 37 H190 Z" opacity="0.6"></path>
+          <ellipse class="f-light" cx="210" cy="53" rx="10" ry="7"></ellipse>
+          <path class="f-bean" d="M216 47 l6 1 -3.5 4 z"></path>
+          <path class="s-ink" d="M213 57 q3 3 7 0"></path>
+          <path class="s-whisk" d="M214 53 L236 48 M214 56 L235 59"></path>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ "meow": the driver peeks up ============ -->
+  <div class="peek floor" data-peek hidden aria-hidden="true">
+    <span class="peek-bubble">mrrp?</span>
+    <div class="peek-head">
+      <svg viewBox="0 0 140 114">
+        <path class="f-fur ol" d="M30 68 L22 10 L62 40 Z"></path>
+        <path class="f-fur ol" d="M110 68 L118 10 L78 40 Z"></path>
+        <path class="f-stripe" d="M34 56 L29 23 L52 41 Z M106 56 L111 23 L88 41 Z"></path>
+        <ellipse class="f-fur ol" cx="70" cy="92" rx="54" ry="50"></ellipse>
+        <path class="s-stripe" d="M61 48 l2 12 M70 46 v14 M79 48 l-2 12"></path>
+        <g class="peek-eyes">
+          <ellipse class="f-gold ol-thin" cx="49" cy="74" rx="11" ry="12"></ellipse>
+          <ellipse class="f-gold ol-thin" cx="91" cy="74" rx="11" ry="12"></ellipse>
+          <ellipse class="f-ink" cx="49" cy="75" rx="2.8" ry="9"></ellipse>
+          <ellipse class="f-ink" cx="91" cy="75" rx="2.8" ry="9"></ellipse>
+          <circle class="f-chalk" cx="53" cy="69" r="2.4"></circle>
+          <circle class="f-chalk" cx="95" cy="69" r="2.4"></circle>
+        </g>
+        <path class="f-bean" d="M64 87 h12 l-6 5.5 z"></path>
+        <path class="s-ink" d="M70 92.5 q-4 5 -9 2 M70 92.5 q4 5 9 2"></path>
+        <path class="s-whisk" d="M42 88 L6 82 M42 93 L8 96 M98 88 L134 82 M98 93 L132 96"></path>
+        <!-- paws gripping the bottom edge of the screen -->
+        <ellipse class="f-fur ol" cx="33" cy="110" rx="18" ry="11"></ellipse>
+        <ellipse class="f-fur ol" cx="107" cy="110" rx="18" ry="11"></ellipse>
+        <path class="s-ink-thin" d="M25 102 v7 M33 100.5 v8 M41 102 v7 M99 102 v7 M107 100.5 v8 M115 102 v7"></path>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ============ "box": box, box ============ -->
+  <div class="box floor" data-box hidden aria-hidden="true">
+    <span class="box-dust"></span>
+    <div class="box-body">
+      <svg class="box-back" viewBox="0 0 150 134">
+        <path class="k-mid ol-k" d="M22 42 L27 8 H123 L128 42 Z"></path>
+        <path class="k-lo ol-k" d="M18 44 L2 15 L21 11 L29 42 Z"></path>
+        <path class="k-lo ol-k" d="M132 44 L148 15 L129 11 L121 42 Z"></path>
+        <path class="k-in" d="M16 42 H134 L138 61 H12 Z"></path>
+      </svg>
+      <div class="box-cat">
+        <svg viewBox="0 0 90 120">
+          <path class="limb-o" d="M66 108 C 88 104, 90 80, 78 68"></path>
+          <path class="limb" d="M66 108 C 88 104, 90 80, 78 68"></path>
+          <path class="f-fur ol" d="M20 118 C 14 88, 26 64, 45 64 C 64 64, 76 88, 70 118 Z"></path>
+          <path class="f-light" d="M36 118 C 34 96, 38 82, 45 82 C 52 82, 56 96, 54 118 Z"></path>
+          <path class="f-fur ol" d="M22 34 L20 5 L42 22 Z"></path>
+          <path class="f-fur ol" d="M68 34 L70 5 L48 22 Z"></path>
+          <path class="f-stripe" d="M24 28 L23 13 L34 22 Z M66 28 L67 13 L56 22 Z"></path>
+          <ellipse class="f-fur ol" cx="45" cy="42" rx="25" ry="22"></ellipse>
+          <path class="s-stripe" d="M39 22 l1.5 8 M45 21 v9 M51 22 l-1.5 8"></path>
+          <g class="bc-eyes">
+            <ellipse class="f-gold" cx="35" cy="42" rx="6" ry="6.5"></ellipse>
+            <ellipse class="f-gold" cx="55" cy="42" rx="6" ry="6.5"></ellipse>
+            <ellipse class="f-ink" cx="35" cy="42.5" rx="1.8" ry="5"></ellipse>
+            <ellipse class="f-ink" cx="55" cy="42.5" rx="1.8" ry="5"></ellipse>
+            <circle class="f-chalk" cx="37" cy="39.5" r="1.4"></circle>
+            <circle class="f-chalk" cx="57" cy="39.5" r="1.4"></circle>
+          </g>
+          <path class="f-bean" d="M41.5 50 h7 l-3.5 3.5 z"></path>
+          <path class="s-ink" d="M45 53.5 q-2.5 3 -5.5 1.5 M45 53.5 q2.5 3 5.5 1.5"></path>
+          <path class="s-whisk" d="M30 51 L10 47 M30 54 L11 56 M60 51 L80 47 M60 54 L79 56"></path>
+        </svg>
+      </div>
+      <svg class="box-front" viewBox="0 0 150 134">
+        <path class="k ol-k" d="M12 61 H138 V133 H12 Z"></path>
+        <path class="k-shade" d="M13 76 H137 V84 H13 Z"></path>
+        <path class="k-hi ol-k" d="M12 61 H138 L145 77 H5 Z"></path>
+        <path class="k-tape" d="M66 61.5 H84 L85.5 76.5 H64.5 Z"></path>
+        <rect class="k-label" x="24" y="90" width="66" height="32" rx="2"></rect>
+        <text class="k-label-t" x="29" y="102">{carCode} SPARES</text>
+        <text class="k-label-s" x="29" y="110">THIS WAY UP</text>
+        <path class="k-arrows" d="M31 117 l3 -4 3 4 M38 117 l3 -4 3 4"></path>
+        <g class="k-stamp" transform="rotate(-11 116 106)">
+          <rect x="97" y="95" width="38" height="22" rx="2"></rect>
+          <text x="116" y="104">FRAGILE</text>
+          <text x="116" y="112.5">CONTAINS CAT</text>
+        </g>
+        <g class="box-paws">
+          <ellipse class="f-fur ol-thin" cx="58" cy="63" rx="10" ry="6.5"></ellipse>
+          <ellipse class="f-fur ol-thin" cx="92" cy="63" rx="10" ry="6.5"></ellipse>
+          <path class="s-ink-thin" d="M54 60 v4 M58 59.5 v4.5 M62 60 v4 M88 60 v4 M92 59.5 v4.5 M96 60 v4"></path>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ============ Idle: the driver naps on a spare tyre ============ -->
+  <div class="nap floor" data-nap hidden aria-hidden="true">
+    <span class="nap-z" style="--i:0">z</span>
+    <span class="nap-z" style="--i:1">Z</span>
+    <span class="nap-z" style="--i:2">z</span>
+    <span class="nap-alert">!</span>
+    <svg viewBox="0 0 170 124">
+      <path class="rub-side" d="M13 92 A72 13 0 0 0 157 92 V108 A72 13 0 0 1 13 108 Z"></path>
+      <path class="tyre-stripe" d="M14 99 A71 12.5 0 0 0 156 99"></path>
+      <text class="tyre-t" x="85" y="118">PURRELLI · SOFT</text>
+      <ellipse class="rub-top" cx="85" cy="92" rx="72" ry="13"></ellipse>
+      <ellipse class="rub-hole" cx="85" cy="92" rx="36" ry="6.5"></ellipse>
+      <g class="nap-body">
+        <path
+          class="f-fur ol"
+          d="M34 90 C 26 66, 56 50, 92 52 C 124 54, 146 68, 141 86 C 137 94, 44 97, 34 90 Z"
+        ></path>
+        <path class="s-stripe" d="M86 54 q-4 8 0 14 M100 54 q-4 9 0 15 M114 57 q-4 8 0 14 M126 62 q-3 7 0 12"></path>
+      </g>
+      <path class="limb-o" d="M139 82 C 148 99, 100 103, 62 95"></path>
+      <path class="limb" d="M139 82 C 148 99, 100 103, 62 95"></path>
+      <path class="tail-tip" d="M76 98.2 C 70 97.4, 66 96.4, 62 95"></path>
+      <g class="nap-head">
+        <path class="f-fur ol" d="M29 70 L23 50 L42 62 Z"></path>
+        <path class="f-fur ol" d="M50 61 L60 45 L64 64 Z"></path>
+        <path class="f-stripe" d="M30 64 L27 55 L36 61 Z"></path>
+        <ellipse class="f-fur ol" cx="46" cy="77" rx="21" ry="16.5"></ellipse>
+        <g class="nap-eyes-closed">
+          <path class="s-ink" d="M35 78 q4 3.5 8 0 M50 78 q4 3.5 8 0"></path>
+        </g>
+        <g class="nap-eyes-open">
+          <ellipse class="f-gold ol-thin" cx="39" cy="77" rx="4.6" ry="5.2"></ellipse>
+          <ellipse class="f-gold ol-thin" cx="54" cy="77" rx="4.6" ry="5.2"></ellipse>
+          <ellipse class="f-ink" cx="39" cy="77.5" rx="1.3" ry="4"></ellipse>
+          <ellipse class="f-ink" cx="54" cy="77.5" rx="1.3" ry="4"></ellipse>
+        </g>
+        <path class="f-bean" d="M44.5 84 h5 l-2.5 2.8 z"></path>
+      </g>
+      <ellipse class="f-fur ol-thin" cx="58" cy="92" rx="9" ry="5"></ellipse>
+    </svg>
+  </div>
+
+  <!-- ============ "l": laser pointer ============ -->
+  <div class="laser" data-laser hidden aria-hidden="true">
+    <!-- A whole cat is hiding below the screen; you only get the arm. -->
+    <div class="laser-arm">
+      <div class="laser-swipe">
+        <span class="laser-fur"></span>
+        <svg class="laser-pawsvg" viewBox="0 0 64 58">
+          <g class="claws">
+            <path class="f-chalk" d="M12 22 l-2 -9 5 6 z M21 12 l-1 -9 4 8 z M42 11 l2 -9 1 9 z M51 19 l4 -8 -1 9 z"></path>
+          </g>
+          <ellipse class="f-fur ol" cx="32" cy="33" rx="24" ry="21"></ellipse>
+          <ellipse class="f-bean" cx="32" cy="41" rx="9" ry="7"></ellipse>
+          <circle class="f-bean" cx="15" cy="28" r="4.3"></circle>
+          <circle class="f-bean" cx="24" cy="18.5" r="4.3"></circle>
+          <circle class="f-bean" cx="40" cy="18.5" r="4.3"></circle>
+          <circle class="f-bean" cx="49" cy="28" r="4.3"></circle>
+        </svg>
+      </div>
+    </div>
+    <span class="laser-dot"></span>
+  </div>
+
+  <!-- ============ paw-print trail (pool injected lazily) ============ -->
+  <div class="trail" data-trail aria-hidden="true"></div>
+
+  <!-- ============ Zoomies status / off switch ============ -->
+  <button type="button" class="zpill" data-zpill hidden aria-label="Zoomies mode is on. Calm down: turn it off">
+    <span class="zpill-dot" aria-hidden="true"></span>
+    <span class="zpill-label" aria-hidden="true">Zoomies <b>on</b></span>
+    <span class="zpill-off" aria-hidden="true">Calm down ×</span>
+  </button>
+
+  <!-- ============ Toast stack ============ -->
+  <div
+    class="toasts"
+    id="egg-toasts"
+    data-toasts
+    role="status"
+    aria-live="polite"
+    aria-atomic="false"
+    aria-relevant="additions"
+  >
+  </div>
+</div>
+
+<!--
+  Runs during parsing, i.e. before any deferred module: buffers toasts/eggs that
+  other sections emit before the toast module below is up. Drained on boot.
+-->
+<script is:inline>
+  (function () {
+    var r = document.getElementById('egg-toasts');
+    if (!r || r.__eggq) return;
+    var q = [];
+    var h = function (e) {
+      if (q.length < 20) q.push([e.type, e.detail]);
+    };
+    addEventListener('bilal:toast', h);
+    addEventListener('bilal:egg', h);
+    r.__eggq = { q: q, h: h };
+  })();
+</script>
+
+<script>
+  import type { BilalEvents } from '@/scripts/bus';
+  import { drainEarlyBuffer, initToasts } from '@/scripts/eggs/toasts';
+  import { initTracker } from '@/scripts/eggs/tracker';
+
+  const root = document.querySelector<HTMLElement>('[data-eggs]');
+  const region = root?.querySelector<HTMLElement>('[data-toasts]');
+
+  if (root && region) {
+    const early = drainEarlyBuffer(region);
+    const showToast = initToasts(region);
+    const recordEgg = initTracker();
+    for (const [type, detail] of early) {
+      if (type === 'bilal:toast') showToast(detail as BilalEvents['bilal:toast']);
+      else if (type === 'bilal:egg') recordEgg(detail as BilalEvents['bilal:egg']);
+    }
+
+    // Everything else is optional delight: fetch it once the page is idle.
+    let started = false;
+    const load = () => {
+      import('@/scripts/eggs/index')
+        .then((mod) => mod.initEggs(root))
+        .catch(() => {
+          /* eggs are a bonus — never break the page */
+        });
+    };
+    const whenIdle = () => {
+      if (started) return;
+      started = true;
+      if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(load, { timeout: 2500 });
+      else window.setTimeout(load, 800);
+    };
+    if (document.readyState === 'complete') whenIdle();
+    else window.addEventListener('load', whenIdle, { once: true });
+    window.setTimeout(whenIdle, 5000);
+  }
+</script>
+
+<style>
+  /* ================= Root layer ================= */
+  .eggs {
+    --fur: var(--c-saffron);
+    --fur-deep: color-mix(in oklab, var(--c-saffron) 68%, var(--c-maroon));
+    --fur-light: color-mix(in oklab, var(--c-saffron) 40%, var(--c-chalk));
+    --stripe: var(--c-maroon);
+    --bean: color-mix(in oklab, var(--c-red) 38%, var(--c-chalk));
+    --ink: var(--c-carbon);
+    --kraft: color-mix(in oklab, color-mix(in oklab, var(--c-gold) 45%, var(--c-saffron)) 52%, var(--c-graphite));
+    --kraft-hi: color-mix(in oklab, var(--kraft) 78%, var(--c-chalk));
+    --kraft-mid: color-mix(in oklab, var(--kraft) 80%, var(--c-carbon));
+    --kraft-lo: color-mix(in oklab, var(--kraft) 58%, var(--c-carbon));
+    --kraft-in: color-mix(in oklab, var(--kraft) 22%, var(--c-carbon));
+    --rubber: color-mix(in oklab, var(--c-graphite) 70%, var(--c-carbon));
+    --shadow: color-mix(in oklab, var(--c-carbon) 70%, transparent);
+    --floor: max(1rem, env(safe-area-inset-bottom));
+
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-cursor);
+    pointer-events: none;
+    overflow: clip;
+    contain: layout paint style;
+  }
+
+  /* ---- Shared SVG paint ---- */
+  .f-fur { fill: var(--fur); }
+  .f-deep { fill: var(--fur-deep); }
+  .f-light { fill: var(--fur-light); }
+  .f-stripe { fill: var(--stripe); }
+  .f-ink { fill: var(--ink); }
+  .f-gold { fill: var(--c-gold); }
+  .f-chalk { fill: var(--c-chalk); }
+  .f-bean { fill: var(--bean); }
+  .ol { stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
+  .ol-thin { stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+  .s-stripe { fill: none; stroke: var(--stripe); stroke-width: 3.5; stroke-linecap: round; }
+  .s-whisk { fill: none; stroke: var(--c-chalk); stroke-width: 1.2; stroke-linecap: round; opacity: 0.8; }
+  .s-ink { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+  .s-ink-thin { fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linecap: round; }
+  .limb-o { fill: none; stroke: var(--ink); stroke-width: 13.5; stroke-linecap: round; }
+  .limb { fill: none; stroke: var(--fur); stroke-width: 9; stroke-linecap: round; }
+  .limb.far { stroke: var(--fur-deep); }
+  .tail-tip { fill: none; stroke: var(--stripe); stroke-width: 9; stroke-linecap: round; }
+
+  svg {
+    overflow: visible;
+  }
+
+  /* ================= ZOOMIES ================= */
+  .zl {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.5s var(--ease-out-expo),
+      visibility 0s linear 0.5s;
+  }
+
+  .zl.is-on {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.5s var(--ease-out-expo);
+  }
+
+  .zl-vignette {
+    position: absolute;
+    inset: 0;
+    opacity: 0.6;
+    background:
+      radial-gradient(120% 95% at 50% 50%, transparent 52%, color-mix(in oklab, var(--c-saffron) 20%, transparent) 82%, color-mix(in oklab, var(--c-red) 34%, transparent));
+  }
+
+  .zl.is-burst .zl-vignette {
+    animation: zl-flash 1.1s var(--ease-out-expo) both;
+  }
+
+  @keyframes zl-flash {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
+
+  .zl-streaks {
+    position: absolute;
+    inset: 0;
+    -webkit-mask-image: radial-gradient(80% 72% at 50% 50%, transparent 30%, var(--c-carbon) 82%);
+    mask-image: radial-gradient(80% 72% at 50% 50%, transparent 30%, var(--c-carbon) 82%);
+  }
+
+  /* Steering-wheel shift lights: the persistent "mode is on" tell. */
+  .zl-leds {
+    position: absolute;
+    top: max(0.45rem, env(safe-area-inset-top));
+    left: 50%;
+    display: flex;
+    gap: 3px;
+    width: min(62vw, 17rem);
+    translate: -50% 0;
+    padding: 3px;
+    border-radius: 99px;
+    background: color-mix(in oklab, var(--c-carbon) 80%, transparent);
+    box-shadow: 0 0 0 1px var(--c-line-strong);
+  }
+
+  .zl-leds i {
+    flex: 1;
+    height: 5px;
+    border-radius: 99px;
+    background: var(--c-teal);
+    box-shadow: 0 0 0.5rem currentColor;
+    color: var(--c-teal);
+    opacity: 0.18;
+    animation: zl-led 1.3s linear calc(var(--i) * 45ms) infinite paused;
+  }
+
+  .zl-leds i:nth-child(n + 6) {
+    background: var(--c-red);
+    color: var(--c-red);
+  }
+
+  .zl-leds i:nth-child(n + 11) {
+    background: var(--c-purple);
+    color: var(--c-purple);
+  }
+
+  .zl.is-on .zl-leds i {
+    animation-play-state: running;
+  }
+
+  @keyframes zl-led {
+    0%, 8% { opacity: 0.18; }
+    12%, 70% { opacity: 1; }
+    74%, 78% { opacity: 0.2; }
+    82%, 86% { opacity: 1; }
+    100% { opacity: 0.18; }
+  }
+
+  .zl.is-burst .zl-streaks {
+    opacity: 1;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .zl-streaks i {
+    position: absolute;
+    top: var(--y);
+    left: 0;
+    width: var(--w);
+    height: var(--h);
+    border-radius: 99px;
+    opacity: var(--o);
+    background: linear-gradient(90deg, var(--c-chalk), color-mix(in oklab, var(--c-gold) 85%, transparent) 22%, transparent);
+    transform: translate3d(100vw, 0, 0);
+    animation: zl-streak var(--d) linear var(--dl) infinite paused;
+  }
+
+  .zl-streaks i.hot {
+    background: linear-gradient(90deg, var(--c-chalk), color-mix(in oklab, var(--c-saffron) 85%, transparent) 22%, transparent);
+  }
+
+  .zl.is-on .zl-streaks i {
+    animation-play-state: running;
+  }
+
+  .zl.is-lite .zl-streaks i:nth-child(2n) {
+    display: none;
+  }
+
+  @keyframes zl-streak {
+    from { transform: translate3d(100vw, 0, 0); }
+    to { transform: translate3d(calc(-1 * var(--w)), 0, 0); }
+  }
+
+  .zl-word {
+    position: absolute;
+    top: 46%;
+    left: 0;
+    display: grid;
+    gap: var(--space-3);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(100vw, -50%) skewX(-14deg);
+    will-change: transform, opacity;
+  }
+
+  .zl-word span {
+    font-family: var(--f-display);
+    font-size: clamp(5.5rem, 2rem + 17vw, 18rem);
+    font-weight: 900;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    line-height: 0.8;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: transparent;
+    -webkit-text-stroke: 2px color-mix(in oklab, var(--c-gold) 75%, transparent);
+  }
+
+  .zl-word small {
+    padding-left: 0.4em;
+    font-family: var(--f-mono);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+  }
+
+  .zl-cat {
+    position: absolute;
+    left: 0;
+    bottom: clamp(6rem, 20vh, 12rem);
+    width: clamp(200px, 24vw, 360px);
+    transform: translateX(-130%);
+    will-change: transform;
+  }
+
+  .zl-svg {
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 1.2rem 1rem var(--shadow));
+  }
+
+  .zl-num {
+    font-family: var(--f-display);
+    font-size: 15px;
+    font-weight: 900;
+    font-variation-settings: 'wdth' 70;
+    text-anchor: middle;
+    fill: var(--ink);
+  }
+
+  .zl-smear {
+    opacity: 0;
+  }
+
+  .zl-smear path {
+    fill: none;
+    stroke: var(--c-chalk);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-dasharray: 20 10;
+  }
+
+  .zl-leg {
+    transform-box: fill-box;
+    transform-origin: 50% 6%;
+  }
+
+  /* Static "flying gallop" pose — also the reduced-motion frame. */
+  .leg-front.near { transform: rotate(-40deg); }
+  .leg-front.far { transform: rotate(-18deg); }
+  .leg-back.near { transform: rotate(38deg); }
+  .leg-back.far { transform: rotate(18deg); }
+
+  .zl-tail {
+    transform-box: fill-box;
+    transform-origin: 100% 90%;
+  }
+
+  .zl-dust {
+    position: absolute;
+    left: 14%;
+    bottom: 4%;
+    width: 22%;
+    aspect-ratio: 2 / 1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--kraft-hi) 55%, transparent), transparent);
+    opacity: 0;
+  }
+
+  .zl-cat.is-running .zl-bob {
+    animation: zl-bob 0.24s ease-in-out infinite alternate;
+  }
+
+  .zl-cat.is-running .leg-front.near { animation: zl-gallop-f 0.24s ease-in-out infinite alternate; }
+  .zl-cat.is-running .leg-front.far { animation: zl-gallop-f 0.24s ease-in-out -0.08s infinite alternate; }
+  .zl-cat.is-running .leg-back.near { animation: zl-gallop-b 0.24s ease-in-out infinite alternate; }
+  .zl-cat.is-running .leg-back.far { animation: zl-gallop-b 0.24s ease-in-out -0.08s infinite alternate; }
+  .zl-cat.is-running .zl-tail { animation: zl-tail 0.24s ease-in-out infinite alternate; }
+  .zl-cat.is-running .zl-smear { animation: zl-smear 0.24s linear infinite; }
+  .zl-cat.is-running .zl-dust { animation: zl-puff 0.48s ease-out infinite; }
+
+  @keyframes zl-bob {
+    from { transform: translateY(0) rotate(-1.5deg); }
+    to { transform: translateY(-10px) rotate(1.5deg); }
+  }
+
+  @keyframes zl-gallop-f {
+    from { transform: rotate(-52deg); }
+    to { transform: rotate(34deg); }
+  }
+
+  @keyframes zl-gallop-b {
+    from { transform: rotate(44deg); }
+    to { transform: rotate(-36deg); }
+  }
+
+  @keyframes zl-tail {
+    from { transform: rotate(-7deg); }
+    to { transform: rotate(9deg); }
+  }
+
+  @keyframes zl-smear {
+    from { opacity: 0.9; transform: translateX(0); }
+    to { opacity: 0.35; transform: translateX(-12px); }
+  }
+
+  @keyframes zl-puff {
+    from { opacity: 0.9; transform: translateX(0) scale(0.4); }
+    to { opacity: 0; transform: translateX(-160%) scale(1.8); }
+  }
+
+  /* Reduced motion: a still "comic panel" instead of a sprint. */
+  .zl.is-still .zl-cat {
+    left: 50%;
+    transform: translateX(-50%) skewX(-6deg);
+  }
+
+  .zl.is-still .zl-word {
+    left: 50%;
+    opacity: 0.9;
+    transform: translate(-50%, -50%) skewX(-14deg);
+  }
+
+  .zl.is-still .zl-smear {
+    opacity: 0.7;
+  }
+
+  .zl.is-still .zl-streaks {
+    opacity: 1;
+  }
+
+  /* ================= Floor gags (peek, box, nap) ================= */
+  .floor {
+    position: absolute;
+    bottom: 0;
+  }
+
+  /* ---- meow peek ---- */
+  .peek {
+    right: clamp(4.5rem, 22vw, 20rem);
+    width: clamp(120px, 12vw, 170px);
+  }
+
+  .peek-head {
+    transform: translateY(105%);
+    filter: drop-shadow(0 -0.5rem 1.5rem var(--shadow));
+  }
+
+  .peek-head svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: hidden;
+  }
+
+  .peek-bubble {
+    position: absolute;
+    left: 80%;
+    bottom: 78%;
+    padding: 0.4rem 0.75rem 0.45rem;
+    border-radius: 1rem 1rem 1rem 0.2rem;
+    background: var(--c-chalk);
+    color: var(--c-carbon);
+    font-family: var(--f-display);
+    font-size: 1.05rem;
+    font-weight: 850;
+    font-variation-settings: 'wdth' 72;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform-origin: 0 100%;
+    opacity: 0;
+    box-shadow: 0 0.6rem 1.2rem var(--shadow);
+  }
+
+  .peek-eyes {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+  }
+
+  .peek.is-up .peek-eyes {
+    animation: blink 1.4s 0.5s ease-in-out both;
+  }
+
+  @keyframes blink {
+    0%, 40%, 52%, 100% { transform: scaleY(1); }
+    46% { transform: scaleY(0.1); }
+  }
+
+  /* ---- box, box ---- */
+  .box {
+    right: clamp(1rem, 8vw, 8rem);
+    width: 150px;
+    height: 134px;
+    transform-origin: 100% 100%;
+  }
+
+  .box-body {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 100%;
+  }
+
+  .box-back,
+  .box-front {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .box-front {
+    filter: drop-shadow(0 -0.1rem 0 var(--shadow));
+  }
+
+  .box-cat {
+    position: absolute;
+    left: 30px;
+    top: 0;
+    width: 90px;
+    opacity: 0;
+  }
+
+  .box-cat svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .box.is-landed .box-cat {
+    opacity: 1;
+  }
+
+  .box.is-landed .bc-eyes {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: blink 2.6s 0.7s ease-in-out infinite;
+  }
+
+  .box-paws {
+    opacity: 0;
+    transform: translateY(5px);
+    transition:
+      opacity 0.2s ease-out,
+      transform 0.35s var(--ease-out-back);
+  }
+
+  .box.is-landed .box-paws {
+    opacity: 1;
+    transform: none;
+  }
+
+  .box-dust {
+    position: absolute;
+    left: -20%;
+    right: -20%;
+    bottom: -4px;
+    height: 26px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--kraft-hi) 60%, transparent), transparent);
+    opacity: 0;
+    transform-origin: 50% 100%;
+  }
+
+  .k { fill: var(--kraft); }
+  .k-hi { fill: var(--kraft-hi); }
+  .k-mid { fill: var(--kraft-mid); }
+  .k-lo { fill: var(--kraft-lo); }
+  .k-in { fill: var(--kraft-in); }
+  .k-shade { fill: var(--ink); opacity: 0.18; }
+  .ol-k { stroke: color-mix(in oklab, var(--kraft) 40%, var(--c-carbon)); stroke-width: 2; stroke-linejoin: round; }
+  .k-tape { fill: color-mix(in oklab, var(--kraft-hi) 70%, var(--c-chalk)); opacity: 0.75; }
+  .k-label { fill: var(--c-chalk); opacity: 0.92; }
+
+  .k-label-t,
+  .k-label-s {
+    font-family: var(--f-mono);
+    font-weight: 700;
+    fill: var(--ink);
+  }
+
+  .k-label-t { font-size: 7.4px; letter-spacing: 0.04em; }
+  .k-label-s { font-size: 5.6px; letter-spacing: 0.1em; opacity: 0.75; }
+  .k-arrows { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+
+  .k-stamp rect {
+    fill: none;
+    stroke: var(--c-red);
+    stroke-width: 1.6;
+  }
+
+  .k-stamp text {
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-variation-settings: 'wdth' 70;
+    text-anchor: middle;
+    fill: var(--c-red);
+  }
+
+  .k-stamp text:first-of-type { font-size: 8.5px; letter-spacing: 0.08em; }
+  .k-stamp text:last-of-type { font-size: 5.4px; letter-spacing: 0.06em; }
+
+  /* ---- nap ---- */
+  .nap {
+    right: max(0.75rem, env(safe-area-inset-right));
+    width: clamp(150px, 14vw, 210px);
+  }
+
+  .nap svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 -0.25rem 1.25rem var(--shadow));
+  }
+
+  .rub-side { fill: var(--rubber); stroke: var(--ink); stroke-width: 2; }
+  .rub-top { fill: color-mix(in oklab, var(--rubber) 80%, var(--c-steel)); stroke: var(--ink); stroke-width: 2; }
+  .rub-hole { fill: var(--ink); }
+  .tyre-stripe { fill: none; stroke: var(--c-red); stroke-width: 2.5; }
+
+  .tyre-t {
+    font-family: var(--f-mono);
+    font-size: 6.5px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-anchor: middle;
+    fill: var(--c-mute);
+  }
+
+  .nap-body {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: nap-breathe 3.2s ease-in-out infinite;
+  }
+
+  @keyframes nap-breathe {
+    50% { transform: scale(1.02, 1.07); }
+  }
+
+  .nap-head {
+    transform-box: fill-box;
+    transform-origin: 70% 90%;
+    transition: transform 0.35s var(--ease-out-back);
+  }
+
+  .nap-eyes-open {
+    display: none;
+  }
+
+  .nap-z {
+    position: absolute;
+    left: 14%;
+    top: 22%;
+    font-family: var(--f-display);
+    font-size: calc(1.05rem + var(--i) * 0.3rem);
+    font-weight: 900;
+    font-variation-settings: 'wdth' 70;
+    color: var(--c-gold);
+    text-shadow: 0 0 0.75rem color-mix(in oklab, var(--c-gold) 45%, transparent);
+    opacity: 0;
+    animation: nap-z 3s ease-out calc(var(--i) * 1s) infinite;
+  }
+
+  @keyframes nap-z {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.6) rotate(-10deg); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-1.8rem, -4rem) scale(1.4) rotate(10deg); }
+  }
+
+  .nap-alert {
+    position: absolute;
+    left: 18%;
+    top: 4%;
+    font-family: var(--f-display);
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--c-red);
+    text-shadow: 0 0 1rem color-mix(in oklab, var(--c-red) 55%, transparent);
+    opacity: 0;
+    transform: scale(0.3) rotate(-12deg);
+    transition:
+      opacity 0.15s ease-out,
+      transform 0.4s var(--ease-out-back);
+  }
+
+  .nap.is-awake .nap-z { display: none; }
+  .nap.is-awake .nap-eyes-closed { display: none; }
+  .nap.is-awake .nap-eyes-open { display: inline; }
+  .nap.is-awake .nap-head { transform: translateY(-5px) rotate(-6deg); }
+  .nap.is-awake .nap-alert { opacity: 1; transform: scale(1) rotate(-12deg); }
+
+  /* ================= Laser pointer ================= */
+  /* No z-index on .laser: the arm slides under the toasts, the dot stays on top. */
+  .laser {
+    position: absolute;
+    inset: 0;
+  }
+
+  .laser-dot {
+    position: absolute;
+    left: -7px;
+    top: -7px;
+    z-index: 7;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--c-chalk) 0 16%, var(--c-red) 46%);
+    box-shadow: var(--glow-red);
+    will-change: transform;
+  }
+
+  .laser-dot::after {
+    content: '';
+    position: absolute;
+    inset: -9px;
+    border-radius: 50%;
+    border: 1.5px solid color-mix(in oklab, var(--c-red) 65%, transparent);
+    animation: laser-ring 1.1s ease-out infinite;
+  }
+
+  @keyframes laser-ring {
+    from { transform: scale(0.4); opacity: 1; }
+    to { transform: scale(1.5); opacity: 0; }
+  }
+
+  .laser-arm {
+    position: absolute;
+    left: -18px;
+    top: 0;
+    z-index: 3;
+    width: 36px;
+    transform-origin: 50% 0;
+    will-change: transform;
+  }
+
+  .laser-swipe {
+    position: relative;
+  }
+
+  /* The forearm runs off the bottom of the screen — there's a whole cat down there. */
+  .laser-fur {
+    position: absolute;
+    top: 12px;
+    left: 3px;
+    width: 30px;
+    height: 170vh;
+    border-inline: 2.5px solid var(--ink);
+    border-radius: 15px 15px 0 0;
+    box-shadow: 0 0 1.5rem var(--shadow);
+    background:
+      repeating-linear-gradient(to bottom, transparent 0 26px, var(--stripe) 26px 30px, transparent 30px 46px),
+      linear-gradient(90deg, var(--fur-deep), var(--fur) 32%, var(--fur) 68%, var(--fur-deep));
+  }
+
+  .laser-pawsvg {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 58px;
+    max-width: none;
+    height: auto;
+    translate: -50% 0;
+    transform-origin: 50% 85%;
+  }
+
+  .claws {
+    opacity: 0;
+    transition: opacity 0.08s linear;
+  }
+
+  .laser-swipe.is-clawing .claws {
+    opacity: 1;
+  }
+
+  /* ================= Paw trail ================= */
+  .trail {
+    position: absolute;
+    inset: 0;
+  }
+
+  .trail :global(.paw) {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    opacity: 0;
+    background: var(--c-gold);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30.5c-5.6 0-9.6-2.7-9.6-6.6 0-3.6 4-8 9.6-8s9.6 4.4 9.6 8c0 3.9-4 6.6-9.6 6.6z'/%3E%3Cellipse cx='5' cy='14' rx='3' ry='3.9' transform='rotate(-24 5 14)'/%3E%3Cellipse cx='11.6' cy='7' rx='3.1' ry='4.2' transform='rotate(-8 11.6 7)'/%3E%3Cellipse cx='20.4' cy='7' rx='3.1' ry='4.2' transform='rotate(8 20.4 7)'/%3E%3Cellipse cx='27' cy='14' rx='3' ry='3.9' transform='rotate(24 27 14)'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30.5c-5.6 0-9.6-2.7-9.6-6.6 0-3.6 4-8 9.6-8s9.6 4.4 9.6 8c0 3.9-4 6.6-9.6 6.6z'/%3E%3Cellipse cx='5' cy='14' rx='3' ry='3.9' transform='rotate(-24 5 14)'/%3E%3Cellipse cx='11.6' cy='7' rx='3.1' ry='4.2' transform='rotate(-8 11.6 7)'/%3E%3Cellipse cx='20.4' cy='7' rx='3.1' ry='4.2' transform='rotate(8 20.4 7)'/%3E%3Cellipse cx='27' cy='14' rx='3' ry='3.9' transform='rotate(24 27 14)'/%3E%3C/svg%3E") center / contain no-repeat;
+    will-change: transform, opacity;
+  }
+
+  :global(html.zoomies) .trail :global(.paw) {
+    background: var(--c-saffron);
+  }
+
+  /* ================= Zoomies pill ================= */
+  .zpill {
+    position: absolute;
+    left: max(1rem, env(safe-area-inset-left));
+    bottom: var(--floor);
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.95rem 0.6rem 0.85rem;
+    border-radius: var(--radius-s);
+    pointer-events: auto;
+    isolation: isolate;
+    transform: skewX(var(--skew));
+    font-family: var(--f-mono);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--c-chalk);
+    transition: transform var(--dur-fast) var(--ease-out-expo);
+  }
+
+  .zpill::before,
+  .zpill::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: inherit;
+  }
+
+  .zpill::before {
+    inset: 0;
+    background: var(--g-livery-conic);
+    animation: zpill-spin 2.2s linear infinite;
+  }
+
+  .zpill::after {
+    inset: 1.5px;
+    background: color-mix(in oklab, var(--c-graphite) 94%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  @keyframes zpill-spin {
+    to { --livery-angle: 360deg; }
+  }
+
+  .zpill:hover {
+    transform: skewX(var(--skew)) translateY(-2px);
+  }
+
+  .zpill b {
+    color: var(--c-saffron);
+    font-weight: 800;
+  }
+
+  .zpill-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    animation: zpill-blink 0.9s steps(2, jump-none) infinite;
+  }
+
+  @keyframes zpill-blink {
+    50% { opacity: 0.25; }
+  }
+
+  .zpill-off {
+    padding-left: 0.65rem;
+    border-left: 1px solid var(--c-line-strong);
+    color: var(--c-mute);
+  }
+
+  .zpill:hover .zpill-off,
+  .zpill:focus-visible .zpill-off {
+    color: var(--c-chalk);
+  }
+
+  /* ================= Toasts ================= */
+  .toasts {
+    --lift: 0rem;
+    position: absolute;
+    left: 50%;
+    bottom: var(--floor);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: min(100% - 2rem, 27rem);
+    translate: -50% calc(-1 * var(--lift));
+    transition: translate 0.5s var(--ease-out-expo);
+  }
+
+  @media (max-width: 60rem) {
+    .eggs:has(> .zpill:not([hidden])) .toasts {
+      --lift: 3.4rem;
+    }
+
+    .eggs:has(> .floor:not([hidden])) .toasts {
+      --lift: 8.25rem;
+    }
+  }
+
+  .toasts :global(.toast) {
+    --accent: var(--c-teal);
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0.3rem 0.75rem;
+    padding: 0.7rem 1rem 0.85rem 1.45rem;
+    overflow: hidden;
+    pointer-events: auto;
+    cursor: pointer;
+    color: var(--c-chalk);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-s);
+    background:
+      linear-gradient(100deg, color-mix(in oklab, var(--accent) 17%, transparent), transparent 58%),
+      color-mix(in oklab, var(--c-graphite) 90%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+    box-shadow:
+      0 1.4rem 2.6rem -1rem color-mix(in oklab, var(--c-carbon) 90%, transparent),
+      inset 0 1px 0 var(--c-line);
+    transition: border-color var(--dur-fast) ease-out;
+  }
+
+  .toasts :global(.toast:hover) {
+    border-color: color-mix(in oklab, var(--accent) 55%, var(--c-line-strong));
+  }
+
+  .toasts :global(.toast[data-tone='gold']) { --accent: var(--c-gold); }
+  .toasts :global(.toast[data-tone='red']) { --accent: var(--c-red); }
+
+  /* Slanted livery flash on the leading edge. */
+  .toasts :global(.toast)::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 0.6rem;
+    background: var(--accent);
+    box-shadow: 0 0 1.5rem var(--accent);
+    clip-path: polygon(0 0, 100% 0, 35% 100%, 0 100%);
+  }
+
+  .toasts :global(.toast-head) {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: var(--f-mono);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .toasts :global(.toast-flag) {
+    width: 0.8rem;
+    height: 0.55rem;
+    flex: none;
+    background: var(--accent);
+    transform: skewX(var(--skew));
+  }
+
+  /* Team radio gets a little waveform instead of a flag. */
+  .toasts :global(.toast[data-tone='gold'] .toast-flag) {
+    background:
+      linear-gradient(var(--accent) 0 0) 0 50% / 2px 45% no-repeat,
+      linear-gradient(var(--accent) 0 0) 50% 50% / 2px 100% no-repeat,
+      linear-gradient(var(--accent) 0 0) 100% 50% / 2px 65% no-repeat;
+    transform: none;
+  }
+
+  .toasts :global(.toast-time) {
+    margin-left: auto;
+    color: var(--c-mute);
+    letter-spacing: 0.08em;
+  }
+
+  .toasts :global(.toast-msg) {
+    font-family: var(--f-display);
+    font-size: clamp(0.98rem, 0.94rem + 0.2vw, 1.08rem);
+    font-weight: 750;
+    font-variation-settings: 'wdth' 86;
+    line-height: 1.22;
+    letter-spacing: 0.015em;
+    text-transform: uppercase;
+    text-wrap: pretty;
+  }
+
+  .toasts :global(.toast-count) {
+    display: none;
+    font-family: var(--f-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .toasts :global(.toast.has-count .toast-count) {
+    display: block;
+  }
+
+  .toasts :global(.toast-bar) {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 30%, transparent));
+    transform-origin: 0 50%;
+  }
+
+  /* ================= Floating labels ("4/9") ================= */
+  .eggs :global(.egg-float) {
+    position: absolute;
+    z-index: 7;
+    font-family: var(--f-display);
+    font-size: 1.75rem;
+    font-weight: 900;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: var(--c-gold);
+    text-shadow:
+      0 2px 0 var(--c-carbon),
+      0 0 1.25rem color-mix(in oklab, var(--c-gold) 50%, transparent);
+    transform: translate(-50%, -50%);
+  }
+
+  .eggs :global(.egg-float[data-tone='red']) {
+    color: var(--c-red);
+    text-shadow:
+      0 2px 0 var(--c-carbon),
+      0 0 1.25rem color-mix(in oklab, var(--c-red) 55%, transparent);
+  }
+
+  /* ================= Layer order ================= */
+  .zl { z-index: 1; }
+  .floor { z-index: 2; }
+  .trail { z-index: 6; }
+
+  /* ================= Small screens ================= */
+  @media (max-width: 40rem) {
+    .box {
+      scale: 0.82;
+    }
+
+    .peek {
+      right: 5.5rem;
+    }
+
+    .zl-word span {
+      -webkit-text-stroke-width: 1.5px;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .box {
+      scale: 1.25;
+    }
+  }
+
+  /* ================= Reduced motion: still, but designed ================= */
+  @media (prefers-reduced-motion: reduce) {
+    .zl-streaks i {
+      animation: none;
+      transform: translate3d(calc(var(--x) * 1vw), 0, 0);
+    }
+
+    .zl.is-burst .zl-vignette {
+      animation: none;
+    }
+
+    .zl-leds i {
+      animation: none;
+      opacity: 1;
+    }
+
+    .peek-head {
+      transform: none;
+    }
+
+    .peek-bubble {
+      opacity: 1;
+      transform: rotate(6deg);
+    }
+
+    .nap-body,
+    .laser-dot::after,
+    .zpill::before,
+    .zpill-dot {
+      animation: none;
+    }
+
+    .nap-z {
+      opacity: calc(1 - var(--i) * 0.25);
+      animation: none;
+      transform: translate(calc(var(--i) * -0.9rem), calc(var(--i) * -1.1rem));
+    }
+
+    .toasts :global(.toast-bar) {
+      display: none;
+    }
+  }
+
+  /* ================= Page-wide hooks (kept deliberately tiny) ================= */
+  /* Nine-lives taps shouldn't trigger double-tap zoom on phones. */
+  :global(a[data-egg='emblem']) {
+    touch-action: manipulation;
+  }
+
+  /* Zoomies: every skewed badge leans harder and headings go full speed-italic. */
+  :global(html.zoomies) {
+    --skew: -16deg;
+  }
+
+  /* Synthetic italic = a free, reflow-free skew (advances don't change). */
+  :global(html.zoomies :is(h1, h2, h3)) {
+    font-style: italic;
+  }
+
+  /* The laser dot *is* the cursor now. */
+  :global(html.egg-laser),
+  :global(html.egg-laser body) {
+    cursor: none;
+  }
+</style>
