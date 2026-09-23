@@ -51,7 +51,7 @@ export const driverPortrait: PhotoEntry = {
 
 /** Paddock gallery — the owner will swap placeholders for real photos. */
 export const gallery: PhotoEntry[] = [
-  { id: 'g1', folder: 'driver', alt: 'Nirod mid-race-face', caption: 'Qualifying face. Also his “what’s for lunch” face.', placeholder: 'Qualifying face' },
+  { id: 'g1', folder: 'driver', alt: 'Nirod’s mid-race face', caption: 'Qualifying face. Also his “what’s for lunch” face.', placeholder: 'Qualifying face' },
   { id: 'g2', folder: 'together', alt: 'The team together', caption: 'Team photo. Driver present, spiritually.', placeholder: 'Team photo' },
   { id: 'g3', folder: 'driver', alt: 'Nirod relaxing', caption: 'Pre-race preparation (nap, lap 1 of 3).', placeholder: 'Pre-race prep' },
   { id: 'g4', folder: 'together', alt: 'Friends at an event', caption: 'Wedding GP 2021. P1 at the buffet.', placeholder: 'Wedding GP' },
