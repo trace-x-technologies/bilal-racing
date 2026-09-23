@@ -65,12 +65,12 @@ const photoFor = (r: CrewRole): PhotoEntry | null => {
   return resolvePhoto(entry).src ? entry : null;
 };
 
-const REQUIREMENTS = [
-  'Interviews held during nap time',
-  'Req: 1 × tuna, 0 × excuses',
-  'Must survive being ignored on the radio',
-  'Bring your own lollipop',
-];
+/** Small print on the open pit-wall seats, keyed by role id. */
+const REQUIREMENTS: Record<string, string> = {
+  engineer: 'Req: 1 × tuna, 0 × excuses',
+  strategist: 'Must survive being ignored on the radio',
+  catering: 'Interviews held during nap time',
+};
 
 const pitcrew = crew
   .filter((r) => r.group === 'pitcrew' && r.slot)
@@ -101,8 +101,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const phases = [
   { at: 0, label: 'Crew out', note: 'Sprint from the pit wall' },
   { at: 2.4, label: 'Car in', note: 'Driver hits his marks. Mostly.' },
-  { at: 3.9, label: 'Jacks up', note: 'Lift, not lift-off' },
-  { at: 4.3, label: 'Tyres', note: 'Hards off, Catnip Softs on' },
+  { at: 3.9, label: 'Jacks up', note: 'Car in the air. Driver asks if this is the vet.' },
+  { at: 4.3, label: 'Tyres', note: 'Hards off, Purrelli Paw softs on' },
   { at: 5.7, label: 'Release', note: 'Lollipop says GO' },
   { at: 7.4, label: 'Snack run', note: 'He came back. Of course he came back.' },
 ];
@@ -319,7 +319,7 @@ const paws = [
                     <path d="M46 374 L72 350 M46 410 L76 398 M154 374 L128 350 M154 410 L124 398"></path>
                   </g>
 
-                  <!-- wheels: old (hard, worn) come off, new (Catnip soft) go on -->
+                  <!-- wheels: old (hard, worn) come off, new (Purrelli Paw soft) go on -->
                   {
                     wheels.map((w) => (
                       <g class="wheel w-old" data-side={w.side}>
@@ -524,7 +524,7 @@ const paws = [
                   <p class="pw-apply">— apply with snacks</p>
                 ) : null}
                 <p class="pw-duty">{r.duty}</p>
-                {!r.person && <p class="pw-req t-mono">{REQUIREMENTS[r.i % REQUIREMENTS.length]}</p>}
+                {!r.person && REQUIREMENTS[r.id] && <p class="pw-req t-mono">{REQUIREMENTS[r.id]}</p>}
               </div>
             </article>
           </li>
@@ -1972,7 +1972,7 @@ const paws = [
     align-items: center;
     gap: 0.5rem;
     color: var(--c-gold);
-    font-size: 0.64rem;
+    font-size: var(--fs-micro);
   }
 
   .pw-code {
@@ -2016,7 +2016,7 @@ const paws = [
     padding-top: 0.6rem;
     border-top: 1px dashed var(--c-line-strong);
     color: var(--c-mute);
-    font-size: 0.6rem;
+    font-size: var(--fs-micro);
   }
 
   /* phones: compact "monitor + readout" rows instead of four tall cards */
@@ -2038,7 +2038,6 @@ const paws = [
     }
 
     .pw-role {
-      font-size: 0.56rem;
       flex-wrap: wrap;
       gap: 0.3rem;
     }
@@ -2210,7 +2209,7 @@ const paws = [
 </style>
 
 <script>
-  import { gsap, ScrollTrigger, prefersReducedMotion } from '@/scripts/motion';
+  import { gsap, ScrollTrigger, getLenis, prefersReducedMotion } from '@/scripts/motion';
   import { sound } from '@/scripts/audio';
 
   type PopMode = 'hover' | 'focus' | 'pinned';
@@ -2222,6 +2221,8 @@ const paws = [
     const modes = new WeakMap<HTMLElement, PopMode>();
     let active: { btn: HTMLButtonElement; pop: HTMLElement } | null = null;
     let raf = 0;
+    /** Token rect + viewport of the last place() — idle frames skip the rect reads/style writes. */
+    let last = '';
 
     const place = (btn: HTMLElement, pop: HTMLElement) => {
       const r = btn.getBoundingClientRect();
@@ -2246,6 +2247,8 @@ const paws = [
       if (pop.dataset.placement !== placement) pop.dataset.placement = placement;
     };
 
+    // Tokens keep moving during the scrub catch-up and Lenis inertia after the wheel stops,
+    // so keep following every frame — but only re-place when the token or viewport moved.
     const follow = () => {
       if (!active) return;
       const r = active.btn.getBoundingClientRect();
@@ -2253,7 +2256,11 @@ const paws = [
         active.pop.hidePopover();
         return;
       }
-      place(active.btn, active.pop);
+      const key = `${r.left | 0},${r.top | 0},${r.width | 0},${window.innerWidth},${window.innerHeight}`;
+      if (key !== last) {
+        last = key;
+        place(active.btn, active.pop);
+      }
       raf = requestAnimationFrame(follow);
     };
 
@@ -2325,6 +2332,7 @@ const paws = [
         btn.classList.toggle('is-active', open);
         if (open) {
           place(btn, pop);
+          last = '';
           active = { btn, pop };
           cancelAnimationFrame(raf);
           raf = requestAnimationFrame(follow);
@@ -2409,8 +2417,17 @@ const paws = [
     const phaseNow = one('.phase-now');
     if (!carRig || !carLift || !shadow || !timerVal) return;
 
-    const W = () => stage.clientWidth;
-    const H = () => stage.clientHeight;
+    // Stage size, read once per ScrollTrigger refresh (refreshInit runs before invalidated
+    // function-based values are re-evaluated). Reading clientWidth inside every function value
+    // forced a synchronous layout after each immediate-rendered fromTo.
+    let stageW = stage.clientWidth;
+    let stageH = stage.clientHeight;
+    ScrollTrigger.addEventListener('refreshInit', () => {
+      stageW = stage.clientWidth;
+      stageH = stage.clientHeight;
+    });
+    const W = () => stageW;
+    const H = () => stageH;
     const phaseAt = phaseItems.map((li) => Number(li.dataset.at) || 0);
     const phaseLabels = phaseItems.map((li) => li.querySelector('.ph-label')?.textContent ?? '');
     const STOP_START = 3.6;
@@ -2432,7 +2449,9 @@ const paws = [
       },
     });
 
-    // 1 — crew sprint in from the pit wall (left edge), staggered
+    // 1 — crew sprint in from the pit wall (left edge), staggered.
+    // Opacity, not autoAlpha: visibility:hidden would drop the tokens out of the Tab order
+    // until the scrub reached them (see the focus catch-up below).
     const early = slots.filter((s) => !('late' in s.dataset));
     const late = slots.filter((s) => 'late' in s.dataset);
     const sprint = (slot: HTMLElement, at: number) => {
@@ -2440,8 +2459,8 @@ const paws = [
       const y = Number(slot.dataset.y) || 50;
       tl.fromTo(
         slot,
-        { x: () => -(x / 100) * W() - W() * 0.12, y: () => (y < 50 ? 1 : -1) * H() * 0.04, autoAlpha: 0 },
-        { x: 0, y: 0, autoAlpha: 1, duration: 1.25, ease: 'power2.out' },
+        { x: () => -(x / 100) * W() - W() * 0.12, y: () => (y < 50 ? 1 : -1) * H() * 0.04, opacity: 0 },
+        { x: 0, y: 0, opacity: 1, duration: 1.25, ease: 'power2.out' },
         at,
       );
       const body = slot.querySelector('.tok-body');
@@ -2455,12 +2474,15 @@ const paws = [
     // 2 — car rolls into the box
     tl.fromTo(carRig, { y: () => H() * 0.92 }, { y: 0, duration: 1.3, ease: 'power3.out' }, 2.4);
     late.forEach((slot, i) => sprint(slot, 3.2 + i * 0.15));
+    // Every token (incl. the late runners' wobble settle) has landed by here.
+    const CREW_IN = 3.2 + late.length * 0.15 + 1.3;
+    tl.addLabel('crewIn', CREW_IN);
 
     // 3 — jacks up (bigger + shadow spreads = lifted, top-down)
     tl.to(carLift, { scale: 1.045, x: -3, y: -6, duration: 0.35, ease: 'power2.out' }, 3.9);
     tl.to(shadow, { scale: 1.08, opacity: 0.5, duration: 0.35 }, 3.9);
 
-    // 4 — tyres: hards off, Catnip softs on, wheel guns spin
+    // 4 — tyres: hards off, Purrelli Paw softs on, wheel guns spin
     const side = (el: Element) => ((el as SVGElement).dataset.side === 'l' ? -46 : 46);
     tl.to(oldWheels, { x: (_i: number, el: Element) => side(el), autoAlpha: 0, duration: 0.55, ease: 'power2.in', stagger: 0.05 }, 4.3);
     // (staggered fromTo only immediate-renders its first target, so park the new set explicitly)
@@ -2558,6 +2580,23 @@ const paws = [
     tl.eventCallback('onUpdate', hud);
     ScrollTrigger.addEventListener('refresh', hud);
     hud();
+
+    // Keyboard users can Tab onto a token before the scrub has run it in (it would be
+    // off-stage and transparent). Jump the page to the point where the crew is in formation
+    // and settle the scrub on the same frame, so focus and its info card land on a visible token.
+    const formation = one('.formation', stage);
+    formation?.addEventListener('focusin', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.matches(':focus-visible') || tl.time() >= CREW_IN) return;
+      const st = tl.scrollTrigger;
+      if (!st) return;
+      const y = st.start + (st.end - st.start) * (CREW_IN / tl.duration());
+      const lenis = getLenis();
+      if (lenis) lenis.scrollTo(y, { immediate: true });
+      else window.scrollTo({ top: y, behavior: 'instant' });
+      ScrollTrigger.update(); // bumps ScrollTrigger's scroll cache, then updates every trigger
+      st.getTween()?.progress(1);
+    });
   }
 
   function initCrew(): void {
