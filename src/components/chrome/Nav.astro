@@ -24,7 +24,8 @@ const links = [
   { id: 'calendar', label: 'Calendar', sub: 'Races & nap windows' },
   { id: 'lights-out', label: 'Lights Out', sub: 'Beat his reaction time' },
   { id: 'radio', label: 'Radio', sub: 'He is not listening' },
-  // `extra`: always in the pit-lane menu, but only in the desktop bar where there's room.
+  // `extra`: the desktop bar only shows these once Saira has loaded (see `nav-fonts`):
+  // in the wider fallback face ten links don't fit. The pit-lane menu always lists all ten.
   { id: 'sponsors', label: 'Partners', sub: 'Imaginary. Grateful.', extra: true },
   { id: 'tech', label: 'Tech regs', sub: 'The rulebook', extra: true },
 ];
@@ -87,7 +88,21 @@ const pad = (n: number) => String(n).padStart(2, '0');
   </div>
 </header>
 
-<dialog class="menu" id="pit-menu" aria-labelledby="pit-menu-title" data-menu data-lenis-prevent>
+{
+  /*
+   * tabindex="-1": when the menu overflows, Chrome would otherwise make the dialog (a scroller)
+   * a Tab stop of its own, with a ring clipped away by its clip-path. Every link scrolls into
+   * view on focus, so the scroller doesn't need a stop.
+   */
+}
+<dialog
+  class="menu"
+  id="pit-menu"
+  aria-labelledby="pit-menu-title"
+  tabindex="-1"
+  data-menu
+  data-lenis-prevent
+>
   <div class="menu-bg" aria-hidden="true"></div>
   <div class="menu-inner">
     <div class="menu-top">
@@ -315,10 +330,18 @@ const pad = (n: number) => String(n).padStart(2, '0');
   }
 
   /* ============ Links (desktop) ============ */
+  /*
+   * Brand and tools never shrink; the links do (min-width: 0) and clip sideways, so a
+   * wide fallback font can never push the sound toggle out of the viewport. The padding
+   * keeps the chip's glow inside the clip and replaces .nav-inner's gap, so nothing moves.
+   */
   .nav-main {
     display: none;
     position: relative;
     margin-inline: auto;
+    padding-inline: var(--space-4);
+    min-width: 0;
+    overflow-x: clip;
   }
 
   .nav-links {
@@ -329,11 +352,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
     gap: 0.125rem;
   }
 
-  /* All ten only fit from ~1320px; below that, 09-10 live in the pit-lane menu only. */
-  @media (max-width: 84.99em) {
-    .nav-item--extra {
-      display: none;
-    }
+  /*
+   * 09-10 join the bar once Saira is ready (Nav script adds html.nav-fonts). The fallback
+   * face is ~17% wider: ten links would overflow, eight fit.
+   */
+  :global(html:not(.nav-fonts)) .nav-item--extra {
+    display: none;
   }
 
   .nav-link {
@@ -350,7 +374,16 @@ const pad = (n: number) => String(n).padStart(2, '0');
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-variation-settings: 'wdth' 78;
+    white-space: nowrap;
     transition: color var(--dur-fast) ease;
+  }
+
+  /* 1200-1359px: all ten links still fit on one row with a little less air. */
+  @media (min-width: 75em) and (max-width: 84.99em) {
+    .nav-link {
+      padding-inline: 0.4rem;
+      font-size: 0.9rem;
+    }
   }
 
   .nav-idx {
@@ -492,6 +525,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
   }
 
   @media (min-width: 75em) {
+    /* .nav-main's inline padding stands in for the gap on either side of it. */
+    .nav-inner {
+      column-gap: 0;
+    }
+
     .nav-main {
       display: block;
     }
@@ -558,7 +596,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     min-height: 100%;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    gap: var(--space-6);
+    gap: var(--space-5);
     padding: var(--space-4) var(--gutter) max(var(--space-6), env(safe-area-inset-bottom));
   }
 
@@ -701,14 +739,10 @@ const pad = (n: number) => String(n).padStart(2, '0');
     color: var(--c-gold);
     font-size: 1.1rem;
   }
-
-  :global([data-nav-focus]:focus) {
-    outline: none;
-  }
 </style>
 
 <script>
-  import { lockScroll } from '@/scripts/motion';
+  import { focusTarget, lockScroll } from '@/scripts/motion';
   import { whenReady } from '@/scripts/bus';
 
   const nav = document.querySelector<HTMLElement>('[data-nav]');
@@ -831,26 +865,41 @@ const pad = (n: number) => String(n).padStart(2, '0');
     document.fonts?.ready.then(() => placeChip(false));
   }
 
+  /* ---------- 09-10 join the desktop bar once the display face is in ---------- */
+  const SAIRA = '600 1em "Saira Variable"';
+  const fontsReady = () => {
+    document.documentElement.classList.add('nav-fonts');
+    requestAnimationFrame(() => placeChip(false));
+  };
+  const fonts = document.fonts;
+  if (!fonts || fonts.check(SAIRA)) {
+    fontsReady();
+  } else {
+    // A blocked or failed webfont leaves the bar at eight links (the menu and footer have all ten).
+    fonts
+      .load(SAIRA)
+      .then((faces) => {
+        if (faces.length && faces.every((f) => f.status === 'loaded')) fontsReady();
+      })
+      .catch(() => {});
+  }
+
   /* ---------- Keyboard users: move focus with the scroll ---------- */
-  function focusTarget(hash: string | null): void {
+  // Shared helper: the temporary tabindex="-1" is dropped again on blur.
+  function focusHash(hash: string | null): void {
     if (!hash || !hash.startsWith('#') || hash.length < 2) return;
     const target = document.querySelector<HTMLElement>(hash);
-    if (!target) return;
-    if (!target.hasAttribute('tabindex')) {
-      target.setAttribute('tabindex', '-1');
-      target.setAttribute('data-nav-focus', '');
-    }
-    target.focus({ preventScroll: true });
+    if (target) focusTarget(target);
   }
 
   document.querySelector<HTMLAnchorElement>('[data-skip-link]')?.addEventListener('click', (e) => {
-    focusTarget((e.currentTarget as HTMLAnchorElement).getAttribute('href'));
+    focusHash((e.currentTarget as HTMLAnchorElement).getAttribute('href'));
   });
 
   navLinks.forEach((a) =>
     a.addEventListener('click', (e) => {
       // detail === 0 → activated from the keyboard, not a pointer.
-      if (e.detail === 0) focusTarget(a.getAttribute('href'));
+      if (e.detail === 0) focusHash(a.getAttribute('href'));
     }),
   );
 
@@ -891,7 +940,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
         menu.close();
         lockScroll(false);
         const href = a.getAttribute('href') ?? '';
-        if (href.startsWith('#')) requestAnimationFrame(() => focusTarget(href));
+        if (href.startsWith('#')) requestAnimationFrame(() => focusHash(href));
       });
     });
 
