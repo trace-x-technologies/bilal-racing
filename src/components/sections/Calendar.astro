@@ -141,7 +141,7 @@ const units = [
       <div class="cal__progress" aria-hidden="true"><span data-cal-progress></span></div>
       <div class="cal__btns">
         <button type="button" class="cal__view t-mono" data-cal-view aria-pressed="false">
-          <svg viewBox="0 0 20 20" aria-hidden="true"
+          <svg class="cal__ico-grid" viewBox="0 0 20 20" aria-hidden="true"
             ><rect x="2" y="2" width="7" height="7" rx="1.5"></rect><rect x="11" y="2" width="7" height="7" rx="1.5"
             ></rect><rect x="2" y="11" width="7" height="7" rx="1.5"></rect><rect
               x="11"
@@ -149,6 +149,11 @@ const units = [
               width="7"
               height="7"
               rx="1.5"></rect></svg
+          >
+          <!-- a row of cards: shown while the grid is active, as the way back -->
+          <svg class="cal__ico-rows" viewBox="0 0 20 20" aria-hidden="true"
+            ><rect x="1.5" y="4" width="5" height="12" rx="1.3"></rect><rect x="7.5" y="4" width="5" height="12" rx="1.3"
+            ></rect><rect x="13.5" y="4" width="5" height="12" rx="1.3"></rect></svg
           >
           <span data-cal-view-label>Grid view</span>
         </button>
@@ -667,21 +672,16 @@ const units = [
     white-space: nowrap;
   }
 
-  /* Tight phones: icon-only toggle, label kept for assistive tech. */
-  @media (max-width: 25rem) {
+  /* One card per row on phones makes the grid a very long list: phones keep the carousel. */
+  @media (max-width: 47.99rem) {
     .cal__view {
-      width: 2.75rem;
-      padding: 0;
+      display: none;
     }
+  }
 
-    .cal__view span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
+  .cal__view[aria-pressed='true'] .cal__ico-grid,
+  .cal__view:not([aria-pressed='true']) .cal__ico-rows {
+    display: none;
   }
 
   .cal__nav {
@@ -726,7 +726,11 @@ const units = [
     color: var(--c-on-gold);
   }
 
-  .cal[data-view='grid'] .cal__nav,
+  /* Grid view: the arrows go (so the toggle sits flush right); count and bar keep their space. */
+  .cal[data-view='grid'] .cal__nav {
+    display: none;
+  }
+
   .cal[data-view='grid'] .cal__progress,
   .cal[data-view='grid'] .cal__count {
     visibility: hidden;
@@ -897,7 +901,8 @@ const units = [
     border-radius: 999px;
     border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
     color: var(--c-chalk);
-    background: color-mix(in oklab, var(--accent) 14%, transparent);
+    /* opaque, so the outlined round numeral behind never cuts through the label */
+    background: color-mix(in oklab, var(--accent) 16%, var(--c-asphalt));
     font-size: 0.64rem;
     white-space: nowrap;
   }
@@ -914,7 +919,7 @@ const units = [
 
   .rc.is-next .rc__status {
     border-color: var(--c-red);
-    background: rgb(255 45 58 / 0.14);
+    background: color-mix(in oklab, var(--c-red) 14%, var(--c-asphalt));
   }
 
   .rc__map {
@@ -1055,9 +1060,11 @@ const units = [
 
   .rc__circuit {
     color: var(--c-mute);
-    font-size: 0.62rem;
+    font-size: var(--fs-micro);
     letter-spacing: 0.1em;
     line-height: 1.5;
+    /* names run to two lines at most; reserving both keeps the stats rows level across cards */
+    min-height: 3em;
   }
 
   .rc__stats {
@@ -1135,7 +1142,7 @@ const units = [
 
   .rc.is-done .rc__status {
     border-color: var(--c-line-strong);
-    background: repeating-conic-gradient(rgb(255 255 255 / 0.12) 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+    background: repeating-conic-gradient(rgb(255 255 255 / 0.12) 0 25%, transparent 0 50%) 0 0 / 8px 8px var(--c-asphalt);
   }
 
   @media (hover: hover) {
@@ -1418,7 +1425,7 @@ const units = [
               hour: '2-digit',
               minute: '2-digit',
             }).format(race.start);
-            localEl.textContent = `Your time: ${local}. Set an alarm. He won't.`;
+            localEl.textContent = `Your time: ${local}. Set an alarm. He won’t.`;
           }
           localEl.hidden = false;
         } catch {
@@ -1448,6 +1455,8 @@ const units = [
       };
     }
 
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
     let lastSrMinute = -1;
     function render(animate: boolean): void {
       const now = Date.now();
@@ -1472,7 +1481,7 @@ const units = [
         lastSrMinute = minute;
         srEl.textContent =
           current.mode === 'next'
-            ? `${current.race.name}: lights out in ${p.d} days, ${p.h} hours and ${p.m} minutes.`
+            ? `${current.race.name}: lights out in ${plural(p.d, 'day')}, ${plural(p.h, 'hour')} and ${plural(p.m, 'minute')}.`
             : current.mode === 'live'
               ? `${current.race.name} is live now.`
               : 'The season is complete.';
@@ -1656,11 +1665,11 @@ const units = [
     );
 
     // Row ↔ grid, morphed with the View Transitions API.
-    viewBtn?.addEventListener('click', () => {
-      const toGrid = root.dataset.view !== 'grid';
+    const setView = (toGrid: boolean, animate: boolean): void => {
+      if ((root.dataset.view === 'grid') === toGrid) return;
       const apply = () => {
         root.dataset.view = toGrid ? 'grid' : 'row';
-        viewBtn.setAttribute('aria-pressed', String(toGrid));
+        viewBtn?.setAttribute('aria-pressed', String(toGrid));
         if (viewLabel) viewLabel.textContent = toGrid ? 'Row view' : 'Grid view';
         if (!toGrid) {
           measure();
@@ -1668,8 +1677,7 @@ const units = [
         }
         onScroll();
       };
-      sound.play('click');
-      if (!document.startViewTransition || prefersReducedMotion()) {
+      if (!animate || !document.startViewTransition || prefersReducedMotion()) {
         apply();
         window.dispatchEvent(new Event('resize'));
         return;
@@ -1680,6 +1688,14 @@ const units = [
         items.forEach((li) => (li.style.viewTransitionName = ''));
         window.dispatchEvent(new Event('resize')); // lets ScrollTrigger & friends re-measure
       });
+    };
+    viewBtn?.addEventListener('click', () => {
+      sound.play('click');
+      setView(root.dataset.view !== 'grid', true);
+    });
+    // The toggle is hidden on phones (CSS); if the viewport shrinks while the grid is open, go back to the row.
+    window.matchMedia('(max-width: 47.99rem)').addEventListener('change', (e) => {
+      if (e.matches) setView(false, false);
     });
 
     /* ---------- Circuits draw themselves in view ---------- */

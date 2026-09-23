@@ -15,36 +15,35 @@ interface Article {
   /** Trusted, hand-written HTML. */
   rule: string;
   check: string;
+  /** Classified variant: redaction bars and a rubber-stamped badge. */
+  redacted?: boolean;
 }
+
+/** A black redaction bar about `ch` characters wide; screen readers hear "redacted". */
+const redact = (ch: number) =>
+  `<span class="redact" style="--w:${ch}ch"><span class="visually-hidden">[redacted]</span></span>`;
 
 const articles: Article[] = [
   {
     no: '1.1',
-    title: 'Chassis',
-    tech: 'Astro 7 · static build',
-    rule: 'The car shall be assembled at the factory. Every page is pre-rendered to static HTML at build time, and JavaScript shall only be fitted to parts that actually move. No server is involved on race day, as the server is napping.',
-    check: 'static',
+    title: 'Chassis & circuit',
+    tech: 'Astro 7 static build · Cloudflare edge',
+    rule: 'The car shall be assembled at the factory: every page is pre-rendered to static HTML, with JavaScript fitted only to parts that actually move, then served from Cloudflare’s edge, as close to the spectator as possible. The driver prefers to be served at home, with snacks.',
+    check: 'edge',
   },
   {
     no: '2.1',
     title: 'Bodywork',
-    tech: 'CSS scroll-driven animations',
-    rule: 'Bodywork shall move against scroll position, not the clock, via <code>animation-timeline: view()</code>. The clock is reserved for naps.',
-    check: 'scrollTimeline',
+    tech: 'Scroll-driven animations · View Transitions',
+    rule: 'Bodywork shall move against scroll position, not the clock, via <code>animation-timeline: view()</code>, and changes of state shall morph rather than teleport (see the calendar’s grid view). Teleporting is reserved for the driver when a food bowl is filled.',
+    check: 'bodywork',
   },
   {
     no: '3.1',
     title: 'Power unit',
-    tech: 'WebGL · Three.js',
-    rule: 'The car shall be rendered in WebGL (Three.js) and must possess <mark class="pen">no fewer than two ears<svg class="pen__ring" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M18 30 C4 22 10 8 54 5 C110 1 186 4 194 18 C200 30 150 37 92 37 C46 37 14 32 12 22 C11 15 24 9 40 8"/></svg></mark>.',
+    tech: 'WebGL · Three.js · lazy import()',
+    rule: 'The car shall be rendered in WebGL (Three.js) and must possess <mark class="pen">no fewer than two ears<svg class="pen__ring" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M18 30 C4 22 10 8 54 5 C110 1 186 4 194 18 C200 30 150 37 92 37 C46 37 14 32 12 22 C11 15 24 9 40 8"/></svg></mark>. The engine is only fetched when the car comes into view, and shall idle whenever nobody is watching. Much like the driver.',
     check: 'webgl',
-  },
-  {
-    no: '3.2',
-    title: 'Power unit — fuel saving',
-    tech: 'IntersectionObserver · dynamic import()',
-    rule: 'Heavy engine parts shall only be loaded when the car comes into view, and every engine shall idle when nobody is watching. Much like the driver.',
-    check: 'io',
   },
   {
     no: '4.1',
@@ -55,68 +54,55 @@ const articles: Article[] = [
   },
   {
     no: '5.1',
-    title: 'Pit-lane transitions',
-    tech: 'View Transitions API',
-    rule: 'Changes of state shall morph rather than teleport (see the calendar’s grid view). Teleporting is reserved for the driver when a food bowl is filled.',
-    check: 'viewTransitions',
-  },
-  {
-    no: '6.1',
     title: 'Engine note',
     tech: 'Web Audio API synthesis',
     rule: 'No audio samples permitted. Every engine note is synthesised live from oscillators and filters, and shall end in a meow. Sound ships muted, out of respect for open-plan offices.',
     check: 'webAudio',
   },
   {
-    no: '7.1',
+    no: '6.1',
     title: 'Team radio',
     tech: 'Popover API',
     rule: 'Pop-ups shall be native, dismissable with Esc, and shall never try to sell you anything. A compliant example: <button type="button" class="doc__pop" popovertarget="stewards-decision">read the stewards’ decision</button>.',
     check: 'popover',
   },
   {
-    no: '8.1',
+    no: '7.1',
     title: 'Aerodynamics',
-    tech: 'Container queries',
-    rule: 'Components shall size themselves to the box they sit in, not to the screen. The driver has followed this regulation for years.',
-    check: 'containerQueries',
+    tech: 'Container queries · :has() · @property',
+    rule: 'Components shall size themselves to the box they sit in, not to the screen — a regulation the driver has followed for years. Parents may react to their children via <code>:has()</code>, and custom properties shall be typed with <code>@property</code>. Untyped properties are reserved for the driver’s messages in the group chat.',
+    check: 'aero',
   },
   {
-    no: '9.1',
-    title: 'Livery',
-    tech: '@property',
-    rule: 'Custom properties shall be typed, so the livery gradient can spin its angle smoothly. Untyped properties may only be used for tea.',
-    check: 'property',
-  },
-  {
-    no: '10.1',
-    title: 'Parc fermé',
-    tech: ':has() selector',
-    rule: 'Parents may react to their children via the relational pseudo-class. The driver still reacts to nobody before 10 a.m.',
-    check: 'has',
-  },
-  {
-    no: '11.1',
+    no: '8.1',
     title: 'Tyres',
     tech: 'AVIF · WebP images',
     rule: 'Photos shall run on AVIF or WebP compounds, resized for every screen, with EXIF and GPS data stripped. Nobody needs the coordinates of the nap spot.',
     check: 'avif',
   },
   {
-    no: '12.1',
-    title: 'Circuit',
-    tech: 'Cloudflare edge',
-    rule: 'The car shall be served from Cloudflare’s global edge network, as close to the spectator as possible. The driver prefers to be served at home, with snacks.',
-    check: 'edge',
-  },
-  {
-    no: '13.1',
+    no: '9.1',
     title: 'Safety car',
     tech: 'prefers-reduced-motion',
     rule: 'If the spectator prefers reduced motion, every animation shall park politely and the page shall still look fabulous.',
     check: 'motion',
   },
+  {
+    no: '9.9',
+    title: 'Undisclosed components',
+    tech: 'Easter eggs · keyboard listeners',
+    rule: `Undisclosed components are fitted to this car. Typing ${redact(4)} is not a technical infringement, and neither is the ${redact(6)} code. Pressing ${redact(1)} in a braking zone is ${redact(13)}.`,
+    check: 'classified',
+    redacted: true,
+  },
 ];
+
+/** A red-pen margin note that breaks up the run of articles. */
+const note = {
+  after: '4.1',
+  text: 'For the avoidance of doubt: “box, box” is an instruction to pit. It is not an invitation.',
+  by: 'Technical delegate · margin note',
+};
 
 const food = stats.find((s) => s.label === 'Reaction time to food');
 const foodSeconds = food?.value ?? 0.09;
@@ -145,7 +131,7 @@ const foodMs = Math.round(foodSeconds * 1000);
           <span data-tele-load>—</span><small>ms</small>
         </p>
         <p class="tele__verdict" data-tele-verdict data-food-ms={foodMs}>
-          Measuring. Unlike the driver, we time things.
+          Measuring. Unlike the driver, we arrive on time.
         </p>
 
         <ul class="tele__sectors" role="list">
@@ -230,32 +216,50 @@ const foodMs = Math.round(foodSeconds * 1000);
           <ol class="doc__arts" role="list">
             {
               articles.map((a) => (
-                <li class="art" data-reveal="up" data-check={a.check}>
-                  <span class="art__no t-condensed" aria-hidden="true">
-                    <small class="t-mono">Art.</small>
-                    {a.no}
-                  </span>
-                  <div class="art__body">
-                    <h4 class="art__title">
-                      <span class="visually-hidden">Article {a.no}: </span>
-                      {a.title}
-                    </h4>
-                    <p class="art__tech t-mono">{a.tech}</p>
-                    <p class="art__rule" set:html={a.rule} />
-                  </div>
-                  <p class="art__badge t-mono" data-badge data-state="pending">
-                    <span class="art__icon" aria-hidden="true" />
-                    <span data-badge-text>Scrutineering…</span>
-                  </p>
-                </li>
+                <>
+                  <li class:list={['art', { 'art--redacted': a.redacted }]} data-reveal="up" data-check={a.check}>
+                    <span class="art__no t-condensed" aria-hidden="true">
+                      <small class="t-mono">Art.</small>
+                      {a.no}
+                    </span>
+                    <div class="art__body">
+                      <h4 class="art__title">
+                        <span class="visually-hidden">Article {a.no}: </span>
+                        {a.title}
+                      </h4>
+                      <p class="art__tech t-mono">{a.tech}</p>
+                      <p class="art__rule" set:html={a.rule} />
+                    </div>
+                    <p class="art__badge t-mono" data-badge data-state="pending">
+                      <span class="art__icon" aria-hidden="true" />
+                      <span data-badge-text>Scrutineering…</span>
+                    </p>
+                  </li>
+                  {a.no === note.after && (
+                    <li class="note" data-reveal="up">
+                      <figure>
+                        <blockquote class="note__text t-condensed">
+                          <p>{note.text}</p>
+                        </blockquote>
+                        <figcaption class="note__by t-mono">— {note.by}</figcaption>
+                      </figure>
+                    </li>
+                  )}
+                </>
               ))
             }
           </ol>
 
           <footer class="doc__foot">
             <div class="doc__stamp" data-stamp>
-              <span class="doc__stamp-main t-condensed" data-stamp-main>Homologated</span>
-              <span class="doc__stamp-sub t-mono" data-stamp-sub>Awaiting scrutineering</span>
+              <span class="doc__stamp-main t-condensed"
+                >Homologated<span class="doc__stamp-star" aria-hidden="true">*</span></span
+              >
+              <!-- Two short fixed lines, rewritten after scrutineering without resizing the stamp. -->
+              <span class="doc__stamp-sub t-mono">
+                <span data-stamp-l1>Awaiting</span>
+                <span data-stamp-l2>scrutineering</span>
+              </span>
             </div>
             <div class="doc__sign" aria-label="Signed by the three stewards, all asleep">
               {
@@ -281,7 +285,7 @@ const foodMs = Math.round(foodSeconds * 1000);
   </div>
 
   <!-- Popover API: the stewards' decision (Art. 7.1) -->
-  <div id="stewards-decision" class="decision" popover>
+  <div id="stewards-decision" class="decision" popover data-lenis-prevent>
     <p class="decision__org t-mono">Fédération Internationale de l’Automeowbile</p>
     <h3 class="decision__title t-condensed">Stewards’ Decision · Document 9</h3>
     <dl class="decision__grid">
@@ -292,7 +296,7 @@ const foodMs = Math.round(foodSeconds * 1000);
       <div><dt class="t-mono">Fact</dt><dd>Car found to possess two ears, one tail and a website considerably faster than its driver.</dd></div>
       <div><dt class="t-mono">Infringement</dt><dd>Excessive cuteness — Art. 3.1.</dd></div>
       <div><dt class="t-mono">Decision</dt><dd><strong>No further action.</strong></dd></div>
-      <div><dt class="t-mono">Reason</dt><dd>The driver slept through the hearing. So did the Stewards.</dd></div>
+      <div><dt class="t-mono">Reason</dt><dd>The driver slept through the hearing. So did the stewards.</dd></div>
     </dl>
     <button type="button" class="decision__close" popovertarget="stewards-decision" popovertargetaction="hide">
       Close · Esc
@@ -395,11 +399,14 @@ const foodMs = Math.round(foodSeconds * 1000);
     font-size: var(--fs-small);
     line-height: 1.5;
     color: var(--c-chalk);
-    min-height: 3em;
+    /* three lines: room for the longest verdict, so filling it in never reflows the page */
+    min-height: 4.5em;
   }
 
   .tele__sectors {
+    --label-w: 8.5rem;
     display: grid;
+    grid-template-columns: var(--label-w) minmax(0, 1fr) auto;
     gap: var(--space-3);
     margin-top: var(--space-3);
     padding: var(--space-4) 0;
@@ -407,11 +414,19 @@ const foodMs = Math.round(foodSeconds * 1000);
     list-style: none;
   }
 
+  /* The value column sizes to the longest time; subgrid keeps all three bars the same length. */
   .tele__sectors li {
+    grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 8.5rem 1fr 4.2rem;
+    grid-template-columns: var(--label-w) minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--space-3);
+  }
+
+  @supports (grid-template-columns: subgrid) {
+    .tele__sectors li {
+      grid-template-columns: subgrid;
+    }
   }
 
   .tele__sectors .t-mono {
@@ -426,6 +441,7 @@ const foodMs = Math.round(foodSeconds * 1000);
     font-size: 0.8rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .tele__bar {
@@ -686,7 +702,7 @@ const foodMs = Math.round(foodSeconds * 1000);
   .art__tech {
     margin-top: 0.3rem;
     color: var(--ink-2);
-    font-size: 0.62rem;
+    font-size: var(--fs-micro);
   }
 
   .art__rule {
@@ -716,6 +732,23 @@ const foodMs = Math.round(foodSeconds * 1000);
 
   .art__rule :global(.doc__pop:hover) {
     text-decoration-style: wavy;
+  }
+
+  /* redaction bars (the words underneath are not in the DOM) */
+  .art__rule :global(.redact) {
+    position: relative;
+    display: inline-block;
+    width: var(--w, 5ch);
+    height: 1.05em;
+    margin-inline: 0.08em;
+    vertical-align: -0.16em;
+    border-radius: 1px 3px 2px 1px;
+    background: var(--ink);
+    rotate: -0.8deg;
+  }
+
+  .art__rule :global(.redact:nth-of-type(even)) {
+    rotate: 0.7deg;
   }
 
   /* red-pen annotation */
@@ -826,6 +859,59 @@ const foodMs = Math.round(foodSeconds * 1000);
     animation: art-stamp 520ms var(--ease-out-back);
   }
 
+  /* ---------- Classified article: rubber-stamped instead of scrutineered ---------- */
+  .art--redacted .art__no {
+    color: var(--stamp);
+  }
+
+  .art--redacted .art__badge[data-state] {
+    padding: 0.35rem 0.75rem;
+    border: 2px solid var(--stamp);
+    border-radius: 3px;
+    outline: 1px solid var(--stamp);
+    outline-offset: 2px;
+    color: var(--stamp);
+    background: none;
+    font-weight: 700;
+    rotate: -4deg;
+  }
+
+  .art--redacted .art__icon {
+    display: none;
+  }
+
+  /* ---------- Margin note: a red-pen pull quote between articles ---------- */
+  .note {
+    display: grid;
+    grid-template-columns: 3.4rem minmax(0, 1fr);
+    column-gap: var(--space-4);
+    padding-block: var(--space-6);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .note figure {
+    grid-column: 2;
+    rotate: -1.2deg;
+  }
+
+  .note__text {
+    padding-left: var(--space-4);
+    border-left: 3px solid var(--stamp);
+    color: var(--stamp);
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: clamp(1.35rem, 0.9rem + 2.4cqi, 2.1rem);
+    line-height: 1.02;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  .note__by {
+    margin-top: var(--space-3);
+    padding-left: calc(var(--space-4) + 3px);
+    color: var(--ink-2);
+  }
+
   @keyframes art-spin {
     to {
       rotate: 1turn;
@@ -860,12 +946,25 @@ const foodMs = Math.round(foodSeconds * 1000);
     .art__badge {
       grid-column: 1;
     }
+
+    .note {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .note figure {
+      grid-column: 1;
+    }
   }
 
   @container doc (min-width: 44rem) {
-    .art {
+    .art,
+    .note {
       grid-template-columns: 4.6rem minmax(0, 1fr) 13.5rem;
       column-gap: var(--space-5);
+    }
+
+    .note figure {
+      grid-column: 2 / -1;
     }
 
     .art__no {
@@ -934,6 +1033,7 @@ const foodMs = Math.round(foodSeconds * 1000);
   }
 
   .doc__stamp-main {
+    position: relative;
     font-size: clamp(1.9rem, 1.2rem + 3cqi, 2.8rem);
     font-weight: 900;
     line-height: 0.9;
@@ -941,14 +1041,30 @@ const foodMs = Math.round(foodSeconds * 1000);
     letter-spacing: 0.04em;
   }
 
-  .doc__stamp-sub {
-    font-size: 0.6rem;
-    font-weight: 700;
+  /* Penalty asterisk: hangs in the padding so it never changes the stamp's width. */
+  .doc__stamp-star {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    visibility: hidden;
   }
 
+  .doc__stamp.is-penalised .doc__stamp-star {
+    visibility: visible;
+  }
+
+  .doc__stamp-sub {
+    display: grid;
+    justify-items: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* two signatures per row on phones, three in a row once there is room */
   .doc__sign {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
     gap: var(--space-5);
   }
 
@@ -969,13 +1085,13 @@ const foodMs = Math.round(foodSeconds * 1000);
     padding-top: 0.3rem;
     border-top: 1px solid var(--ink);
     color: var(--ink-2);
-    font-size: 0.56rem;
-    width: 8.5rem;
+    font-size: var(--fs-micro);
+    justify-self: stretch;
   }
 
   .doc__page {
     color: var(--ink-2);
-    font-size: 0.58rem;
+    font-size: var(--fs-micro);
     text-align: center;
   }
 
@@ -1105,8 +1221,8 @@ const foodMs = Math.round(foodSeconds * 1000);
       gap: 0.15rem;
     }
 
-    .tele__sectors li {
-      grid-template-columns: 7.2rem 1fr 3.8rem;
+    .tele__sectors {
+      --label-w: 7.2rem;
     }
   }
 
@@ -1138,7 +1254,7 @@ const foodMs = Math.round(foodSeconds * 1000);
 </style>
 
 <script>
-  import { gsap, prefersReducedMotion } from '@/scripts/motion';
+  import { gsap, ScrollTrigger, prefersReducedMotion, lockScroll } from '@/scripts/motion';
   import { sound } from '@/scripts/audio';
 
   type State = 'yes' | 'no' | 'info';
@@ -1147,8 +1263,9 @@ const foodMs = Math.round(foodSeconds * 1000);
     text: string;
   }
 
+  // Keep result texts short (≲ 32 characters) so badges stay on one line on phones.
   const yes = (text = 'Supported in your browser'): Result => ({ state: 'yes', text });
-  const no = (text = 'Not in your browser — fallback fitted'): Result => ({ state: 'no', text });
+  const no = (text = 'Not supported — fallback fitted'): Result => ({ state: 'no', text });
   const info = (text: string): Result => ({ state: 'info', text });
   const test = (ok: boolean, y?: string, n?: string): Result => (ok ? yes(y) : no(n));
 
@@ -1175,46 +1292,8 @@ const foodMs = Math.round(foodSeconds * 1000);
   let edgeColo: string | null = null;
 
   const checks: Record<string, () => Result | Promise<Result>> = {
-    static: () => yes('Pre-built at the factory'),
-    scrollTimeline: () => test(CSS.supports('animation-timeline: view()')),
-    webgl: () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as WebGLRenderingContext | null;
-        if (!gl) return no('No WebGL here — the car rolls in 2D');
-        const v2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
-        gl.getExtension('WEBGL_lose_context')?.loseContext();
-        return yes(v2 ? 'WebGL 2 — both ears present' : 'WebGL 1 — ears present');
-      } catch {
-        return no('No WebGL here — the car rolls in 2D');
-      }
-    },
-    io: () => test('IntersectionObserver' in window),
-    gsap: () => {
-      const lenis = document.documentElement.classList.contains('lenis');
-      const v = gsap.version.split('.').slice(0, 2).join('.');
-      if (lenis) return yes(`GSAP ${v} + Lenis engaged`);
-      if (prefersReducedMotion()) return info(`GSAP ${v} · Lenis parked for reduced motion`);
-      return yes(`GSAP ${v} engaged`);
-    },
-    viewTransitions: () => test('startViewTransition' in document),
-    webAudio: () => test('AudioContext' in window || 'webkitAudioContext' in window),
-    popover: () => test(Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'popover')),
-    containerQueries: () => test(CSS.supports('container-type: inline-size')),
-    property: () => {
-      // tokens.css registers --livery-angle with @property (initial-value: 0deg).
-      // Only a browser that understood the registration reports that initial value.
-      const typed = getComputedStyle(document.documentElement).getPropertyValue('--livery-angle').trim() === '0deg';
-      return test(typed, 'Typed — the livery can spin');
-    },
-    has: () => test(CSS.supports('selector(:has(*))')),
-    avif: async () => {
-      if (await decodes(AVIF)) return yes('AVIF compound fitted');
-      if (await decodes(WEBP)) return yes('WebP compound fitted');
-      return no('Neither — JPEG spare fitted');
-    },
     edge: async () => {
-      if (!/(^|\.)tracex\.tech$/.test(location.hostname)) return info('Local pit garage — not on the edge');
+      if (!/(^|\.)tracex\.tech$/.test(location.hostname)) return info('Pre-built · local pit garage');
       try {
         const ctrl = new AbortController();
         const t = window.setTimeout(() => ctrl.abort(), 3000);
@@ -1226,10 +1305,55 @@ const foodMs = Math.round(foodSeconds * 1000);
       } catch {
         /* offline or blocked — still on the edge */
       }
-      return yes(edgeColo ? `Served from the edge · ${edgeColo}` : 'Served from the edge');
+      return yes(edgeColo ? `Pre-built · served from ${edgeColo}` : 'Pre-built · served from the edge');
+    },
+    bodywork: () => {
+      const scroll = CSS.supports('animation-timeline: view()');
+      const morph = 'startViewTransition' in document;
+      if (scroll && morph) return yes('Scroll timelines + morphs fitted');
+      if (!scroll && !morph) return no('Neither — static fallback fitted');
+      return no(scroll ? 'No morphs — instant swap fitted' : 'No scroll timeline — fallback');
+    },
+    webgl: () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as WebGLRenderingContext | null;
+        if (!gl) return no('No WebGL — the car rolls in 2D');
+        const v2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        return yes(v2 ? 'WebGL 2 — both ears present' : 'WebGL 1 — ears present');
+      } catch {
+        return no('No WebGL — the car rolls in 2D');
+      }
+    },
+    gsap: () => {
+      const lenis = document.documentElement.classList.contains('lenis');
+      const v = gsap.version.split('.').slice(0, 2).join('.');
+      if (lenis) return yes(`GSAP ${v} + Lenis engaged`);
+      if (prefersReducedMotion()) return info(`GSAP ${v} · Lenis parked`);
+      return yes(`GSAP ${v} engaged`);
+    },
+    webAudio: () => test('AudioContext' in window || 'webkitAudioContext' in window),
+    popover: () => test(Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'popover')),
+    aero: () => {
+      // tokens.css registers --livery-angle with @property (initial-value: 0deg).
+      // Only a browser that understood the registration reports that initial value.
+      const typed = getComputedStyle(document.documentElement).getPropertyValue('--livery-angle').trim() === '0deg';
+      const missing = [
+        !CSS.supports('container-type: inline-size') && 'container queries',
+        !CSS.supports('selector(:has(*))') && ':has()',
+        !typed && '@property',
+      ].filter(Boolean);
+      return missing.length ? no(`No ${missing.join(', ')} — fallback`) : yes('All three fitted — livery spins');
+    },
+    avif: async () => {
+      if (await decodes(AVIF)) return yes('AVIF compound fitted');
+      if (await decodes(WEBP)) return yes('WebP compound fitted');
+      return no('Neither — JPEG spare fitted');
     },
     motion: () =>
-      prefersReducedMotion() ? yes('Honoured — motion parked for you') : yes('Honoured — you chose full throttle'),
+      prefersReducedMotion() ? yes('Honoured — motion parked for you') : yes('Honoured — you chose full speed'),
+    classified: () => info('Classified — find them yourself'),
   };
 
   const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
@@ -1243,14 +1367,22 @@ const foodMs = Math.round(foodSeconds * 1000);
     /* ---------------- Scrutineering ---------------- */
     const arts = Array.from(root.querySelectorAll<HTMLElement>('[data-check]'));
     const stamp = root.querySelector<HTMLElement>('[data-stamp]');
-    const stampMain = root.querySelector<HTMLElement>('[data-stamp-main]');
-    const stampSub = root.querySelector<HTMLElement>('[data-stamp-sub]');
+    const stampL1 = root.querySelector<HTMLElement>('[data-stamp-l1]');
+    const stampL2 = root.querySelector<HTMLElement>('[data-stamp-l2]');
     const scoreEl = root.querySelector<HTMLElement>('[data-tele-score]');
     const coloEl = root.querySelector<HTMLElement>('[data-tele-colo]');
+
+    /* The live results below are written into space reserved in the markup, but a
+       narrow screen can still wrap a long one onto a second line. If that changed
+       the section's height, re-measure the scroll triggers below it (footer). */
+    function keepTriggersInSync(heightBefore: number): void {
+      if (root && root.offsetHeight !== heightBefore) ScrollTrigger.refresh();
+    }
 
     let scrutiny: Promise<void> | null = null;
     const scrutinise = (): Promise<void> => (scrutiny ??= runScrutiny());
     async function runScrutiny(): Promise<void> {
+      const heightBefore = root?.offsetHeight ?? 0;
       const results = await Promise.all(
         arts.map(async (art) => {
           const fn = checks[art.dataset.check ?? ''];
@@ -1276,14 +1408,12 @@ const foodMs = Math.round(foodSeconds * 1000);
       }
       const total = arts.length;
       const clean = passed === total;
-      if (stampMain) stampMain.textContent = clean ? 'Homologated' : 'Homologated*';
-      if (stampSub) {
-        stampSub.textContent = clean
-          ? `${passed}/${total} checks · your browser passed`
-          : `${passed}/${total} · *5-second penalty for your browser`;
-      }
+      stamp?.classList.toggle('is-penalised', !clean);
+      if (stampL1) stampL1.textContent = `${passed}/${total} checks`;
+      if (stampL2) stampL2.textContent = clean ? 'Your browser passed' : '*5-second penalty';
       if (scoreEl) scoreEl.textContent = `${passed} / ${total} passed`;
       if (coloEl) coloEl.textContent = edgeColo ?? (/(^|\.)tracex\.tech$/.test(location.hostname) ? 'The edge' : 'Localhost');
+      keepTriggersInSync(heightBefore);
     }
 
     const docIO = new IntersectionObserver(
@@ -1367,6 +1497,7 @@ const foodMs = Math.round(foodSeconds * 1000);
     function show(): void {
       if (shown || !timing || !tele) return;
       shown = true;
+      const heightBefore = root?.offsetHeight ?? 0;
       const t = timing;
       tele.dataset.grade = grade(t.load, 800, 2500);
       if (verdictEl) verdictEl.textContent = verdict(t);
@@ -1389,6 +1520,7 @@ const foodMs = Math.round(foodSeconds * 1000);
         const val = li.querySelector<HTMLElement>('[data-v]');
         if (val) val.textContent = `${fmt.format(Math.round(v))} ms`;
       });
+      keepTriggersInSync(heightBefore);
 
       if (!loadEl) return;
       const target = Math.round(t.load);
@@ -1409,7 +1541,11 @@ const foodMs = Math.round(foodSeconds * 1000);
 
     function measure(): void {
       timing = readTiming();
-      if (!timing && verdictEl) verdictEl.textContent = 'Your browser keeps its lap times secret. Very cat of it.';
+      if (!timing && verdictEl) {
+        const heightBefore = root?.offsetHeight ?? 0;
+        verdictEl.textContent = 'Your browser keeps its lap times secret. Very cat of it.';
+        keepTriggersInSync(heightBefore);
+      }
       if (teleVisible) show();
     }
 
@@ -1430,10 +1566,16 @@ const foodMs = Math.round(foodSeconds * 1000);
     if (document.readyState === 'complete') window.setTimeout(measure, 0);
     else window.addEventListener('load', () => window.setTimeout(measure, 0), { once: true });
 
-    /* ---------------- Popover sound ---------------- */
+    /* ---------------- Popover: modal-style scroll lock + sound ----------------
+       'toggle' fires for every close path (button, Esc, light dismiss). The popover
+       itself has data-lenis-prevent, so its own content still scrolls. */
     const pop = root.querySelector<HTMLElement>('#stewards-decision');
     pop?.addEventListener('toggle', (e) => {
-      if ((e as ToggleEvent).newState === 'open') sound.play('radio');
+      const open = (e as ToggleEvent).newState === 'open';
+      lockScroll(open);
+      if (!open) return;
+      pop.scrollTop = 0;
+      sound.play('radio');
     });
   }
 

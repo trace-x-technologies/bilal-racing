@@ -192,7 +192,7 @@ const merchArt: Record<string, string> = {
       <text x="100" y="33" text-anchor="middle" class="bf-wide" font-size="10" letter-spacing="2" fill="#fff">EVIDENCE</text>
       <path d="M44 46 H156" stroke="rgb(255 255 255 / 0.5)" stroke-width="2" stroke-dasharray="4 3"/>
       <g class="bf-mono" font-size="5.4" fill="rgb(255 255 255 / 0.75)">
-        <text x="52" y="126">CASE #9 · T1 KANDY</text>
+        <text x="52" y="126">CASE #9 · PRE-SEASON</text>
       </g>
       <g transform="rotate(-32 100 88)">
         <rect x="62" y="82" width="76" height="12" rx="6" fill="#2a2a37" stroke="#6c6a78" stroke-width="1.2"/>
@@ -211,7 +211,7 @@ const merchArt: Record<string, string> = {
       kicker="Partners"
       title="Official <em>Partners</em>"
       id="sponsors-title"
-      lead="Brands brave enough to be seen on a car that stops for sunbeams. All logos are original. All partnerships are imaginary. The gratitude is real."
+      lead="Brands brave enough to be seen on a car with a nap button. All logos are original. All partnerships are imaginary. The gratitude is real."
     />
 
     <!-- ============ Sponsor wall ============ -->
@@ -350,11 +350,18 @@ const merchArt: Record<string, string> = {
                       <span class="mc__cur t-mono">LKR</span>
                       {formatLKR(m.price)}
                     </p>
-                    <button type="button" class="mc__add" data-add data-toast={soldOutToast}>
+                    {/* Named "Add to cart <product>" (or "Sold out <product>"), so the six buttons are distinguishable. */}
+                    <button
+                      type="button"
+                      class="mc__add"
+                      data-add
+                      data-toast={soldOutToast}
+                      aria-labelledby={`mc-add-${m.id} mc-${m.id}`}
+                    >
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 5v14M5 12h14" />
                       </svg>
-                      <span data-add-label>Add to cart</span>
+                      <span id={`mc-add-${m.id}`} data-add-label>Add to cart</span>
                     </button>
                   </div>
                 </div>
@@ -560,7 +567,8 @@ const merchArt: Record<string, string> = {
     flex-wrap: wrap;
     align-items: center;
     gap: 0.25rem 0.6rem;
-    color: var(--a);
+    /* lifted toward chalk so every accent (maroon is the darkest) clears 4.5:1 on the card */
+    color: color-mix(in oklab, var(--a) 80%, var(--c-chalk));
     font-size: 0.64rem;
   }
 
@@ -1148,7 +1156,7 @@ const merchArt: Record<string, string> = {
     border-radius: 999px;
     background: var(--a);
     color: var(--c-carbon);
-    font-size: 0.6rem;
+    font-size: var(--fs-micro);
     font-weight: 700;
     transform: skewX(var(--skew));
   }
@@ -1197,7 +1205,7 @@ const merchArt: Record<string, string> = {
   }
 
   .mc__cur {
-    color: var(--a);
+    color: color-mix(in oklab, var(--a) 80%, var(--c-chalk));
     font-size: 0.65rem;
     font-weight: 600;
   }
@@ -1263,7 +1271,6 @@ const merchArt: Record<string, string> = {
     .mc__tag {
       top: var(--space-2);
       left: var(--space-2);
-      font-size: 0.52rem;
     }
 
     .mc__body {

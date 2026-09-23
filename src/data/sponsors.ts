@@ -145,7 +145,7 @@ export const merch: MerchItem[] = [
     id: 'laser',
     name: 'Laser Pointer (Stewards’ Edition)',
     price: 1500,
-    blurb: 'Sealed in an evidence bag after the Kandy braking-zone incident.',
+    blurb: 'Sealed in an evidence bag after the pre-season testing incident.',
     tag: 'Confiscated',
     accent: 'red',
     art: 'A laser pointer sealed inside a plastic evidence bag',
