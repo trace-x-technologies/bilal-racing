@@ -62,10 +62,20 @@ export function scrollToTarget(target: string | HTMLElement | number, offset = 0
  * does, so the next Tab continues from there. Non-focusable sections get a
  * tabindex="-1" (and [data-nav-focus], which suppresses the ring).
  */
-function focusTarget(target: HTMLElement): void {
+export function focusTarget(target: HTMLElement): void {
   if (!target.hasAttribute('tabindex')) {
     target.setAttribute('tabindex', '-1');
     target.setAttribute('data-nav-focus', '');
+    // Drop the temporary tabindex once focus moves on, so a later click inside
+    // the section doesn't focus the section itself (and steal keyboard input).
+    target.addEventListener(
+      'blur',
+      () => {
+        target.removeAttribute('tabindex');
+        target.removeAttribute('data-nav-focus');
+      },
+      { once: true },
+    );
   }
   target.focus({ preventScroll: true });
 }
