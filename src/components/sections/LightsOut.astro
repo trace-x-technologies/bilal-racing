@@ -431,7 +431,10 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     }
 
     /* ---------------- game flow ---------------- */
-    function start(): void {
+    /** `viaPointer`: a mouse/tap started the round, so the browser already did
+     *  (or deliberately didn't) focus the button — forcing focus from script
+     *  would make Chrome draw the keyboard focus ring round the whole rig. */
+    function start(viaPointer = false): void {
       clearTimers();
       rig!.classList.remove('is-check');
       setState('arming');
@@ -440,7 +443,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       setReadout('0.000', 'Hands ready', 'Five lights. Wait for all of them to go out.');
       if (goEl) goEl.textContent = '';
       announce('Lights coming on. Wait for them to go out.');
-      trigger!.focus({ preventScroll: true });
+      if (!viaPointer && document.activeElement !== trigger) trigger!.focus({ preventScroll: true });
       for (let i = 1; i <= 5; i++) {
         later(() => {
           setLit(i);
@@ -558,14 +561,14 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       setReadout('0.000', 'Start aborted', reason);
     }
 
-    function input(at: number): void {
+    function input(at: number, viaPointer = false): void {
       if (performance.now() < lockedUntil) return;
       switch (state) {
         case 'idle':
         case 'result':
         case 'jump':
         case 'dnf':
-          start();
+          start(viaPointer);
           break;
         case 'arming':
         case 'hold':
@@ -591,7 +594,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       const inRound = state === 'arming' || state === 'hold' || state === 'go';
       if (e.pointerType !== 'mouse' && !inRound) return;
       pointerHandled = true;
-      input(stamp(e));
+      input(stamp(e), true);
     });
     trigger.addEventListener('click', (e) => {
       // Pointer clicks were handled on pointerdown; this catches assistive-tech activation.
@@ -599,7 +602,8 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         pointerHandled = false;
         return;
       }
-      input(stamp(e));
+      // detail > 0: a real tap/click (touch starts here); 0: keyboard or assistive tech.
+      input(stamp(e), e.detail > 0);
     });
     trigger.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -615,8 +619,10 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     document.addEventListener('keydown', (e) => {
       if (!isGameKey(e) || e.repeat) return;
       if (state !== 'arming' && state !== 'hold' && state !== 'go') return;
+      // Accept the rig, the page, or anything that contains the rig (e.g. the
+      // section itself when an in-page link left it focusable).
       const active = document.activeElement;
-      if (active && active !== document.body && !rig.contains(active)) return;
+      if (active && active !== document.body && !rig.contains(active) && !active.contains(rig)) return;
       e.preventDefault();
       input(stamp(e));
     });
