@@ -1,5 +1,408 @@
 ---
-// STUB — owned by the "game" builder (audio). Replace this file entirely.
-// Rendered inside Nav; must be a self-contained button that calls sound.toggle().
+/**
+ * Sound toggle for the Nav: equaliser-bar icon (flat when muted), compact
+ * "Sound off/on" label, aria-pressed state. Switching on plays a meow.
+ * Several instances can exist (desktop + mobile menu) — they stay in sync via
+ * the `bilal:sound` event. A one-time hint bubble nudges visitors to opt in.
+ */
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
 ---
-<button type="button" class="sound-toggle" aria-pressed="false">Sound off</button>
+
+<span class:list={['st', className]}>
+  <button type="button" class="st-btn" aria-pressed="false" data-sound-toggle>
+    <span class="st-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="st-label t-mono">Sound<span class="st-state" aria-hidden="true" data-sound-state> off</span></span>
+  </button>
+  <span class="st-hint" popover="manual" data-sound-hint>
+    <span class="st-hint-ears" aria-hidden="true"><i></i><i></i></span>
+    <span class="st-hint-text">Psst — turn on the <b>meow engine</b></span>
+    <button type="button" class="st-hint-close" aria-label="Dismiss sound hint" data-sound-hint-close>
+      <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+    </button>
+  </span>
+</span>
+
+<script>
+  import { sound } from '@/scripts/audio';
+  import { on, store, whenReady } from '@/scripts/bus';
+
+  const HINT_KEY = 'sound-hint-seen';
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-sound-toggle]'));
+
+  function sync(enabled: boolean): void {
+    for (const btn of buttons) {
+      btn.setAttribute('aria-pressed', String(enabled));
+      const state = btn.querySelector<HTMLElement>('[data-sound-state]');
+      if (state) state.textContent = enabled ? ' on' : ' off';
+    }
+  }
+
+  /* ---------------- one-time hint bubble ---------------- */
+  let hint: HTMLElement | null = null;
+  let anchor: HTMLButtonElement | null = null;
+  let hideTimer = 0;
+  let raf = 0;
+
+  const supportsPopover = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
+  const isVisible = (el: HTMLElement) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+
+  function place(): void {
+    raf = 0;
+    if (!hint || !anchor) return;
+    const r = anchor.getBoundingClientRect();
+    if (r.width === 0 || r.bottom < 0 || r.top > window.innerHeight) {
+      hideHint();
+      return;
+    }
+    const w = hint.offsetWidth;
+    const margin = 10;
+    const cx = r.left + r.width / 2;
+    const left = Math.min(Math.max(margin, cx - w / 2), window.innerWidth - w - margin);
+    hint.style.left = `${Math.round(left)}px`;
+    hint.style.top = `${Math.round(r.bottom + 14)}px`;
+    hint.style.setProperty('--arrow-x', `${Math.round(cx - left)}px`);
+  }
+
+  const schedulePlace = () => {
+    if (!raf) raf = requestAnimationFrame(place);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') hideHint();
+  };
+
+  function hideHint(): void {
+    window.clearTimeout(hideTimer);
+    window.removeEventListener('scroll', schedulePlace);
+    window.removeEventListener('resize', schedulePlace);
+    document.removeEventListener('keydown', onKey);
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    try {
+      if (hint?.matches(':popover-open')) hint.hidePopover();
+    } catch {
+      /* already closed */
+    }
+    hint = null;
+    anchor = null;
+  }
+
+  function showHint(): void {
+    if (!supportsPopover || sound.enabled || store.get(HINT_KEY, false)) return;
+    const btn = buttons.find(isVisible);
+    const bubble = btn?.parentElement?.querySelector<HTMLElement>('[data-sound-hint]');
+    if (!btn || !bubble) return;
+    const r = btn.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight) return;
+    store.set(HINT_KEY, true);
+    hint = bubble;
+    anchor = btn;
+    try {
+      bubble.showPopover();
+    } catch {
+      hint = null;
+      return;
+    }
+    place();
+    window.addEventListener('scroll', schedulePlace, { passive: true });
+    window.addEventListener('resize', schedulePlace, { passive: true });
+    document.addEventListener('keydown', onKey);
+    hideTimer = window.setTimeout(hideHint, 9000);
+  }
+
+  if (buttons.length) {
+    sync(sound.enabled);
+    on('bilal:sound', (detail) => sync(Boolean(detail?.enabled)));
+
+    for (const btn of buttons) {
+      btn.addEventListener('click', () => {
+        const enabled = sound.toggle();
+        if (enabled) sound.play('meow');
+        hideHint();
+      });
+    }
+    document.querySelectorAll<HTMLButtonElement>('[data-sound-hint-close]').forEach((close) => {
+      close.addEventListener('click', () => {
+        const returnTo = anchor;
+        hideHint();
+        returnTo?.focus();
+      });
+    });
+
+    if (supportsPopover && !sound.enabled && !store.get(HINT_KEY, false)) {
+      let queued = false;
+      const queue = () => {
+        if (queued) return;
+        queued = true;
+        window.setTimeout(showHint, 3200);
+      };
+      whenReady(queue);
+      // Fallback if no loader ever signals ready: show once the page is idle
+      // and not scroll-locked by an intro.
+      window.setTimeout(() => {
+        if (!document.documentElement.classList.contains('is-scroll-locked')) queue();
+      }, 12000);
+    }
+  }
+</script>
+
+<style>
+  .st {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+  }
+
+  .st-btn {
+    --st-accent: var(--c-mute);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.5rem;
+    padding: 0 var(--space-3) 0 0.7rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--c-asphalt) 70%, transparent);
+    color: var(--c-chalk);
+    white-space: nowrap;
+    transition:
+      border-color var(--dur-fast) ease,
+      background-color var(--dur-fast) ease,
+      transform var(--dur-fast) var(--ease-out-back);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .st-btn:hover {
+    border-color: color-mix(in oklab, var(--c-gold) 60%, transparent);
+  }
+
+  .st-btn:active {
+    transform: scale(0.95);
+  }
+
+  .st-btn[aria-pressed='true'] {
+    --st-accent: var(--c-gold);
+    border-color: color-mix(in oklab, var(--c-gold) 55%, transparent);
+    background: color-mix(in oklab, var(--c-gold) 12%, var(--c-asphalt));
+  }
+
+  .st-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+
+  .st-state {
+    color: var(--st-accent);
+  }
+
+  /* ---- equaliser icon ---- */
+  .st-eq {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    width: 18px;
+    height: 16px;
+  }
+
+  .st-eq i {
+    flex: 1;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--st-accent);
+    transform: scaleY(0.16);
+    transition:
+      transform var(--dur-med) var(--ease-out-back),
+      background-color var(--dur-fast) ease;
+  }
+
+  .st-btn[aria-pressed='true'] .st-eq i {
+    animation: st-eq 0.9s var(--ease-in-out) infinite alternate;
+  }
+
+  .st-btn[aria-pressed='true'] .st-eq i:nth-child(1) {
+    animation-duration: 0.74s;
+    animation-delay: -0.2s;
+  }
+
+  .st-btn[aria-pressed='true'] .st-eq i:nth-child(2) {
+    animation-duration: 0.52s;
+    animation-delay: -0.4s;
+  }
+
+  .st-btn[aria-pressed='true'] .st-eq i:nth-child(3) {
+    animation-duration: 0.95s;
+  }
+
+  .st-btn[aria-pressed='true'] .st-eq i:nth-child(4) {
+    animation-duration: 0.61s;
+    animation-delay: -0.1s;
+  }
+
+  .st-btn[aria-pressed='true'] .st-eq i:nth-child(5) {
+    animation-duration: 0.83s;
+    animation-delay: -0.5s;
+  }
+
+  @keyframes st-eq {
+    0% {
+      transform: scaleY(0.25);
+    }
+    40% {
+      transform: scaleY(1);
+    }
+    70% {
+      transform: scaleY(0.45);
+    }
+    100% {
+      transform: scaleY(0.8);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .st-btn[aria-pressed='true'] .st-eq i {
+      animation: none;
+    }
+    .st-btn[aria-pressed='true'] .st-eq i:nth-child(1) {
+      transform: scaleY(0.45);
+    }
+    .st-btn[aria-pressed='true'] .st-eq i:nth-child(2) {
+      transform: scaleY(0.85);
+    }
+    .st-btn[aria-pressed='true'] .st-eq i:nth-child(3) {
+      transform: scaleY(1);
+    }
+    .st-btn[aria-pressed='true'] .st-eq i:nth-child(4) {
+      transform: scaleY(0.65);
+    }
+    .st-btn[aria-pressed='true'] .st-eq i:nth-child(5) {
+      transform: scaleY(0.35);
+    }
+  }
+
+  /* ---- hint bubble (top layer via popover) ---- */
+  .st-hint {
+    --arrow-x: 50%;
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: max-content;
+    max-width: min(19rem, calc(100vw - 20px));
+    padding: 0.55rem 0.5rem 0.55rem 0.85rem;
+    border: 0;
+    border-radius: var(--radius-m);
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    box-shadow:
+      0 0.75rem 2rem rgb(0 0 0 / 0.45),
+      var(--glow-gold);
+    font-family: var(--f-mono);
+    font-size: 0.72rem;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    overflow: visible;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.92);
+    transform-origin: var(--arrow-x) 0;
+    transition:
+      opacity var(--dur-med) var(--ease-out-expo),
+      transform var(--dur-med) var(--ease-out-back),
+      display var(--dur-med) allow-discrete,
+      overlay var(--dur-med) allow-discrete;
+  }
+
+  .st-hint:popover-open {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    opacity: 1;
+    transform: none;
+  }
+
+  @starting-style {
+    .st-hint:popover-open {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.92);
+    }
+  }
+
+  /* Arrow pointing at the toggle. */
+  .st-hint::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: calc(var(--arrow-x) - 7px);
+    width: 14px;
+    height: 14px;
+    background: inherit;
+    border-radius: 2px;
+    transform: rotate(45deg);
+  }
+
+  /* Tiny cat ears peeking over the bubble. */
+  .st-hint-ears {
+    position: absolute;
+    top: -10px;
+    left: 1rem;
+    display: flex;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .st-hint-ears i {
+    position: relative;
+    width: 14px;
+    height: 13px;
+    background: var(--c-gold);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    transform: rotate(-14deg);
+  }
+
+  .st-hint-ears i + i {
+    transform: rotate(14deg);
+  }
+
+  /* inner ear */
+  .st-hint-ears i::after {
+    content: '';
+    position: absolute;
+    inset: 5px 4px 0;
+    background: var(--c-maroon);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    opacity: 0.55;
+  }
+
+  .st-hint-text {
+    position: relative;
+  }
+
+  .st-hint-text b {
+    white-space: nowrap;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .st-hint-close {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    color: var(--c-on-gold);
+    transition: background-color var(--dur-fast) ease;
+  }
+
+  .st-hint-close:hover {
+    background: rgb(0 0 0 / 0.12);
+  }
+
+  .st-hint-close:focus-visible {
+    outline-color: var(--c-on-gold);
+    outline-offset: 1px;
+  }
+</style>
