@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bilal-racing",
+  "compatibility_date": "2026-09-01",
+  // Pure static site: Astro builds to ./dist, Workers serves it from the edge.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  },
+  // Requires the tracex.tech zone to live in the same Cloudflare account.
+  "routes": [{ "pattern": "bilal.tracex.tech", "custom_domain": true }],
+  "observability": { "enabled": true }
+}

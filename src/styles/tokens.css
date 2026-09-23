@@ -1,0 +1,103 @@
+/*
+ * Bilal Racing design tokens.
+ * Livery: carbon black + cat-eye gold, with Sri Lankan maroon & saffron.
+ * Every component reads from these — never hard-code a colour or easing.
+ */
+
+@property --livery-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Surfaces ---- */
+  --c-carbon: #07070b;       /* page background */
+  --c-asphalt: #101017;      /* section / card surface */
+  --c-graphite: #1b1b25;     /* raised surface */
+  --c-steel: #2a2a37;        /* borders on raised surfaces */
+  --c-line: rgb(255 255 255 / 0.08);
+  --c-line-strong: rgb(255 255 255 / 0.16);
+
+  /* ---- Ink ---- */
+  --c-chalk: #f4f1ea;        /* primary text */
+  --c-mute: #a09eab;         /* secondary text (AA on carbon) */
+  --c-faint: #6c6a78;        /* decorative only, never body copy */
+
+  /* ---- Livery ---- */
+  --c-gold: #ffc52e;         /* cat-eye gold — primary accent */
+  --c-saffron: #ff6a13;      /* action / heat */
+  --c-maroon: #a0153e;       /* Sri Lankan maroon */
+  --c-teal: #14d5b4;         /* telemetry / "good" */
+  --c-red: #ff2d3a;          /* start lights / danger */
+  --c-purple: #b36bff;       /* fastest-lap purple */
+
+  --c-on-gold: #120d00;      /* text on gold */
+
+  --g-livery: linear-gradient(115deg, var(--c-maroon) 0%, var(--c-saffron) 48%, var(--c-gold) 100%);
+  --g-livery-conic: conic-gradient(from var(--livery-angle), var(--c-maroon), var(--c-saffron), var(--c-gold), var(--c-teal), var(--c-maroon));
+  --g-fade-down: linear-gradient(to bottom, transparent, var(--c-carbon));
+  --glow-gold: 0 0 0.5rem rgb(255 197 46 / 0.5), 0 0 2.5rem rgb(255 197 46 / 0.25);
+  --glow-red: 0 0 0.6rem rgb(255 45 58 / 0.8), 0 0 2rem rgb(255 45 58 / 0.4);
+
+  /* ---- Type ---- */
+  --f-display: 'Saira Variable', 'Noto Sans Sinhala Variable', system-ui, sans-serif;
+  --f-body: 'Saira Variable', 'Noto Sans Sinhala Variable', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --f-sinhala: 'Noto Sans Sinhala Variable', 'Saira Variable', sans-serif;
+
+  /* Fluid scale (320px → 1440px) */
+  --fs-mega: clamp(3.75rem, 1.2rem + 13vw, 13rem);   /* hero wordmark */
+  --fs-h1: clamp(2.75rem, 1.4rem + 6.5vw, 7rem);
+  --fs-h2: clamp(2.25rem, 1.3rem + 4.4vw, 5.25rem);  /* section titles */
+  --fs-h3: clamp(1.4rem, 1.1rem + 1.4vw, 2.25rem);
+  --fs-lead: clamp(1.125rem, 1rem + 0.6vw, 1.5rem);
+  --fs-body: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --fs-small: 0.875rem;
+  --fs-micro: 0.72rem;                                /* mono labels */
+
+  --stretch-condensed: 62%;   /* F1-style tall numerals & headings */
+  --stretch-wide: 118%;       /* wide kickers */
+
+  /* ---- Space & layout ---- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --space-9: 6rem;
+  --space-10: 9rem;
+
+  --gutter: clamp(1rem, 0.5rem + 3vw, 3rem);
+  --maxw: 1320px;
+  --maxw-prose: 62ch;
+  --section-pad: clamp(5rem, 3rem + 10vh, 11rem);
+  --nav-h: 4rem;
+
+  --radius-s: 0.375rem;
+  --radius-m: 0.75rem;
+  --radius-l: 1.25rem;
+  --skew: -8deg;              /* F1 italic slant for badges & buttons */
+
+  /* ---- Motion ---- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 180ms;
+  --dur-med: 420ms;
+  --dur-slow: 900ms;
+
+  /* ---- Layers ---- */
+  --z-canvas: 0;
+  --z-content: 1;
+  --z-sticky: 50;
+  --z-nav: 100;
+  --z-overlay: 500;
+  --z-cursor: 900;
+  --z-loader: 1000;
+}

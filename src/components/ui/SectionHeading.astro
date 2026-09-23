@@ -1,0 +1,84 @@
+---
+/**
+ * Standard section header: mono kicker with index ("03 / THE CAR"),
+ * a big condensed title and optional lead + Sinhala flourish.
+ */
+interface Props {
+  index: string; // "03"
+  kicker: string; // "The Car"
+  title: string;
+  lead?: string;
+  /** Optional Sinhala word/phrase from data/lore.ts `sinhala`. */
+  si?: string;
+  align?: 'start' | 'center';
+  id?: string;
+}
+const { index, kicker, title, lead, si, align = 'start', id } = Astro.props;
+---
+
+<header class:list={['section-heading', `align-${align}`]}>
+  <p class="kicker t-mono" data-reveal="fade">
+    <span class="kicker-index">{index}</span>
+    <span class="kicker-rule" aria-hidden="true"></span>
+    <span>{kicker}</span>
+    {si && <span class="kicker-si t-si" lang="si">{si}</span>}
+  </p>
+  <h2 class="title t-condensed" id={id} data-reveal="up">
+    <Fragment set:html={title} />
+  </h2>
+  {lead && <p class="lead prose" data-reveal="up">{lead}</p>}
+  <slot />
+</header>
+
+<style>
+  .section-heading {
+    display: grid;
+    gap: var(--space-5);
+    margin-bottom: var(--space-8);
+  }
+
+  .align-center {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .kicker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .kicker-index {
+    color: var(--c-gold);
+  }
+
+  .kicker-rule {
+    width: 3rem;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .kicker-si {
+    color: var(--c-gold);
+    font-size: 0.95rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .title {
+    font-size: var(--fs-h2);
+    text-transform: uppercase;
+    font-weight: 850;
+    line-height: 0.9;
+  }
+
+  .title :global(em) {
+    font-style: normal;
+    background: var(--g-livery);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+</style>
