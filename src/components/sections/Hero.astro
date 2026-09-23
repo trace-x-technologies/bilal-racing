@@ -1,9 +1,1322 @@
 ---
-// STUB — owned by the "three" builder. Replace this file entirely.
+/**
+ * Hero (#top): the page's only <h1>. Massive BILAL RACING wordmark with the
+ * procedural BR-09 parked *in front of it* (WebGL canvas between a solid and an
+ * outline copy of the wordmark), Sinhala sticker, driver badge, CTAs and an
+ * ignition button that revs the car (and meows, if sound is on).
+ *
+ * Three.js is loaded with a dynamic import() after first paint; an SVG blueprint
+ * poster covers loading, no-WebGL and (until the still frame lands) reduced motion.
+ */
+import { team, driver, sinhala } from '@/data/lore';
+import { carPosterSVG } from '@/scripts/three/poster';
+
+const poster = carPosterSVG('hero-bp');
+const leds = Array.from({ length: 15 }, (_, i) => (i < 5 ? 'g' : i < 10 ? 'r' : 'p'));
+const streaks = Array.from({ length: 10 }, (_, i) => i);
+// "cat (his nickname)" → ["cat", "(his nickname)"] for a two-line caption
+const siMeaning = ((m: string) => {
+  const cut = m.indexOf(' (');
+  return cut > 0 ? [m.slice(0, cut), m.slice(cut + 1)] : [m, ''];
+})(sinhala.poosa.en);
 ---
 
-<section class="section stub" id="top" aria-label="Hero">
-  <div class="container">
-    <p class="t-mono t-mute">[three] Hero — coming soon</p>
+<section class="hero" id="top" aria-labelledby="hero-title" data-hero data-intro="pending">
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-spot"></div>
+    <div class="hero-wall"></div>
+    <div class="hero-streaks" data-hero-streaks>
+      {streaks.map((i) => <span style={`--i:${i}`} />)}
+    </div>
+  </div>
+
+  <canvas class="hero-canvas" data-hero-canvas aria-hidden="true"></canvas>
+
+  <div class="hero-layout container">
+    <p class="hero-kicker t-mono" data-intro-item>
+      <span class="live-dot" aria-hidden="true"></span>
+      <span>Live from the garage</span>
+      <span class="kicker-sep" aria-hidden="true">/</span>
+      <span>Season {team.founded}</span>
+      <span class="kicker-sep kicker-wide" aria-hidden="true">/</span>
+      <span class="kicker-wide">{team.base}</span>
+    </p>
+
+    <h1 id="hero-title" class="wm wm--solid" data-wordmark data-intro-item>
+      <span class="visually-hidden">Bilal Racing</span>
+      <span class="wm-line" aria-hidden="true"><span class="wm-word">Bilal</span></span>
+      <span class="wm-line" aria-hidden="true"><span class="wm-word">Racing</span></span>
+    </h1>
+    <p class="wm wm--ghost" aria-hidden="true" data-wordmark-ghost>
+      <span class="wm-line"><span class="wm-word">Bilal</span></span>
+      <span class="wm-line"><span class="wm-word">Racing</span></span>
+    </p>
+
+    <figure class="si-stamp" data-intro-item>
+      <svg class="si-ring" viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <path id="si-ring-path" d="M100,100 m-80,0 a80,80 0 1,1 160,0 a80,80 0 1,1 -160,0"></path>
+        </defs>
+        <text><textPath href="#si-ring-path">{`${sinhala.poosa.latin} · means cat · also our driver · `.toUpperCase()}</textPath></text>
+      </svg>
+      <span class="si-word t-si" lang="si">{sinhala.poosa.si}</span>
+      <figcaption class="si-caption t-mono">
+        <span class="si-latin">{sinhala.poosa.latin}</span> = {siMeaning[0]}<br />{siMeaning[1]}
+      </figcaption>
+    </figure>
+
+    <div class="hero-stage" data-hero-stage aria-hidden="true">
+      <div class="hero-poster" data-hero-poster set:html={poster} />
+      <p class="stage-hint t-mono">Drag to spin · click the car to rev</p>
+    </div>
+
+    <div class="hero-pitch" data-intro-item>
+      <p class="hero-tagline" set:html={team.tagline.replace(/(\S+-\S+)/g, '<span class="nowrap">$1</span>')} />
+      <p class="hero-motto t-mono">“{team.motto}”</p>
+    </div>
+
+    <div class="hero-ignition" data-intro-item>
+      <button class="ignite" type="button" data-ignite aria-describedby="ignite-hint">
+        <span class="ignite-ring" aria-hidden="true"></span>
+        <span class="ignite-label">Start<br />engine</span>
+      </button>
+      <div class="ignite-side">
+        <div class="shift-lights" aria-hidden="true" data-leds>
+          {leds.map((c) => <span class={`led led--${c}`} />)}
+        </div>
+        <p class="ignite-hint t-mono" id="ignite-hint">
+          <span data-rpm>0</span> rpm · <span data-revs>0</span>/9 lives used
+        </p>
+      </div>
+      <p class="visually-hidden" aria-live="polite" data-ignite-live></p>
+    </div>
+
+    <div class="hero-driver" data-intro-item>
+      <p class="driver-badge">
+        <span class="badge-num" aria-hidden="true">{driver.number}</span>
+        <span class="badge-body">
+          <span class="badge-top t-mono">
+            <span class="visually-hidden">Car number {driver.number}, timing code</span>
+            <span class="badge-code">{driver.code}</span>
+            <span class="badge-flag" aria-hidden="true">{driver.flag}</span>
+            <span>#{driver.number} · {driver.nationality}</span>
+          </span>
+          <span class="badge-name">{driver.fullName}</span>
+          <span class="badge-role t-mono">{driver.role}</span>
+        </span>
+      </p>
+      <div class="hero-ctas">
+        <a class="cta cta--gold" href="#driver">
+          <span>Meet the driver</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6"></path></svg>
+        </a>
+        <a class="cta cta--ghost" href="#lights-out">
+          <span>Try Lights Out</span>
+          <span class="cta-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        </a>
+      </div>
+    </div>
+
+    <a class="hero-scroll t-mono" href="#driver" data-intro-item>
+      <span class="scroll-rail" aria-hidden="true"><span></span></span>
+      <span>Scroll to leave the garage</span>
+    </a>
   </div>
 </section>
+
+<style>
+  .hero {
+    --hero-pad-top: calc(var(--nav-h) + clamp(1rem, 3vh, 2.5rem));
+    position: relative;
+    isolation: isolate;
+    min-height: 100svh;
+    overflow: clip;
+    background: var(--c-carbon);
+  }
+
+  /* fade the garage floor into the next section */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 16%;
+    z-index: 2;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, var(--c-carbon));
+  }
+
+  /* ---------------- backdrop ---------------- */
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .hero-spot {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(60% 55% at 50% 58%, color-mix(in oklab, var(--c-gold) 16%, transparent), transparent 70%),
+      radial-gradient(40% 40% at 18% 20%, color-mix(in oklab, var(--c-maroon) 30%, transparent), transparent 70%),
+      radial-gradient(45% 40% at 88% 30%, color-mix(in oklab, var(--c-saffron) 16%, transparent), transparent 70%);
+  }
+
+  .hero-wall {
+    position: absolute;
+    inset: 0 0 30% 0;
+    background-image:
+      linear-gradient(var(--c-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--c-line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(70% 80% at 50% 70%, #000, transparent 75%);
+    opacity: 0.55;
+  }
+
+  .hero-streaks {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+  }
+
+  .hero-streaks span {
+    position: absolute;
+    left: -10%;
+    top: calc(22% + var(--i) * 6.5%);
+    width: calc(40% + var(--i) * 5%);
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c-gold), transparent);
+    opacity: calc(0.25 + (var(--i) / 20));
+    transform: translateX(calc(var(--i) * 13% + 60%));
+  }
+
+  .hero-streaks span:nth-child(3n) {
+    background: linear-gradient(90deg, transparent, var(--c-saffron), transparent);
+  }
+
+  /* ---------------- canvas ---------------- */
+  .hero-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1s var(--ease-out-expo) 0.2s;
+    cursor: grab;
+    touch-action: pan-y;
+  }
+
+  .hero-canvas:global(.is-over-car) {
+    cursor: pointer;
+  }
+
+  .hero-canvas:global(.is-dragging) {
+    cursor: grabbing;
+  }
+
+  .hero:global(.is-3d) .hero-canvas {
+    opacity: 1;
+  }
+
+  /* ---------------- layout ---------------- */
+  .hero-layout {
+    position: relative;
+    display: grid;
+    min-height: 100svh;
+    padding-top: var(--hero-pad-top);
+    padding-bottom: clamp(3.25rem, 7vh, 4.5rem);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(15rem, 1fr) auto auto auto;
+    grid-template-areas:
+      'kicker'
+      'wm'
+      'stage'
+      'pitch'
+      'ignition'
+      'driver';
+    row-gap: var(--space-4);
+    pointer-events: none;
+  }
+
+  .hero-layout > * {
+    pointer-events: auto;
+    position: relative;
+    z-index: 3;
+  }
+
+  .hero-kicker {
+    grid-area: kicker;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .kicker-sep {
+    color: var(--c-faint);
+  }
+
+  .kicker-wide {
+    display: none;
+  }
+
+  .live-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    animation: live 1.6s var(--ease-in-out) infinite;
+  }
+
+  @keyframes live {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  /* ---------------- wordmark ---------------- */
+  .wm {
+    grid-area: wm;
+    margin: 0;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    font-size: clamp(5.2rem, 28vw, 10rem);
+    line-height: 0.82;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    text-wrap: nowrap;
+  }
+
+  .wm--solid {
+    z-index: 0;
+  }
+
+  .wm--ghost {
+    z-index: 2;
+    pointer-events: none;
+    color: transparent;
+    -webkit-text-stroke: 1.5px color-mix(in oklab, var(--c-chalk) 62%, transparent);
+  }
+
+  .wm-line {
+    display: block;
+    position: relative;
+    width: fit-content;
+    transform: skewX(var(--skew));
+    padding-inline: 0.04em 0.08em;
+  }
+
+  .wm--solid .wm-word {
+    background: var(--g-livery);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .wm--solid:global(.is-split) .wm-word {
+    background: none;
+  }
+
+  .wm--solid :global(.wm-char) {
+    background-image: var(--g-livery);
+    background-size: var(--wm-w, 100%) var(--wm-h, 100%);
+    background-position: var(--cx, 0) var(--cy, 0);
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ---------------- Sinhala sticker ---------------- */
+  .si-stamp {
+    grid-area: wm;
+    justify-self: end;
+    align-self: start;
+    display: grid;
+    place-items: center;
+    width: clamp(5.5rem, 22vw, 9rem);
+    aspect-ratio: 1;
+    margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-2)) 0 0;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--c-carbon) 70%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid color-mix(in oklab, var(--c-gold) 45%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in oklab, var(--c-carbon) 50%, transparent);
+    rotate: 8deg;
+    z-index: 4;
+  }
+
+  .si-ring {
+    position: absolute;
+    inset: 4%;
+    width: 92%;
+    height: 92%;
+    fill: var(--c-gold);
+    font-family: var(--f-mono);
+    font-size: 15.5px;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    animation: spin 22s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  .si-word {
+    font-size: clamp(1.25rem, 5.4vw, 2.3rem);
+    line-height: 1;
+    color: var(--c-chalk);
+    translate: 0 -0.08em;
+  }
+
+  .si-caption {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    translate: -50% 0;
+    margin-top: var(--space-3);
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1.6;
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    rotate: -8deg;
+  }
+
+  .si-latin {
+    color: var(--c-gold);
+  }
+
+  /* ---------------- stage + poster ---------------- */
+  .hero-stage {
+    grid-area: stage;
+    pointer-events: none !important;
+    display: grid;
+    place-items: center;
+    min-height: 15rem;
+  }
+
+  .hero-poster {
+    width: min(100%, 60rem);
+    opacity: 0.9;
+    transition:
+      opacity 0.35s ease-out,
+      scale 0.6s var(--ease-out-expo);
+  }
+
+  .hero-poster :global(svg) {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    filter: drop-shadow(0 0 1.5rem color-mix(in oklab, var(--c-gold) 20%, transparent));
+  }
+
+  .hero-poster :global(.bp-wheel) {
+    animation: poster-pulse 2.4s var(--ease-in-out) infinite;
+  }
+
+  @keyframes poster-pulse {
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .hero:global(.is-3d) .hero-poster {
+    opacity: 0;
+    scale: 0.96;
+  }
+
+  .stage-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    translate: -50% 0;
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.6s ease 1.2s;
+  }
+
+  .hero:global(.is-3d) .stage-hint {
+    opacity: 0.85;
+  }
+
+  /* ---------------- pitch ---------------- */
+  .hero-pitch {
+    grid-area: pitch;
+    display: grid;
+    gap: var(--space-2);
+    align-content: end;
+  }
+
+  .hero-tagline {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 70;
+    text-transform: uppercase;
+    font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.4rem);
+    line-height: 0.95;
+    max-width: 15ch;
+    text-wrap: balance;
+  }
+
+  .hero-tagline :global(.nowrap) {
+    white-space: nowrap;
+  }
+
+  .hero-motto {
+    color: var(--c-gold);
+  }
+
+  /* ---------------- ignition ---------------- */
+  .hero-ignition {
+    grid-area: ignition;
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .ignite {
+    --size: 4.75rem;
+    position: relative;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    color: var(--c-chalk);
+    background:
+      radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--c-red) 70%, white), var(--c-red) 45%, color-mix(in oklab, var(--c-red) 55%, black) 100%);
+    box-shadow:
+      inset 0 -6px 12px rgb(0 0 0 / 0.45),
+      0 0 0 4px var(--c-carbon),
+      0 0 0 6px color-mix(in oklab, var(--c-gold) 70%, transparent),
+      0 10px 30px -8px color-mix(in oklab, var(--c-red) 70%, transparent);
+    transition:
+      transform var(--dur-fast) var(--ease-out-back),
+      box-shadow var(--dur-med) var(--ease-out-expo);
+  }
+
+  .ignite:hover {
+    transform: scale(1.05);
+  }
+
+  .ignite:active {
+    transform: scale(0.94);
+  }
+
+  .ignite:focus-visible {
+    outline: 3px solid var(--c-gold);
+    outline-offset: 8px;
+    border-radius: 50%;
+  }
+
+  .ignite-label {
+    font-family: var(--f-mono);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.25;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  }
+
+  .ignite-ring {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 1px dashed color-mix(in oklab, var(--c-gold) 60%, transparent);
+    animation: spin 12s linear infinite;
+  }
+
+  .hero:global(.is-revving) .ignite {
+    box-shadow:
+      inset 0 -6px 12px rgb(0 0 0 / 0.45),
+      0 0 0 4px var(--c-carbon),
+      0 0 0 6px var(--c-gold),
+      0 0 40px 6px color-mix(in oklab, var(--c-saffron) 70%, transparent);
+  }
+
+  .hero:global(.is-revving) .wm {
+    animation: rev-shake 0.5s linear;
+  }
+
+  .hero:global(.is-revving) .hero-spot {
+    animation: rev-flash 1.2s var(--ease-out-expo);
+  }
+
+  @keyframes rev-shake {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    15% {
+      translate: -3px 1px;
+    }
+    30% {
+      translate: 3px -1px;
+    }
+    45% {
+      translate: -2px 1px;
+    }
+    60% {
+      translate: 2px 0;
+    }
+    80% {
+      translate: -1px 0;
+    }
+  }
+
+  @keyframes rev-flash {
+    0% {
+      filter: brightness(1);
+    }
+    12% {
+      filter: brightness(2.2) saturate(1.3);
+    }
+    100% {
+      filter: brightness(1);
+    }
+  }
+
+  .hero:global(.is-revving) .ignite-ring {
+    animation-duration: 0.6s;
+    border-style: solid;
+    border-color: var(--c-saffron);
+  }
+
+  .ignite-side {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .shift-lights {
+    display: flex;
+    gap: 3px;
+  }
+
+  .led {
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 50%;
+    background: var(--c-graphite);
+    box-shadow: inset 0 0 0 1px var(--c-steel);
+    transition:
+      background 80ms linear,
+      box-shadow 80ms linear;
+  }
+
+  .led:global(.is-on).led--g {
+    background: var(--c-teal);
+    box-shadow: 0 0 8px var(--c-teal);
+  }
+
+  .led:global(.is-on).led--r {
+    background: var(--c-red);
+    box-shadow: 0 0 8px var(--c-red);
+  }
+
+  .led:global(.is-on).led--p {
+    background: var(--c-purple);
+    box-shadow: 0 0 8px var(--c-purple);
+  }
+
+  .ignite-hint {
+    color: var(--c-mute);
+    font-size: 0.64rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ignite-hint [data-rpm] {
+    display: inline-block;
+    min-width: 5.5ch;
+    text-align: right;
+    color: var(--c-chalk);
+  }
+
+  /* ---------------- driver badge + CTAs ---------------- */
+  .hero-driver {
+    grid-area: driver;
+    display: grid;
+    gap: var(--space-4);
+    align-content: end;
+  }
+
+  .driver-badge {
+    display: flex;
+    align-items: stretch;
+    width: fit-content;
+    max-width: 100%;
+    border: 1px solid var(--c-line-strong);
+    background: color-mix(in oklab, var(--c-asphalt) 80%, transparent);
+    backdrop-filter: blur(10px);
+    clip-path: polygon(0.9rem 0, 100% 0, calc(100% - 0.9rem) 100%, 0 100%);
+  }
+
+  .badge-num {
+    display: grid;
+    place-items: center;
+    padding: 0 1.1rem 0 1.4rem;
+    background: var(--g-livery);
+    color: var(--c-on-gold);
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    font-size: 3.2rem;
+    line-height: 1;
+  }
+
+  .badge-body {
+    display: grid;
+    gap: 0.15rem;
+    padding: var(--space-3) 1.6rem var(--space-3) var(--space-4);
+    min-width: 0;
+  }
+
+  .badge-top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-mute);
+    font-size: 0.64rem;
+  }
+
+  .badge-code {
+    padding: 0.1rem 0.4rem;
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  .badge-flag {
+    letter-spacing: 0;
+  }
+
+  .badge-name {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-stretch: 75%;
+    font-variation-settings: 'wdth' 75;
+    font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.35rem);
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .badge-role {
+    color: var(--c-mute);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+  }
+
+  .hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .cta {
+    --cta-bg: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 3rem;
+    padding: 0 1.35rem;
+    font-family: var(--f-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transform: skewX(var(--skew));
+    transition:
+      transform var(--dur-fast) var(--ease-out-back),
+      background var(--dur-med) var(--ease-out-expo),
+      color var(--dur-med) var(--ease-out-expo);
+  }
+
+  .cta > * {
+    transform: skewX(calc(-1 * var(--skew)));
+  }
+
+  .cta svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: translate var(--dur-med) var(--ease-out-expo);
+  }
+
+  .cta:hover {
+    transform: skewX(var(--skew)) translateY(-2px);
+  }
+
+  .cta:hover svg {
+    translate: 4px 0;
+  }
+
+  .cta--gold {
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    box-shadow: 0 10px 30px -12px color-mix(in oklab, var(--c-gold) 80%, transparent);
+  }
+
+  .cta--gold:hover {
+    background: var(--c-chalk);
+  }
+
+  .cta--ghost {
+    color: var(--c-chalk);
+    box-shadow: inset 0 0 0 1px var(--c-line-strong);
+    background: color-mix(in oklab, var(--c-carbon) 50%, transparent);
+  }
+
+  .cta--ghost:hover {
+    box-shadow: inset 0 0 0 1px var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  .cta-lights {
+    display: inline-flex;
+    gap: 3px;
+  }
+
+  .cta-lights i {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: 0 0 6px var(--c-red);
+    animation: cta-lights 2.4s steps(1) infinite;
+  }
+
+  .cta-lights i:nth-child(2) {
+    animation-delay: 0.3s;
+  }
+
+  .cta-lights i:nth-child(3) {
+    animation-delay: 0.6s;
+  }
+
+  @keyframes cta-lights {
+    0%,
+    10% {
+      opacity: 0.2;
+    }
+    12%,
+    80% {
+      opacity: 1;
+    }
+    82% {
+      opacity: 0.2;
+    }
+  }
+
+  /* ---------------- scroll cue ---------------- */
+  .hero-scroll {
+    position: absolute !important;
+    left: 50%;
+    bottom: var(--space-4);
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--c-mute);
+    text-decoration: none;
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
+
+  .hero-scroll:hover {
+    color: var(--c-gold);
+  }
+
+  .scroll-rail {
+    position: relative;
+    width: 2.5rem;
+    height: 1px;
+    background: var(--c-line-strong);
+    overflow: hidden;
+  }
+
+  .scroll-rail span {
+    position: absolute;
+    inset: 0;
+    background: var(--c-gold);
+    animation: rail 1.8s var(--ease-in-out) infinite;
+  }
+
+  @keyframes rail {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  /* ---------------- intro states ---------------- */
+  :global(.js-motion) .hero[data-intro='pending'] [data-intro-item],
+  :global(.js-motion) .hero[data-intro='pending'] .wm--ghost {
+    opacity: 0;
+    animation: hero-failsafe 0.01s linear 9s forwards;
+  }
+
+  @keyframes hero-failsafe {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* ---------------- tablet / desktop ---------------- */
+  @media (min-width: 760px) {
+    .kicker-wide {
+      display: inline;
+    }
+
+    .wm {
+      font-size: clamp(6rem, 19.4vw, 21rem);
+      line-height: 0.8;
+    }
+
+    .wm-line {
+      display: inline-block;
+    }
+
+    .hero-layout {
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(16rem, 1fr) auto;
+      grid-template-areas:
+        'kicker kicker kicker'
+        'wm wm wm'
+        'stage stage stage'
+        'pitch ignition driver';
+      column-gap: var(--space-6);
+      row-gap: var(--space-3);
+    }
+
+    .hero-stage {
+      grid-row: 2 / 4;
+      margin-top: clamp(2rem, 4.5vw, 6rem);
+    }
+
+    .si-stamp {
+      grid-area: kicker;
+      grid-row: 1 / 3;
+      margin: 0;
+      translate: 0 -12%;
+    }
+
+    .hero-ignition {
+      flex-direction: column;
+      align-self: end;
+      gap: var(--space-3);
+    }
+
+    .ignite-side {
+      justify-items: center;
+    }
+
+    .hero-driver {
+      justify-items: end;
+    }
+
+    .hero-ctas {
+      justify-content: flex-end;
+    }
+  }
+
+  @media (min-width: 760px) and (max-width: 1099px) {
+    .hero-layout {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(16rem, 1fr) auto auto;
+      grid-template-areas:
+        'kicker kicker'
+        'wm wm'
+        'stage stage'
+        'pitch driver'
+        'ignition driver';
+    }
+
+    .hero-ignition {
+      flex-direction: row;
+      align-self: start;
+    }
+
+    .ignite-side {
+      justify-items: start;
+    }
+  }
+
+  /* ---------------- phones ---------------- */
+  @media (max-width: 759px) {
+    .hero-stage {
+      grid-row: 2 / 4;
+      min-height: clamp(12rem, 31svh, 18rem);
+      margin-top: 21vw;
+      margin-inline: calc(-1 * var(--gutter));
+    }
+
+    .hero-layout {
+      grid-template-rows: auto auto minmax(8rem, auto) auto auto auto;
+    }
+
+    .si-stamp {
+      margin: 0.35rem -0.25rem 0 0;
+    }
+
+    .si-caption {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    .stage-hint {
+      display: none;
+    }
+
+    .hero-ignition {
+      grid-area: stage;
+      align-self: end;
+      justify-self: end;
+      flex-direction: column-reverse;
+      align-items: flex-end;
+      gap: var(--space-2);
+    }
+
+    .ignite {
+      --size: 3.9rem;
+    }
+
+    .shift-lights {
+      display: none;
+    }
+
+    .ignite-hint {
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: color-mix(in oklab, var(--c-carbon) 78%, transparent);
+    }
+
+    .stage-hint {
+      left: 0;
+      translate: 0 0;
+    }
+
+    .hero-scroll {
+      display: none;
+    }
+
+    .hero-layout {
+      padding-bottom: var(--space-7);
+    }
+  }
+
+  @media (max-width: 380px) {
+    .driver-badge {
+      width: 100%;
+    }
+
+    .badge-num {
+      font-size: 2.6rem;
+      padding-inline: 0.9rem 0.7rem;
+    }
+
+    .cta {
+      padding-inline: 1rem;
+      font-size: 0.72rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero:global(.is-revving) .wm,
+    .hero:global(.is-revving) .hero-spot,
+    .si-ring,
+    .ignite-ring,
+    .live-dot,
+    .scroll-rail span,
+    .cta-lights i,
+    .hero-poster :global(.bp-wheel) {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, ScrollTrigger, SplitText, prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
+  import { emit, whenReady } from '@/scripts/bus';
+  import { sound } from '@/scripts/audio';
+  import type { HeroScene } from '@/scripts/three/hero-scene';
+
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  if (hero) initHero(hero);
+
+  function supportsWebGL(): boolean {
+    try {
+      const c = document.createElement('canvas');
+      return Boolean(c.getContext('webgl2') ?? c.getContext('webgl'));
+    } catch {
+      return false;
+    }
+  }
+
+  function initHero(hero: HTMLElement) {
+    const reduced = prefersReducedMotion();
+    const canvas = hero.querySelector<HTMLCanvasElement>('[data-hero-canvas]');
+    const stage = hero.querySelector<HTMLElement>('[data-hero-stage]');
+    const wordmark = hero.querySelector<HTMLElement>('[data-wordmark]');
+    const ghost = hero.querySelector<HTMLElement>('[data-wordmark-ghost]');
+    const igniteBtn = hero.querySelector<HTMLButtonElement>('[data-ignite]');
+    const live = hero.querySelector<HTMLElement>('[data-ignite-live]');
+    const rpmEl = hero.querySelector<HTMLElement>('[data-rpm]');
+    const revsEl = hero.querySelector<HTMLElement>('[data-revs]');
+    const leds = Array.from(hero.querySelectorAll<HTMLElement>('[data-leds] .led'));
+    const streaks = hero.querySelector<HTMLElement>('[data-hero-streaks]');
+
+    /* ---------------- 3D scene (lazy) ---------------- */
+    let scene: HeroScene | null = null;
+    let exitProgress = 0;
+    let loading = false;
+
+    const load = async () => {
+      if (loading || scene || !canvas || !stage) return;
+      loading = true;
+      if (!supportsWebGL()) {
+        hero.classList.add('is-fallback');
+        return;
+      }
+      try {
+        const mod = await import('@/scripts/three/hero-scene');
+        scene = await mod.createHeroScene({
+          canvas,
+          host: hero,
+          stage,
+          reduced,
+          lowPower: isLowPowerDevice(),
+          onFirstFrame: () => hero.classList.add('is-3d'),
+          onCarClick: () => ignite(),
+        });
+        if (!scene) hero.classList.add('is-fallback');
+        else scene.setExit(exitProgress);
+      } catch (err) {
+        console.warn('[hero] 3D unavailable, keeping the poster.', err);
+        hero.classList.add('is-fallback');
+      } finally {
+        loading = false;
+      }
+    };
+
+    // Let the headline paint first, then fetch Three.js. If the intro loader is on
+    // screen it hides the set-up cost; otherwise wait until the wordmark has landed
+    // so the char animation never competes with shader compilation.
+    const idle = (cb: () => void) => {
+      const w = window as Window & { requestIdleCallback?: (fn: () => void, o?: { timeout: number }) => number };
+      if (w.requestIdleCallback) w.requestIdleCallback(cb, { timeout: 900 });
+      else setTimeout(cb, 120);
+    };
+    let skipIntro = false;
+    try {
+      skipIntro = sessionStorage.getItem('bilal:skip-intro') === '1';
+    } catch {
+      /* storage blocked */
+    }
+    let loadQueued = false;
+    const queueLoad = (delay: number) => {
+      if (loadQueued) return;
+      loadQueued = true;
+      window.setTimeout(() => idle(() => void load()), delay);
+    };
+    if (reduced || !skipIntro) requestAnimationFrame(() => queueLoad(0));
+    else window.setTimeout(() => queueLoad(0), 3200); // safety net
+
+    window.addEventListener('pagehide', () => {
+      scene?.dispose();
+      scene = null;
+      hero.classList.remove('is-3d');
+    });
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) void load();
+    });
+
+    /* ---------------- ignition ---------------- */
+    let revs = 0;
+    let rpmTween: gsap.core.Tween | null = null;
+    const rpm = { v: 0 };
+    const paintRpm = () => {
+      if (rpmEl) rpmEl.textContent = Math.round(rpm.v).toLocaleString('en-US');
+      const lit = Math.round((rpm.v / 13000) * leds.length);
+      leds.forEach((led, i) => led.classList.toggle('is-on', i < lit));
+    };
+
+    const ignite = () => {
+      sound.play('revMeow');
+      scene?.startEngine();
+      revs += 1;
+      if (revsEl) revsEl.textContent = String(Math.min(revs, 9));
+      const lives = Math.min(revs, 9);
+      if (live) live.textContent = `Engine started. Purr-brid V6 at full meow. ${lives} of 9 lives used.`;
+      hero.classList.add('is-revving');
+      window.setTimeout(() => hero.classList.remove('is-revving'), 1300);
+
+      rpmTween?.kill();
+      if (reduced) {
+        rpm.v = 12500;
+        paintRpm();
+        window.setTimeout(() => {
+          rpm.v = 0;
+          paintRpm();
+        }, 1400);
+      } else {
+        rpmTween = gsap.to(rpm, {
+          keyframes: [
+            { v: 12800, duration: 0.45, ease: 'power3.out' },
+            { v: 7000, duration: 0.25, ease: 'power1.in' },
+            { v: 11800, duration: 0.3, ease: 'power2.out' },
+            { v: 0, duration: 1.4, ease: 'power2.inOut' },
+          ],
+          onUpdate: paintRpm,
+        });
+      }
+
+      if (revs === 1 && !sound.enabled) {
+        emit('bilal:toast', { message: 'Engine on! Turn sound on (top right) to hear the rev-meow.', tone: 'info' });
+      }
+      if (revs === 9) {
+        emit('bilal:egg', { id: 'nine-revs', label: 'Revved all nine lives' });
+        emit('bilal:toast', { message: 'Nine revs. Nine lives. The stewards have been informed.', tone: 'gold' });
+      }
+    };
+    igniteBtn?.addEventListener('click', ignite);
+
+    /* ---------------- wordmark + entrance ---------------- */
+    const introItems = Array.from(hero.querySelectorAll<HTMLElement>('[data-intro-item]')).filter((el) => el !== wordmark);
+
+    const paintCharGradients = (split: SplitText) => {
+      if (!wordmark) return;
+      const w = wordmark.offsetWidth;
+      const h = wordmark.offsetHeight;
+      wordmark.style.setProperty('--wm-w', `${w}px`);
+      wordmark.style.setProperty('--wm-h', `${h}px`);
+      for (const ch of split.chars as HTMLElement[]) {
+        const line = ch.closest<HTMLElement>('.wm-line');
+        const x = ch.offsetLeft + (line?.offsetLeft ?? 0);
+        const y = ch.offsetTop + (line?.offsetTop ?? 0);
+        ch.style.setProperty('--cx', `${-x}px`);
+        ch.style.setProperty('--cy', `${-y}px`);
+      }
+    };
+
+    const startIntro = (solid: SplitText | null, outline: SplitText | null) => {
+      if (hero.dataset.intro !== 'pending') return;
+      // Un-hide first so from() tweens read the real end state, then hide via inline styles.
+      hero.dataset.intro = 'playing';
+      const tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
+      if (solid) {
+        tl.from(solid.chars, {
+          yPercent: 70,
+          scaleY: 1.8,
+          opacity: 0,
+          transformOrigin: '50% 100%',
+          duration: 1.15,
+          stagger: 0.045,
+        });
+      }
+      if (outline && ghost) {
+        tl.from(outline.chars, { opacity: 0, x: -30, duration: 1.1, stagger: 0.03, ease: 'power3.out' }, 0.35);
+      }
+      tl.from(introItems, { y: 28, opacity: 0, duration: 1, stagger: 0.07, clearProps: 'transform,opacity' }, 0.45);
+      tl.eventCallback('onComplete', () => {
+        hero.dataset.intro = 'done';
+      });
+    };
+
+    if (reduced) {
+      hero.dataset.intro = 'done';
+    } else {
+      let solid: SplitText | null = null;
+      let outline: SplitText | null = null;
+      const prepare = () => {
+        if (!wordmark || !ghost) return;
+        solid = SplitText.create(wordmark.querySelectorAll('.wm-word'), {
+          type: 'chars',
+          charsClass: 'wm-char',
+          aria: 'none',
+          autoSplit: true,
+          onSplit: (self) => {
+            wordmark.classList.add('is-split');
+            requestAnimationFrame(() => paintCharGradients(self));
+          },
+        });
+        outline = SplitText.create(ghost.querySelectorAll('.wm-word'), { type: 'chars', charsClass: 'wm-char', aria: 'none', autoSplit: true });
+      };
+
+      let armed = false;
+      const go = () => {
+        if (armed) return;
+        armed = true;
+        startIntro(solid, outline);
+        queueLoad(1300);
+      };
+      const fontsReady = document.fonts?.ready ?? Promise.resolve();
+      Promise.race([fontsReady, new Promise((r) => setTimeout(r, 1500))]).then(() => {
+        try {
+          prepare();
+        } catch (err) {
+          console.warn('[hero] SplitText failed', err);
+        }
+        whenReady(go);
+        // Safety net if the intro loader never reports in (or was skipped without a handshake).
+        window.setTimeout(go, skipIntro ? 1200 : 7000);
+      });
+      window.addEventListener('resize', () => {
+        if (solid) paintCharGradients(solid);
+      });
+    }
+
+    /* ---------------- scroll exit ---------------- */
+    if (!reduced) {
+      ScrollTrigger.create({
+        trigger: hero,
+        start: 'top top',
+        end: 'bottom top',
+        onUpdate: (self) => {
+          exitProgress = self.progress;
+          scene?.setExit(self.progress);
+        },
+      });
+      const exitTl = gsap.timeline({
+        scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: 0.5 },
+        defaults: { ease: 'none' },
+      });
+      // timeline is 1 unit long = the whole hero scrolling away
+      if (canvas) exitTl.to(canvas, { yPercent: 38, duration: 1 }, 0);
+      const wm = [wordmark, ghost].filter(Boolean) as HTMLElement[];
+      exitTl.to(wm, { yPercent: -45, opacity: 0.12, duration: 0.6 }, 0);
+      const foot = hero.querySelectorAll('.hero-pitch, .hero-ignition, .hero-driver, .hero-scroll, .si-stamp, .hero-kicker');
+      exitTl.to(foot, { y: -60, opacity: 0, duration: 0.22, stagger: 0.012 }, 0.02);
+      if (streaks) {
+        exitTl.fromTo(streaks, { opacity: 0 }, { opacity: 1, duration: 0.25 }, 0.05);
+        exitTl.fromTo(streaks.children, { xPercent: 60 }, { xPercent: -160, duration: 0.8, stagger: 0.015 }, 0.05);
+      }
+    }
+  }
+</script>

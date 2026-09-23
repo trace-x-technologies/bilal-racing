@@ -1,9 +1,919 @@
 ---
-// STUB — owned by the "three" builder. Replace this file entirely.
+/**
+ * The Car (#car): a pinned, scroll-scrubbed exploded view of the procedural
+ * BR-09. Parts separate along their explode vectors, callouts track projected 3D
+ * anchors and reveal each part's joke spec, the DRS opens, then it all rebuilds.
+ *
+ * Mobile: shorter pin, numbered markers on the car + an "on the bench" card, full
+ * parts list below. Reduced motion: no pin, one static exploded render + list.
+ */
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import { team, stats, sinhala } from '@/data/lore';
+import { PART_INFO, SPEC_JOKES } from '@/scripts/three/parts';
+import { carPosterSVG } from '@/scripts/three/poster';
+
+const topSpeed = stats.find((s) => s.label === 'Top speed');
+const specs: Array<{ k: string; v: string; note?: string }> = [
+  { k: 'Chassis', v: team.car },
+  { k: 'Power unit', v: team.engine },
+  { k: 'Power', v: SPEC_JOKES.power },
+  { k: 'Tyres', v: team.tyres },
+  { k: 'Weight', v: SPEC_JOKES.weight },
+  { k: '0–100 km/h', v: SPEC_JOKES.zeroToHundred },
+  ...(topSpeed ? [{ k: 'Top speed', v: `${topSpeed.value}${topSpeed.suffix}`, note: topSpeed.note }] : []),
+  { k: 'Gearbox', v: SPEC_JOKES.gearbox },
+  { k: 'Brakes', v: SPEC_JOKES.brakes },
+  { k: 'Fuel', v: SPEC_JOKES.fuel },
+];
+const phases = [
+  { id: 'assembled', label: 'Assembled', from: 0 },
+  { id: 'teardown', label: 'Teardown', from: 0.07 },
+  { id: 'inspect', label: 'Inspection', from: 0.3 },
+  { id: 'drs', label: 'DRS', from: 0.78 },
+  { id: 'rebuild', label: 'Rebuild', from: 0.87 },
+];
+const pad = (n: number) => String(n).padStart(2, '0');
+const poster = carPosterSVG('car-bp');
 ---
 
-<section class="section stub" id="car" aria-label="The Car">
+<section class="section car" id="car" aria-labelledby="car-title" data-car>
   <div class="container">
-    <p class="t-mono t-mute">[three] The Car — coming soon</p>
+    <SectionHeading
+      index="03"
+      kicker="The Car"
+      title="BR-09 <em>Purrari</em>"
+      si={sinhala.vegaya.si}
+      id="car-title"
+      lead="Hand-built in a Malabe garage from carbon fibre, gold paint and questionable decisions. Scroll to take it apart. The stewards said it’s fine."
+    />
+  </div>
+
+  <div class="car-scroll" data-car-scroll>
+    <div class="car-stage" data-car-stage>
+      <div class="car-viewport" data-car-viewport>
+        <div class="car-poster" data-car-poster set:html={poster} />
+        <canvas class="car-canvas" data-car-canvas aria-hidden="true"></canvas>
+        <div class="car-frame" data-car-frame aria-hidden="true"></div>
+        <svg class="car-leaders" aria-hidden="true" data-car-leaders>
+          {
+            PART_INFO.map(() => (
+              <g>
+                <line x1="0" y1="0" x2="0" y2="0" />
+                <circle cx="0" cy="0" r="3.5" />
+              </g>
+            ))
+          }
+        </svg>
+        <ol class="car-callouts" aria-hidden="true" data-car-callouts>
+          {
+            PART_INFO.map((p, i) => (
+              <li class="callout">
+                <span class="callout-num">{pad(i + 1)}</span>
+                <span class="callout-body">
+                  <span class="callout-label">{p.label}</span>
+                  <span class="callout-joke">{p.joke}</span>
+                </span>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+
+      <div class="car-hud" aria-hidden="true">
+        <p class="hud-readout t-mono">
+          <span class="hud-tag">Teardown</span>
+          <span class="hud-pct"><span data-car-pct>000</span>%</span>
+        </p>
+        <div class="hud-bar"><span data-car-bar></span></div>
+        <ol class="hud-phases t-mono">
+          {phases.map((ph) => <li data-phase={ph.from}>{ph.label}</li>)}
+        </ol>
+      </div>
+
+      <div class="car-bench" aria-hidden="true" data-car-bench>
+        <p class="bench-kicker t-mono"><span data-bench-num>—</span> / {pad(PART_INFO.length)} · On the bench</p>
+        <p class="bench-label" data-bench-label>Scroll to take it apart</p>
+        <p class="bench-joke" data-bench-joke>Twelve parts, one cat, zero instruction manuals.</p>
+      </div>
+
+      <aside class="car-spec car-spec--pinned" aria-labelledby="car-spec-title">
+        <p class="spec-kicker t-mono">Tech spec · BR-09</p>
+        <h3 class="spec-title" id="car-spec-title">Purr-formance</h3>
+        <dl class="spec-list">
+          {
+            specs.map((s) => (
+              <div class="spec-row">
+                <dt class="t-mono">{s.k}</dt>
+                <dd>
+                  {s.v}
+                  {s.note && <span class="spec-note">{s.note}</span>}
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+        <p class="spec-foot t-mono">FIA homologation: pending. FIA response: “what?”</p>
+      </aside>
+    </div>
+  </div>
+
+  <div class="container car-after">
+    <aside class="car-spec car-spec--flow" aria-labelledby="car-spec-title-flow">
+      <p class="spec-kicker t-mono">Tech spec · BR-09</p>
+      <h3 class="spec-title" id="car-spec-title-flow">Purr-formance</h3>
+      <dl class="spec-list">
+        {
+          specs.map((s) => (
+            <div class="spec-row">
+              <dt class="t-mono">{s.k}</dt>
+              <dd>
+                {s.v}
+                {s.note && <span class="spec-note">{s.note}</span>}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+    </aside>
+
+    <div class="parts">
+      <h3 class="parts-title">
+        <span class="t-mono parts-kicker">Parts manifest</span>
+        <span>12 parts. 0 spares. 1 suspicious hairball.</span>
+      </h3>
+      <ol class="parts-list" data-reveal-stagger="50">
+        {
+          PART_INFO.map((p, i) => (
+            <li class="part" data-reveal="up" data-part-item>
+              <span class="part-num t-mono">{pad(i + 1)}</span>
+              <span class="part-label">{p.label}</span>
+              <span class="part-real t-mono">{p.real}</span>
+              <span class="part-joke">{p.joke}</span>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
   </div>
 </section>
+
+<style>
+  .car {
+    --stage-top: var(--nav-h);
+    padding-bottom: var(--space-9);
+    overflow-x: clip;
+  }
+
+  /* ---------------- scroll + sticky stage ---------------- */
+  .car-scroll {
+    position: relative;
+    height: 280svh;
+  }
+
+  .car-stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    min-height: 32rem;
+    overflow: clip;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding-top: calc(var(--stage-top) + var(--space-3));
+  }
+
+  .car-stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(70% 60% at 45% 55%, color-mix(in oklab, var(--c-teal) 7%, transparent), transparent 70%),
+      radial-gradient(50% 50% at 80% 20%, color-mix(in oklab, var(--c-gold) 8%, transparent), transparent 70%),
+      linear-gradient(var(--c-line) 1px, transparent 1px) 0 0 / 100% 48px,
+      linear-gradient(90deg, var(--c-line) 1px, transparent 1px) 0 0 / 48px 100%;
+    mask-image: radial-gradient(90% 80% at 50% 55%, #000 40%, transparent 85%);
+  }
+
+  .car-viewport {
+    position: relative;
+    grid-row: 2;
+    min-height: 0;
+  }
+
+  .car-canvas,
+  .car-leaders {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .car-canvas {
+    opacity: 0;
+    transition: opacity 1s var(--ease-out-expo);
+  }
+
+  .car:global(.is-3d) .car-canvas {
+    opacity: 1;
+  }
+
+  .car-poster {
+    position: absolute;
+    inset: 8% 4%;
+    display: grid;
+    place-items: center;
+    transition: opacity 0.8s var(--ease-out-expo);
+  }
+
+  .car-poster :global(svg) {
+    width: min(100%, 52rem);
+    height: auto;
+    overflow: visible;
+  }
+
+  .car:global(.is-3d) .car-poster {
+    opacity: 0;
+  }
+
+  .car-frame {
+    position: absolute;
+    inset: 4% 3% 10%;
+    pointer-events: none;
+  }
+
+  .car-leaders {
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .car-leaders line {
+    stroke: color-mix(in oklab, var(--c-chalk) 55%, transparent);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    opacity: 0;
+  }
+
+  .car-leaders line:global(.is-active) {
+    stroke: var(--c-gold);
+    stroke-dasharray: none;
+    stroke-width: 1.5;
+  }
+
+  .car-leaders circle {
+    fill: var(--c-carbon);
+    stroke: var(--c-gold);
+    stroke-width: 1.5;
+    opacity: 0;
+  }
+
+  .car-leaders circle:global(.is-active) {
+    fill: var(--c-gold);
+  }
+
+  /* ---------------- callouts ---------------- */
+  .car-callouts {
+    list-style: none;
+    padding: 0;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .callout {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    max-width: 17rem;
+    padding: 0.35rem 0.6rem 0.35rem 0.4rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-s);
+    background: color-mix(in oklab, var(--c-carbon) 78%, transparent);
+    backdrop-filter: blur(6px);
+    visibility: hidden;
+    opacity: 0;
+    will-change: transform;
+    transition:
+      border-color var(--dur-med) var(--ease-out-expo),
+      background var(--dur-med) var(--ease-out-expo);
+  }
+
+  .callout:global(.is-left) {
+    flex-direction: row-reverse;
+    text-align: right;
+  }
+
+  .callout-num {
+    flex: none;
+    display: grid;
+    place-items: center;
+    min-width: 1.6rem;
+    height: 1.35rem;
+    padding-inline: 0.2rem;
+    border-radius: 3px;
+    background: var(--c-graphite);
+    color: var(--c-gold);
+    font-family: var(--f-mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+  }
+
+  .callout-body {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .callout-label {
+    font-family: var(--f-mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.35;
+    padding-top: 0.12rem;
+    white-space: nowrap;
+  }
+
+  .callout-joke {
+    display: none;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--c-mute);
+  }
+
+  .callout:global(.is-active) {
+    border-color: var(--c-gold);
+    background: color-mix(in oklab, var(--c-asphalt) 92%, transparent);
+    box-shadow: 0 12px 40px -18px color-mix(in oklab, var(--c-gold) 60%, transparent);
+    z-index: 2;
+  }
+
+  .callout:global(.is-active) .callout-num {
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+  }
+
+  .callout:global(.is-active) .callout-label {
+    color: var(--c-gold);
+    white-space: normal;
+    font-size: 0.72rem;
+  }
+
+  .callout:global(.is-active) .callout-joke {
+    display: block;
+  }
+
+  /* ---------------- HUD / progress ---------------- */
+  .car-hud {
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    width: min(100% - 2 * var(--gutter), var(--maxw));
+    margin-inline: auto;
+    z-index: 2;
+  }
+
+  .hud-readout {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .hud-pct {
+    color: var(--c-chalk);
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hud-bar {
+    height: 2px;
+    background: var(--c-line-strong);
+    overflow: hidden;
+  }
+
+  .hud-bar span {
+    display: block;
+    height: 100%;
+    background: var(--g-livery);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  .hud-phases {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    list-style: none;
+    padding: 0;
+    color: var(--c-faint);
+    font-size: 0.6rem;
+  }
+
+  .hud-phases li {
+    transition: color var(--dur-med) var(--ease-out-expo);
+  }
+
+  .hud-phases li::before {
+    content: '';
+    display: inline-block;
+    width: 0.4rem;
+    height: 0.4rem;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: 0.05rem;
+  }
+
+  .hud-phases li:global(.is-done) {
+    color: var(--c-mute);
+  }
+
+  .hud-phases li:global(.is-current) {
+    color: var(--c-gold);
+  }
+
+  /* ---------------- bench card (mobile) ---------------- */
+  .car-bench {
+    grid-row: 3;
+    display: grid;
+    gap: var(--space-1);
+    width: min(100% - 2 * var(--gutter), var(--maxw));
+    margin: 0 auto var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid var(--c-line-strong);
+    border-left: 3px solid var(--c-gold);
+    border-radius: var(--radius-s);
+    background: color-mix(in oklab, var(--c-asphalt) 88%, transparent);
+    min-height: 8.5rem;
+  }
+
+  .bench-kicker {
+    color: var(--c-gold);
+    font-size: 0.62rem;
+  }
+
+  .bench-label {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-stretch: 75%;
+    font-variation-settings: 'wdth' 75;
+    text-transform: uppercase;
+    font-size: 1.3rem;
+    line-height: 1.05;
+  }
+
+  .bench-joke {
+    color: var(--c-mute);
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  /* ---------------- spec sheet ---------------- */
+  .car-spec {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-m);
+    background:
+      linear-gradient(160deg, color-mix(in oklab, var(--c-gold) 7%, transparent), transparent 40%),
+      color-mix(in oklab, var(--c-asphalt) 86%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  .car-spec--pinned {
+    display: none;
+  }
+
+  .spec-kicker {
+    color: var(--c-gold);
+    font-size: 0.62rem;
+  }
+
+  .spec-title {
+    font-size: var(--fs-h3);
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    text-transform: uppercase;
+  }
+
+  .spec-list {
+    display: grid;
+  }
+
+  .spec-row {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: var(--space-3);
+    padding-block: 0.5rem;
+    border-top: 1px solid var(--c-line);
+  }
+
+  .spec-row dt {
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    padding-top: 0.2rem;
+  }
+
+  .spec-row dd {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
+
+  .spec-note {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--c-mute);
+    font-weight: 400;
+    font-size: 0.78rem;
+  }
+
+  .spec-foot {
+    color: var(--c-faint);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* ---------------- after the pin ---------------- */
+  .car-after {
+    display: grid;
+    gap: var(--space-7);
+    margin-top: var(--space-7);
+  }
+
+  .parts-title {
+    display: grid;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+    font-size: var(--fs-h3);
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 70;
+    text-transform: uppercase;
+  }
+
+  .parts-kicker {
+    color: var(--c-gold);
+    font-weight: 400;
+    font-size: var(--fs-micro);
+  }
+
+  .parts-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-3);
+    list-style: none;
+    padding: 0;
+  }
+
+  .part {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.2rem var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-s);
+    background: var(--c-asphalt);
+    transition:
+      border-color var(--dur-med) var(--ease-out-expo),
+      transform var(--dur-med) var(--ease-out-expo);
+  }
+
+  .part:hover {
+    border-color: color-mix(in oklab, var(--c-gold) 50%, transparent);
+  }
+
+  .part:global(.is-current) {
+    border-color: var(--c-gold);
+  }
+
+  .part-num {
+    grid-row: span 3;
+    color: var(--c-gold);
+    font-size: 0.8rem;
+    padding-top: 0.15rem;
+  }
+
+  .part-label {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-stretch: 80%;
+    font-variation-settings: 'wdth' 80;
+    font-size: 1.1rem;
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+
+  .part-real {
+    color: var(--c-mute);
+    font-size: 0.6rem;
+  }
+
+  .part-joke {
+    color: var(--c-mute);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: 0.3rem;
+  }
+
+  /* ---------------- phones: markers on the car, bench card below ---------------- */
+  @media (max-width: 759px) {
+    .car-scroll {
+      height: 270svh;
+    }
+
+    .callout {
+      padding: 0;
+      border: 0;
+      background: none;
+      backdrop-filter: none;
+    }
+
+    .callout-num {
+      min-width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: var(--c-carbon);
+      box-shadow: 0 0 0 1.5px var(--c-gold);
+    }
+
+    .callout-body {
+      display: none;
+    }
+
+    .callout:global(.is-active) {
+      background: none;
+      box-shadow: none;
+    }
+
+    .callout:not(:global(.is-active)) .callout-num {
+      scale: 0.82;
+      opacity: 0.8;
+    }
+
+    .callout:global(.is-active) .callout-num {
+      scale: 1.2;
+      background: var(--c-gold);
+      color: var(--c-on-gold);
+    }
+
+    .callout:global(.is-active) .callout-body {
+      display: none;
+    }
+
+    .hud-phases {
+      display: none;
+    }
+  }
+
+  /* ---------------- desktop: pinned spec sheet beside the car ---------------- */
+  @media (min-width: 760px) {
+    .car-scroll {
+      height: 380svh;
+    }
+
+    .car-stage {
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .car-bench {
+      display: none;
+    }
+
+    .car-spec--pinned {
+      display: grid;
+      position: absolute;
+      z-index: 3;
+      right: var(--gutter);
+      top: 50%;
+      translate: 0 -42%;
+      width: clamp(17rem, 24vw, 22rem);
+    }
+
+    .car-spec--flow {
+      display: none;
+    }
+
+    .car-frame {
+      inset: 2% calc(clamp(17rem, 24vw, 22rem) + var(--gutter) + 1rem) 6% 2%;
+    }
+
+    .car-poster {
+      inset: 6% calc(clamp(17rem, 24vw, 22rem) + var(--gutter) + 2rem) 12% 3%;
+    }
+
+    .car-hud {
+      grid-template-columns: auto minmax(0, 22rem) 1fr;
+    }
+
+    .hud-phases {
+      grid-column: 3;
+      justify-content: flex-end;
+    }
+  }
+
+  @media (min-width: 760px) and (max-width: 1099px) {
+    .spec-row {
+      grid-template-columns: 6rem minmax(0, 1fr);
+    }
+
+    .spec-row dd {
+      font-size: 0.82rem;
+    }
+
+    .car-spec--pinned .spec-note,
+    .car-spec--pinned .spec-foot {
+      display: none;
+    }
+  }
+
+  @media (min-width: 760px) and (max-height: 760px) {
+    .car-spec--pinned .spec-note,
+    .car-spec--pinned .spec-foot {
+      display: none;
+    }
+
+    .car-spec--pinned {
+      gap: var(--space-2);
+      padding: var(--space-4);
+    }
+
+    .car-spec--pinned .spec-row {
+      padding-block: 0.3rem;
+    }
+  }
+
+  /* ---------------- reduced motion: no pin, one static exploded frame ---------------- */
+  @media (prefers-reduced-motion: reduce) {
+    .car-scroll {
+      height: auto;
+    }
+
+    .car-stage {
+      position: relative;
+      height: min(100svh, 56rem);
+    }
+
+    .hud-bar,
+    .hud-phases,
+    .hud-readout {
+      display: none;
+    }
+
+    .car-bench {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { ScrollTrigger, prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
+  import { PART_INFO } from '@/scripts/three/parts';
+  import type { ExplodedScene } from '@/scripts/three/exploded-scene';
+
+  const root = document.querySelector<HTMLElement>('[data-car]');
+  if (root) initCar(root);
+
+  function supportsWebGL(): boolean {
+    try {
+      const c = document.createElement('canvas');
+      return Boolean(c.getContext('webgl2') ?? c.getContext('webgl'));
+    } catch {
+      return false;
+    }
+  }
+
+  function initCar(root: HTMLElement) {
+    const reduced = prefersReducedMotion();
+    const scroller = root.querySelector<HTMLElement>('[data-car-scroll]');
+    const stage = root.querySelector<HTMLElement>('[data-car-stage]');
+    const canvas = root.querySelector<HTMLCanvasElement>('[data-car-canvas]');
+    const frame = root.querySelector<HTMLElement>('[data-car-frame]');
+    const labels = Array.from(root.querySelectorAll<HTMLElement>('[data-car-callouts] .callout'));
+    const lines = Array.from(root.querySelectorAll<SVGLineElement>('[data-car-leaders] line'));
+    const dots = Array.from(root.querySelectorAll<SVGCircleElement>('[data-car-leaders] circle'));
+    const pctEl = root.querySelector<HTMLElement>('[data-car-pct]');
+    const bar = root.querySelector<HTMLElement>('[data-car-bar]');
+    const phaseEls = Array.from(root.querySelectorAll<HTMLElement>('[data-phase]'));
+    const benchNum = root.querySelector<HTMLElement>('[data-bench-num]');
+    const benchLabel = root.querySelector<HTMLElement>('[data-bench-label]');
+    const benchJoke = root.querySelector<HTMLElement>('[data-bench-joke]');
+    const partItems = Array.from(root.querySelectorAll<HTMLElement>('[data-part-item]'));
+    if (!scroller || !stage || !canvas || !frame) return;
+
+    let scene: ExplodedScene | null = null;
+    let progress = reduced ? 0.5 : 0;
+    let loading = false;
+
+    /* ---------------- progress UI ---------------- */
+    const paintProgress = (p: number) => {
+      if (pctEl) pctEl.textContent = String(Math.round(p * 100)).padStart(3, '0');
+      if (bar) bar.style.transform = `scaleX(${p.toFixed(4)})`;
+      let current = 0;
+      phaseEls.forEach((el, i) => {
+        if (p >= Number(el.dataset.phase)) current = i;
+      });
+      phaseEls.forEach((el, i) => {
+        el.classList.toggle('is-current', i === current);
+        el.classList.toggle('is-done', i < current);
+      });
+    };
+
+    const setActive = (i: number) => {
+      partItems.forEach((el, k) => el.classList.toggle('is-current', k === i));
+      if (!benchLabel || !benchJoke || !benchNum) return;
+      if (i >= 0) {
+        const part = PART_INFO[i];
+        benchNum.textContent = String(i + 1).padStart(2, '0');
+        benchLabel.textContent = part.label;
+        benchJoke.textContent = part.joke;
+      } else if (progress >= 0.86) {
+        benchNum.textContent = '12';
+        benchLabel.textContent = 'Reassembled. Mostly.';
+        benchJoke.textContent = 'There are two screws left over. The driver is sitting on them.';
+      } else {
+        benchNum.textContent = '—';
+        benchLabel.textContent = progress > 0.05 ? 'Unscrewing everything…' : 'Scroll to take it apart';
+        benchJoke.textContent = 'Twelve parts, one cat, zero instruction manuals.';
+      }
+    };
+
+    if (!reduced) {
+      ScrollTrigger.create({
+        trigger: scroller,
+        start: 'top top',
+        end: 'bottom bottom',
+        onUpdate: (self) => {
+          progress = self.progress;
+          scene?.setProgress(progress);
+          paintProgress(progress);
+        },
+        onRefresh: (self) => {
+          progress = self.progress;
+          scene?.setProgress(progress);
+          paintProgress(progress);
+        },
+      });
+    }
+    paintProgress(progress);
+
+    /* ---------------- 3D (lazy, near viewport) ---------------- */
+    const load = async () => {
+      if (loading || scene) return;
+      loading = true;
+      if (!supportsWebGL()) {
+        root.classList.add('is-fallback');
+        return;
+      }
+      try {
+        const mod = await import('@/scripts/three/exploded-scene');
+        scene = await mod.createExplodedScene({
+          canvas,
+          host: stage,
+          frame,
+          labels,
+          lines,
+          dots,
+          reduced,
+          lowPower: isLowPowerDevice(),
+          onFirstFrame: () => root.classList.add('is-3d'),
+          onActive: setActive,
+        });
+        if (!scene) root.classList.add('is-fallback');
+        else if (!reduced) scene.setProgress(progress);
+      } catch (err) {
+        console.warn('[car] 3D unavailable, keeping the blueprint.', err);
+        root.classList.add('is-fallback');
+      } finally {
+        loading = false;
+      }
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          void load();
+        }
+      },
+      { rootMargin: '80% 0px' },
+    );
+    io.observe(root);
+
+    window.addEventListener('pagehide', () => {
+      scene?.dispose();
+      scene = null;
+      root.classList.remove('is-3d');
+    });
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted && root.getBoundingClientRect().top < window.innerHeight * 2) void load();
+    });
+  }
+</script>
