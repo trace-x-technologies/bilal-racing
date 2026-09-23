@@ -46,3 +46,25 @@ export const store = {
     }
   },
 };
+
+/**
+ * Intro handshake. The Loader calls markReady() when the lights go out (or
+ * immediately when the intro is skipped); sections that choreograph an entrance
+ * use whenReady() so it works whether they load before or after that moment.
+ */
+export function markReady(): void {
+  if (document.documentElement.dataset.ready === 'true') return;
+  document.documentElement.dataset.ready = 'true';
+  emit('bilal:ready');
+}
+
+export function whenReady(callback: () => void): void {
+  if (document.documentElement.dataset.ready === 'true') {
+    callback();
+    return;
+  }
+  const off = on('bilal:ready', () => {
+    off();
+    callback();
+  });
+}

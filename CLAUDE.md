@@ -50,7 +50,8 @@ src/scripts/three/               Three.js car model + scenes
 - Declarative reveals: `data-reveal="up|fade|left|right|scale|clip"`, stagger children with
   `data-reveal-stagger="80"` on the parent.
 - Events: `emit('bilal:toast', { message })`, `on('bilal:zoomies', ...)`, `on('bilal:sound', ...)`.
-  The intro loader sets `sessionStorage['bilal:skip-intro']` handling and emits `bilal:ready`.
+  Intro handshake: Loader calls `markReady()` (from bus.ts) when lights go out; entrance animations
+  use `whenReady(cb)`. Loader plays once per session (`sessionStorage['bilal:skip-intro']`).
 - Accessibility: semantic HTML, visible focus, keyboard operable, `aria-live` for game results,
   alt text, WCAG AA contrast (use `--c-mute` or brighter for text), decorative art `aria-hidden`.
 - Performance: lazy-load heavy code (Three.js via dynamic `import()` when near viewport). Keep
