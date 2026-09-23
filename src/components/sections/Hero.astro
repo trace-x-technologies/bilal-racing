@@ -245,6 +245,12 @@ const siMeaning = ((m: string) => {
     z-index: 3;
   }
 
+  /* scrolled away: the faded-out foot (see the exit timeline) must not catch taps.
+     Keyboard focus still reaches it, and brings the hero back into view. */
+  .hero:global(.is-foot-gone) .hero-layout > :is(.hero-kicker, .si-stamp, .hero-pitch, .hero-ignition, .hero-driver, .hero-scroll) {
+    pointer-events: none;
+  }
+
   .hero-kicker {
     grid-area: kicker;
     display: flex;
@@ -1124,7 +1130,7 @@ const siMeaning = ((m: string) => {
 </style>
 
 <script>
-  import { gsap, ScrollTrigger, SplitText, prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
+  import { gsap, ScrollTrigger, SplitText, getLenis, prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
   import { emit, on, whenReady } from '@/scripts/bus';
   import { sound } from '@/scripts/audio';
   import type { HeroScene } from '@/scripts/three/hero-scene';
@@ -1378,8 +1384,13 @@ const siMeaning = ((m: string) => {
           scene?.setExit(self.progress);
         },
       });
+      // The exit starts once the hero's bottom reaches the bottom of the viewport. With a
+      // one-viewport hero that is 'top top'; on short screens (landscape phones) the hero
+      // is taller, so the pitch, ignition and CTAs get to scroll fully into view before
+      // they fade. clamp(): a refresh while the URL bar is collapsed (innerHeight > 100svh)
+      // would otherwise give a negative start and load the page part-faded.
       const exitTl = gsap.timeline({
-        scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: 0.5 },
+        scrollTrigger: { trigger: hero, start: 'clamp(bottom bottom)', end: 'bottom top', scrub: 0.5 },
         defaults: { ease: 'none' },
       });
       // timeline is 1 unit long = the whole hero scrolling away
@@ -1388,6 +1399,16 @@ const siMeaning = ((m: string) => {
       exitTl.to(wm, { yPercent: -45, opacity: 0.12, duration: 0.6 }, 0);
       const foot = hero.querySelectorAll('.hero-pitch, .hero-ignition, .hero-driver, .hero-scroll, .si-stamp, .hero-kicker');
       exitTl.to(foot, { y: -60, opacity: 0, duration: 0.22, stagger: 0.012 }, 0.02);
+      // Once every foot element is fully faded (0.02 + 0.22 + 5 × 0.012 = 0.3), stop it
+      // catching taps: on short screens it is still on screen, just invisible.
+      const footEnd = 0.02 + 0.22 + 0.012 * Math.max(0, foot.length - 1);
+      let footGone = false;
+      exitTl.eventCallback('onUpdate', () => {
+        const gone = exitTl.time() >= footEnd - 0.001;
+        if (gone === footGone) return;
+        footGone = gone;
+        hero.classList.toggle('is-foot-gone', gone);
+      });
       // Fade the stage wrapper (poster + "drag to spin" hint). Opacity only: hero-scene
       // reads the stage rect to place the car, and .stage-hint has a delayed CSS transition.
       if (stage) exitTl.to(stage, { opacity: 0, duration: 0.22, ease: 'none' }, 0.02);
@@ -1395,6 +1416,21 @@ const siMeaning = ((m: string) => {
         exitTl.fromTo(streaks, { opacity: 0 }, { opacity: 1, duration: 0.25 }, 0.05);
         exitTl.fromTo(streaks.children, { xPercent: 60 }, { xPercent: -160, duration: 0.8, stagger: 0.015 }, 0.05);
       }
+
+      // Keyboard focus can come back into the hero from further down the page (Tab past
+      // the nav, or wrapping around from the footer) while the scrub has faded these
+      // controls out. Jump to where the exit starts and settle the scrub on the same frame
+      // (like the crew tokens), so the focus ring never circles an invisible control.
+      hero.addEventListener('focusin', (e) => {
+        const target = e.target as HTMLElement | null;
+        const st = exitTl.scrollTrigger;
+        if (!st || !target?.matches(':focus-visible') || window.scrollY <= st.start + 4) return;
+        const lenis = getLenis();
+        if (lenis) lenis.scrollTo(st.start, { immediate: true });
+        else window.scrollTo({ top: st.start, behavior: 'instant' });
+        ScrollTrigger.update(); // bumps ScrollTrigger's scroll cache, then updates every trigger
+        st.getTween()?.progress(1);
+      });
     }
   }
 </script>

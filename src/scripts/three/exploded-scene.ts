@@ -35,8 +35,9 @@ export interface ExplodedScene {
 }
 
 const N = 12;
-/** Phones and portrait tablets: numbered markers on the car (see CarExploded.astro). */
-const COMPACT_QUERY = '(max-width: 759px), (max-width: 1099px) and (orientation: portrait)';
+/** Phones, portrait tablets and short landscape: numbered markers on the car (see CarExploded.astro). */
+const COMPACT_QUERY =
+  '(max-width: 759px), (max-width: 1099px) and (orientation: portrait), (max-height: 34.5em) and (orientation: landscape)';
 /** Minimum centre distance between compact markers (24 px discs, active one scaled up). */
 const MARKER_GAP = 26;
 const TOUR_START = 0.3;
