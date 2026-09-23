@@ -23,10 +23,10 @@ interface Entry {
 
 const field: Entry[] = [
   { code: driver.code, name: `${driver.nicknameLatin} #${driver.number}`, ms: 90, note: 'food was involved', tone: 'gold' },
-  { code: 'BOS', name: 'Team Principal', ms: 231, note: 'practised instead of building a car', tone: 'maroon' },
-  { code: 'ENG', name: 'Race Engineer', ms: 298, note: 'still checking', tone: 'teal' },
-  { code: 'FSH', name: 'Head of Catering', ms: 342, note: 'distracted by tuna', tone: 'saffron' },
-  { code: 'PLB', name: 'Head of Strategy', ms: 417, note: 'was executing Plan B', tone: 'purple' },
+  { code: 'TPR', name: 'Team Principal', ms: 231, note: 'practised instead of building a car', tone: 'maroon' },
+  { code: 'ENG', name: 'Race Engineer (seat open)', ms: 300, note: 'still checking', tone: 'teal' },
+  { code: 'CAT', name: 'Head of Catering (seat open)', ms: 342, note: 'distracted by tuna', tone: 'saffron' },
+  { code: 'STR', name: 'Head of Strategy (seat open)', ms: 417, note: 'was executing Plan\u00a0B', tone: 'purple' },
   { code: 'ZZZ', name: `${driver.nicknameLatin}, no food`, ms: 9000, note: 'woke up for the podium photo', tone: 'faint' },
   { code: 'YOU', name: 'You', ms: null, note: 'no time set — yet', tone: 'you' },
   { code: 'VAC', name: 'The vacuum cleaner', ms: null, note: 'DNS · Poosa fled the building', tone: 'faint' },
@@ -44,7 +44,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       kicker="Lights Out"
       id="lights-out-title"
       title="Lights out,<br/><em>ears up.</em>"
-      lead="Five red lights. Wait for them to go out, then pounce. Jump the start and the stewards (a cat) will know."
+      lead="Five red lights. Wait for them to go out, then pounce. Jump the start and the start marshal (a cat) will know."
       si={sinhala.ikmanata.si}
     />
 
@@ -80,7 +80,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
               ))
             }
           </div>
-          <div class="lo-plate t-mono"><Emblem size="1.1em" title="" /> Start control · stewards: 1 cat</div>
+          <div class="lo-plate t-mono"><Emblem size="1.1em" title="" /> Start control · marshal: 1 cat</div>
         </div>
 
         <div class="lo-readout">
@@ -101,9 +101,11 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         </button>
         <p class="visually-hidden" id="lo-help">
           Press Space or Enter to start. Five lights come on one per second, then go out after a random delay. Press
-          again the moment they go out.
+          again the moment they go out. Screen readers hear “Go!” when the lights go out. Turn sound on (top right) for
+          audio start cues.
         </p>
         <p class="visually-hidden" role="status" aria-live="polite" data-lo-live></p>
+        <p class="visually-hidden" aria-live="assertive" data-lo-go></p>
       </div>
 
       <!-- ================= Your stats + classification ================= -->
@@ -216,7 +218,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       subs: [
         'Clean launch. Poosa would like to see your paperwork.',
         'Sharp. Like claws on a brand-new sofa.',
-        'P2 behind a cat who was bribed with food. Respectable.',
+        'On the podium, behind a cat who was bribed with food. Respectable.',
       ],
     },
     {
@@ -256,6 +258,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     const badgeEl = q('[data-lo-badge]');
     const ctaEl = q('[data-lo-cta]');
     const liveEl = q('[data-lo-live]');
+    const goEl = q('[data-lo-go]');
     const bestEl = q('[data-lo-best]');
     const bestNoteEl = q('[data-lo-best-note]');
     const avgEl = q('[data-lo-avg]');
@@ -435,6 +438,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       setLit(0);
       if (badgeEl) badgeEl.hidden = true;
       setReadout('0.000', 'Hands ready', 'Five lights. Wait for all of them to go out.');
+      if (goEl) goEl.textContent = '';
       announce('Lights coming on. Wait for them to go out.');
       trigger!.focus({ preventScroll: true });
       for (let i = 1; i <= 5; i++) {
@@ -454,6 +458,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         if (state !== 'hold') return;
         setLit(0);
         setState('go');
+        if (goEl) goEl.textContent = 'Go!';
         goAt = performance.now();
         sound.play('go');
         if (verdictEl) verdictEl.textContent = 'Lights out!';
@@ -640,7 +645,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         await navigator.clipboard.writeText(`${text} ${url}`);
         emit('bilal:toast', { message: 'Copied! Paste it in the group chat, machan.', tone: 'gold' });
       } catch {
-        emit('bilal:toast', { message: `Couldn't copy — ${fmt(ms)} s. Screenshot it like it's 2015.`, tone: 'red' });
+        emit('bilal:toast', { message: `Couldn’t copy — ${fmt(ms)} s. Screenshot it like it’s 2015.`, tone: 'red' });
       }
     });
 
@@ -760,7 +765,9 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
 <style>
   .lights {
     overflow: clip;
+    /* Top layer fades the red glow in so it never starts on a hard edge. */
     background:
+      linear-gradient(to bottom, var(--c-carbon), rgb(7 7 11 / 0) 12rem),
       radial-gradient(70% 50% at 50% 0%, rgb(255 45 58 / 0.07), transparent 70%),
       var(--c-carbon);
   }
@@ -1487,9 +1494,13 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     background: var(--c-gold);
   }
 
+  /* Nothing to share yet: read as a ghost button, not a greyed-out slab. */
   .lo-btn-share:disabled {
     cursor: not-allowed;
-    opacity: 0.4;
+    opacity: 1;
+    background: transparent;
+    border: 1px solid var(--c-line-strong);
+    color: var(--c-mute);
   }
 
   .lo-btn-ghost {
@@ -1602,9 +1613,9 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
   }
 
   .lo-name small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
     font-size: 0.72rem;
     color: var(--c-mute);
   }
@@ -1622,6 +1633,11 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
 
   .lo-row[data-tone='you'] .lo-code {
     color: var(--c-gold);
+  }
+
+  /* Lifted a touch so it keeps AA on the gold-tinted highlight. */
+  .lo-row[data-tone='you'] .lo-pos {
+    color: color-mix(in oklab, var(--c-mute) 85%, var(--c-chalk));
   }
 
   /* ======================= Reduced motion ======================= */

@@ -45,6 +45,7 @@ const { class: className } = Astro.props;
   let anchor: HTMLButtonElement | null = null;
   let hideTimer = 0;
   let raf = 0;
+  let navObserver: MutationObserver | null = null;
 
   const supportsPopover = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
   const isVisible = (el: HTMLElement) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
@@ -60,7 +61,7 @@ const { class: className } = Astro.props;
     const w = hint.offsetWidth;
     const margin = 10;
     const cx = r.left + r.width / 2;
-    const left = Math.min(Math.max(margin, cx - w / 2), window.innerWidth - w - margin);
+    const left = Math.min(Math.max(margin, cx - w / 2), document.documentElement.clientWidth - w - margin);
     hint.style.left = `${Math.round(left)}px`;
     hint.style.top = `${Math.round(r.bottom + 14)}px`;
     hint.style.setProperty('--arrow-x', `${Math.round(cx - left)}px`);
@@ -78,6 +79,8 @@ const { class: className } = Astro.props;
     window.removeEventListener('scroll', schedulePlace);
     window.removeEventListener('resize', schedulePlace);
     document.removeEventListener('keydown', onKey);
+    navObserver?.disconnect();
+    navObserver = null;
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     try {
@@ -96,6 +99,8 @@ const { class: className } = Astro.props;
     if (!btn || !bubble) return;
     const r = btn.getBoundingClientRect();
     if (r.bottom < 0 || r.top > window.innerHeight) return;
+    const navEl = btn.closest<HTMLElement>('[data-nav]');
+    if (navEl?.dataset.hidden === 'true') return;
     store.set(HINT_KEY, true);
     hint = bubble;
     anchor = btn;
@@ -106,6 +111,15 @@ const { class: className } = Astro.props;
       return;
     }
     place();
+    if (!hint) return;
+    // The nav slides away on scroll-down with a transform that outlives the last
+    // scroll event, so re-placing on scroll can't catch it: follow its state.
+    if (navEl) {
+      navObserver = new MutationObserver(() => {
+        if (navEl.dataset.hidden === 'true') hideHint();
+      });
+      navObserver.observe(navEl, { attributes: true, attributeFilter: ['data-hidden'] });
+    }
     window.addEventListener('scroll', schedulePlace, { passive: true });
     window.addEventListener('resize', schedulePlace, { passive: true });
     document.addEventListener('keydown', onKey);
@@ -395,6 +409,13 @@ const { class: className } = Astro.props;
     border-radius: 50%;
     color: var(--c-on-gold);
     transition: background-color var(--dur-fast) ease;
+  }
+
+  /* 44px hit area without growing the visible 28px button. */
+  .st-hint-close::before {
+    content: '';
+    position: absolute;
+    inset: -0.5rem;
   }
 
   .st-hint-close:hover {
