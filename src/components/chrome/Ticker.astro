@@ -8,8 +8,8 @@
 import { team, driver, sinhala } from '@/data/lore';
 
 const jokes = [
-  'Powered by tuna',
-  'Box box = nap time',
+  'Fuel: 100% tuna, 0% urgency',
+  'Box, box = nap time',
   'Nine lives · zero pit-stop discipline',
   `Tyres by ${team.tyres}`,
   'DRS: Deploy Rest Sequence',
@@ -95,6 +95,9 @@ const words = [
     position: relative;
     z-index: 2;
     height: calc(var(--tape-h) * 2 + 8.5rem);
+    /* Tuck the band's lower edge (flag pill) into the next section's top padding, so the
+       tapes lead straight into the Driver heading instead of floating over a dead band. */
+    margin-bottom: calc(var(--section-pad) * -0.5);
     overflow-x: clip;
     display: grid;
     place-items: center;
