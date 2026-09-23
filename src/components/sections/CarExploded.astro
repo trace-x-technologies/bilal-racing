@@ -174,7 +174,8 @@ const poster = carPosterSVG('car-bp');
     position: sticky;
     top: 0;
     height: 100svh;
-    min-height: 32rem;
+    /* never taller than the viewport, or its bottom stays out of reach while pinned */
+    min-height: min(32rem, 100svh);
     overflow: clip;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
@@ -576,6 +577,8 @@ const poster = carPosterSVG('car-bp');
   .part {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
+    /* row-mates can be taller (2-line real names): keep the slack at the bottom, not between rows */
+    align-content: start;
     gap: 0.2rem var(--space-3);
     padding: var(--space-4);
     border: 1px solid var(--c-line);
@@ -623,9 +626,9 @@ const poster = carPosterSVG('car-bp');
     margin-top: 0.3rem;
   }
 
-  /* ---------------- phones + portrait tablets: markers on the car, bench card below ----------------
+  /* ---------------- phones, portrait tablets, short landscape: markers on the car + bench card ----------------
      Keep this query identical to COMPACT_QUERY in exploded-scene.ts (JS marker mode). */
-  @media (max-width: 759px), (max-width: 1099px) and (orientation: portrait) {
+  @media (max-width: 759px), (max-width: 1099px) and (orientation: portrait), (max-height: 34.5em) and (orientation: landscape) {
     .car-scroll {
       height: 270svh;
     }
@@ -674,8 +677,10 @@ const poster = carPosterSVG('car-bp');
     }
   }
 
-  /* ---------------- desktop + landscape tablets: pinned spec sheet beside the car ---------------- */
-  @media (min-width: 1100px), (min-width: 760px) and (orientation: landscape) {
+  /* ---------------- desktop + landscape tablets: pinned spec sheet beside the car ----------------
+     (height > 34.5em): below ~552 px the pinned card no longer fits the stage, so short landscape
+     (phones on their side, squat windows) uses the compact layout instead. */
+  @media (min-width: 1100px) and (height > 34.5em), (min-width: 760px) and (orientation: landscape) and (height > 34.5em) {
     .car-scroll {
       height: 380svh;
     }
@@ -738,7 +743,7 @@ const poster = carPosterSVG('car-bp');
     }
   }
 
-  @media (min-width: 760px) and (max-height: 760px) {
+  @media (min-width: 760px) and (max-height: 760px) and (height > 34.5em) {
     .car-spec--pinned .spec-note,
     .car-spec--pinned .spec-foot {
       display: none;
@@ -751,6 +756,39 @@ const poster = carPosterSVG('car-bp');
 
     .car-spec--pinned .spec-row {
       padding-block: 0.3rem;
+    }
+  }
+
+  /* ---------------- short landscape (phones on their side): bench card beside the car ----------------
+     The stage is only ~360-550 px tall, so a bench card below the car would leave no room for it.
+     Motion only: with reduced motion the bench is hidden and the car keeps the full width. */
+  @media (max-height: 34.5em) and (orientation: landscape) and (prefers-reduced-motion: no-preference) {
+    .car-stage {
+      grid-template-columns: minmax(0, 1fr) min(16rem, 34vw);
+      grid-template-rows: auto minmax(0, 1fr);
+      column-gap: var(--space-4);
+    }
+
+    .car-hud {
+      grid-column: 1 / -1;
+    }
+
+    .hud-phases {
+      display: none;
+    }
+
+    .car-viewport {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .car-bench {
+      grid-column: 2;
+      grid-row: 2;
+      align-self: center;
+      width: auto;
+      min-height: 0;
+      margin: 0 var(--gutter) var(--space-3) 0;
     }
   }
 
