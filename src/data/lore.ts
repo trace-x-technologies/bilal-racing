@@ -36,7 +36,7 @@ export const driver = {
   flag: '🇱🇰',
   role: 'Race Driver · Chief Napping Officer',
   helmet: 'Carbon lid with factory-fitted ear bumps',
-  superLicence: 'Essential-services travel pass, Sri Lanka Police (2021)',
+  superLicence: 'Essential-services letter to Sri Lanka Police (2021)',
   favouriteTrack: 'The warm bonnet after a long drive',
   signatureMove: 'The 3 a.m. Zoomies',
   weakness: 'Laser pointers in braking zones',

@@ -1,8 +1,13 @@
 ---
 import '@fontsource-variable/saira/wdth.css';
-import '@fontsource-variable/noto-sans-sinhala/wght.css';
 import '@fontsource-variable/jetbrains-mono/wght.css';
 import '@/styles/global.css';
+import sinhalaWoff2 from '@fontsource-variable/noto-sans-sinhala/files/noto-sans-sinhala-sinhala-wght-normal.woff2?url';
+
+// Only the Sinhala subset of Noto: its latin faces were fetched just for the
+// space inside Sinhala phrases (Saira covers latin). Inlined so the face is
+// known before the main stylesheet arrives.
+const sinhalaFace = `@font-face{font-family:'Noto Sans Sinhala Variable';font-style:normal;font-display:swap;font-weight:100 900;src:url(${sinhalaWoff2}) format('woff2-variations');unicode-range:U+0964-0965,U+0D81-0DF4,U+1CF2,U+200C-200D,U+25CC,U+111E1-111F4;}`;
 
 interface Props {
   title?: string;
@@ -23,6 +28,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <style is:inline set:html={sinhalaFace} />
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="robots" content="noindex, nofollow" />

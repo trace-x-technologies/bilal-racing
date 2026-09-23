@@ -120,6 +120,11 @@ a:hover {
   border-radius: 2px;
 }
 
+/* Sections focused programmatically by in-page links (motion.ts focusTarget). */
+[data-nav-focus]:focus {
+  outline: none;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -258,6 +263,18 @@ body::after {
 
 [data-reveal='clip'].is-in {
   clip-path: inset(0 0 0 0);
+}
+
+/* Keyboard focus landing inside a not-yet-revealed block shows it at once,
+ * so a focus ring never circles an invisible control. (0,4,0) beats the variants. */
+.js-motion [data-reveal]:not(.is-in):focus-within,
+.js-motion [data-reveal]:not(.is-in):focus {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  clip-path: none;
+  transition-duration: 0s;
+  transition-delay: 0s;
 }
 
 /* ================= Scroll progress (CSS scroll-driven animation) ================= */
