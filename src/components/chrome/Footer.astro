@@ -27,6 +27,15 @@ const links = [
   { id: 'tech', label: 'Tech regs' },
 ];
 const letters = ['B', 'I', 'L', 'A', 'L'];
+// Stint notes by seconds spent in the footer. All four are stacked in one grid cell, so the
+// note is always sized for the longest: a later, longer line can't grow the footer after
+// ScrollTrigger has measured it.
+const stintNotes: [number, string][] = [
+  [0, '· still warming the tyres'],
+  [60, '· longer than his last stint awake'],
+  [180, '· purple sector. He is napping.'],
+  [600, '· you are now officially crew'],
+];
 const year = new Date().getFullYear();
 ---
 
@@ -45,7 +54,16 @@ const year = new Date().getFullYear();
       </div>
       <p class="f-lap t-mono" aria-live="off">
         Your stint: <span class="f-lap-time" data-stint>00:00</span>
-        <span class="t-mute" data-stint-note>· still warming the tyres</span>
+        <span class="f-lap-note t-mute">
+          <span data-stint-note>{stintNotes[0]?.[1]}</span>
+          {
+            stintNotes.map(([at, line]) => (
+              <span class="f-lap-ghost" data-stint-line={at} aria-hidden="true">
+                {line}
+              </span>
+            ))
+          }
+        </span>
       </p>
     </div>
 
@@ -224,6 +242,19 @@ const year = new Date().getFullYear();
   .f-lap-time {
     color: var(--c-purple);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* One cell, sized by the longest note; only the live one is painted. */
+  .f-lap-note {
+    display: inline-grid;
+  }
+
+  .f-lap-note > * {
+    grid-area: 1 / 1;
+  }
+
+  .f-lap-ghost {
+    visibility: hidden;
   }
 
   .f-col-title {
@@ -485,12 +516,10 @@ const year = new Date().getFullYear();
     const stint = footer.querySelector<HTMLElement>('[data-stint]');
     const note = footer.querySelector<HTMLElement>('[data-stint-note]');
     const t0 = performance.now();
-    const notes: [number, string][] = [
-      [0, '· still warming the tyres'],
-      [60, '· longer than his last stint awake'],
-      [180, '· purple sector. He is napping.'],
-      [600, '· you are now officially crew'],
-    ];
+    const notes: [number, string][] = Array.from(
+      footer.querySelectorAll<HTMLElement>('[data-stint-line]'),
+      (el): [number, string] => [Number(el.dataset.stintLine), el.textContent?.trim() ?? ''],
+    );
     let timer = 0;
     const render = () => {
       const s = Math.floor((performance.now() - t0) / 1000);
