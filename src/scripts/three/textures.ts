@@ -302,7 +302,7 @@ export function tyreTexture(side: number): THREE.CanvasTexture {
   ctx.fillRect(0, 0, W, H);
   const sidePx = side * H;
   // tread: staggered paw prints, slightly lighter rubber
-  ctx.fillStyle = '#1c1c22';
+  ctx.fillStyle = '#19191e';
   const rows = 2;
   const perRow = 28;
   const treadTop = sidePx;

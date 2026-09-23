@@ -28,6 +28,8 @@ export interface HeroScene {
   startEngine(): void;
   /** Scroll exit progress 0–1. */
   setExit(p: number): void;
+  /** Konami "Zoomies mode": the turntable spins like a cat at 3 a.m. */
+  setZoomies(on: boolean): void;
   dispose(): void;
 }
 
@@ -301,6 +303,8 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
   let wheelSpeed = 0;
   let prevDrive = 0;
   let hover: { x: number; y: number } | null = null;
+  let zoomies = false;
+  let zoomYaw = 0;
   let firstFrame = false;
 
   const raycaster = new THREE.Raycaster();
@@ -321,7 +325,7 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
       lastX = e.clientX;
       userYaw += dx * 0.009;
       yawVel = dx * 0.009 * 60;
-      if (o.reduced) render();
+      if (o.reduced) still();
     } else if (e.pointerType === 'mouse') {
       hover = { x: e.clientX, y: e.clientY };
       if (o.reduced) updateHover();
@@ -341,6 +345,7 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
     if (!dragging || e.pointerId !== pointerId) return;
     dragging = false;
     o.canvas.classList.remove('is-dragging');
+    if (e.type === 'pointercancel') return; // the browser took over (e.g. vertical scroll)
     const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
     if (moved < 8 && performance.now() - downT < 500 && hitCar(e.clientX, e.clientY)) o.onCarClick?.();
   };
@@ -366,7 +371,8 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
       userYaw += yawVel * dt;
       yawVel *= Math.pow(0.03, dt);
     }
-    const idle = IDLE_YAW + Math.sin(time * 0.21) * 0.55 + userYaw;
+    if (zoomies) zoomYaw += dt * 4.5;
+    const idle = IDLE_YAW + Math.sin(time * 0.21) * 0.55 + userYaw + zoomYaw;
     const blend = easeInOut(span(exit, 0, 0.22));
     const driveTarget = DRIVE_YAW + TAU * Math.round((idle - DRIVE_YAW) / TAU);
     const yaw = lerp(idle, driveTarget, blend);
@@ -394,7 +400,7 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
       (Math.random() - 0.5) * 0.01 * shake,
     );
     car.body.rotation.set(Math.sin(time * 41) * 0.004 * shake, 0, Math.sin(time * 57) * 0.008 * shake);
-    wheelSpeed = Math.max(wheelSpeed * Math.pow(0.35, dt), env * 28);
+    wheelSpeed = Math.max(wheelSpeed * Math.pow(0.35, dt), env * 28, zoomies ? 30 : 0);
     car.spinWheels(wheelSpeed * dt + dDrive / 0.35);
     const heat = Math.max(env, clamp01(exit * 5) * 0.8);
     car.setGlow(heat);
@@ -458,6 +464,12 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
     }
   };
 
+  /** Reduced motion: re-compose the single still frame (e.g. after a drag). */
+  const still = () => {
+    update(0, 1.2);
+    render();
+  };
+
   const loop = createLoop(o.host, (dt, time) => {
     update(dt, time);
     render();
@@ -465,7 +477,7 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
 
   const ro = new ResizeObserver(() => {
     resize();
-    if (o.reduced) render();
+    if (o.reduced) still();
   });
   ro.observe(o.canvas);
   ro.observe(o.stage);
@@ -477,8 +489,7 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
 
   if (o.reduced) {
     // One composed still frame.
-    update(0, 1.2);
-    render();
+    still();
   } else {
     loop.start();
   }
@@ -504,6 +515,11 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
     },
     setExit(p) {
       if (!o.reduced) exitTarget = clamp01(p);
+    },
+    setZoomies(on) {
+      if (o.reduced) return;
+      zoomies = on;
+      if (on) emitSparks();
     },
     dispose() {
       loop.dispose();

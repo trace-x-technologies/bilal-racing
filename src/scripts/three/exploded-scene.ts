@@ -306,13 +306,11 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
   /* ---------- apply state ---------- */
   let target = 0;
   let current = 0;
-  let started = false;
   let lastActive = -2;
   let firstFrame = false;
   const look = new THREE.Vector3();
   const fitTarget = new THREE.Vector3();
-  let distS = 10;
-  const apply = (p: number, time: number, dt = 0, snap = false) => {
+  const apply = (p: number, time: number) => {
     const st = stateAt(p, cw < ch * 0.9);
     // static render: every part labelled, no guided tour
     if (o.reduced) st.active = -1;
@@ -333,19 +331,13 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
     scanMat.opacity = st.zoom * (0.16 + Math.sin(time * 2.4) * 0.08);
     scan.scale.setScalar(1 + st.zoom * 0.35);
 
-    // camera: orbit, auto-fitting whatever is currently flying around into the frame
-    if (snap) {
-      look.copy(fitTarget);
-      distS = dist;
-    } else {
-      const k = 1 - Math.pow(0.02, dt);
-      look.lerp(fitTarget, k);
-      distS += (dist - distS) * k;
-    }
+    // camera: orbit, auto-fitting whatever is currently flying around into the frame.
+    // Progress is already eased, so the fit follows it directly (no lag = no clipping).
+    look.copy(fitTarget);
     camera.position.set(
-      look.x + Math.sin(st.az) * Math.cos(st.el) * distS,
-      look.y + Math.sin(st.el) * distS,
-      look.z + Math.cos(st.az) * Math.cos(st.el) * distS,
+      look.x + Math.sin(st.az) * Math.cos(st.el) * dist,
+      look.y + Math.sin(st.el) * dist,
+      look.z + Math.cos(st.az) * Math.cos(st.el) * dist,
     );
     camera.lookAt(look);
     camera.updateMatrixWorld();
@@ -367,8 +359,7 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
   const loop = createLoop(o.host, (dt, time) => {
     current += (target - current) * (1 - Math.pow(0.0015, dt));
     if (Math.abs(target - current) < 0.0004) current = target;
-    apply(current, time, dt, !started);
-    started = true;
+    apply(current, time);
     render();
   });
 
@@ -376,7 +367,7 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
   const rs = new ResizeObserver(() => {
     resize();
     if (o.reduced) {
-      apply(current, 1, 0, true);
+      apply(current, 1);
       render();
     }
   });
@@ -389,7 +380,7 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
 
   if (o.reduced) {
     current = target = 0.5;
-    apply(current, 1, 0, true);
+    apply(current, 1);
     render();
   } else {
     loop.start();
@@ -401,7 +392,7 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
     },
     renderAt(p) {
       current = target = clamp01(p);
-      apply(current, 1, 0, true);
+      apply(current, 1);
       render();
     },
     dispose() {

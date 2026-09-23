@@ -398,6 +398,10 @@ export function buildCar(opts: BuildCarOptions = {}): Car {
     gold: paint(undefined, 0xffc52e, 0.15, 0.5, 0.5),
     saffron: paint(undefined, 0xff6a13, 0.1, 0.45, 0.5),
     maroon: paint(undefined, 0xa0153e, 0.1, 0.45, 0.5),
+    // satin paint for the whisker flaps so their colours don't wash out in reflections
+    flapGold: new THREE.MeshPhysicalMaterial({ color: 0xffc52e, metalness: 0.05, roughness: 0.45, clearcoat: 0.2, clearcoatRoughness: 0.3, envMapIntensity: 0.35 }),
+    flapSaffron: new THREE.MeshPhysicalMaterial({ color: 0xff6a13, metalness: 0.05, roughness: 0.45, clearcoat: 0.2, clearcoatRoughness: 0.3, envMapIntensity: 0.35 }),
+    flapMaroon: new THREE.MeshPhysicalMaterial({ color: 0xa0153e, metalness: 0.05, roughness: 0.45, clearcoat: 0.2, clearcoatRoughness: 0.3, envMapIntensity: 0.35 }),
     goldMetal: new THREE.MeshPhysicalMaterial({ color: 0xffc52e, metalness: 0.9, roughness: 0.22, clearcoat: 0.5 }),
     carbon: new THREE.MeshPhysicalMaterial({ color: 0x4a4a52, map: tex(TX.carbonTexture()), metalness: 0, roughness: 0.8, specularIntensity: 0.1, envMapIntensity: 0.15 }),
     satin: new THREE.MeshStandardMaterial({ color: 0x16161d, metalness: 0.4, roughness: 0.5 }),
@@ -474,9 +478,9 @@ export function buildCar(opts: BuildCarOptions = {}): Car {
   add('frontwing', catNose);
   const fwEls: Array<Partial<WingOpts> & { mat: THREE.Material }> = [
     { le: 2.98, chord: 0.3, y: 0.08, aoa: 0.04, bend: 0.025, sweep: 0.02, mat: M.black },
-    { le: 2.72, chord: 0.15, y: 0.12, aoa: 0.24, bend: 0.05, sweep: 0.05, mat: M.maroon },
-    { le: 2.6, chord: 0.125, y: 0.155, aoa: 0.4, bend: 0.07, sweep: 0.07, mat: M.saffron },
-    { le: 2.5, chord: 0.105, y: 0.19, aoa: 0.56, bend: 0.09, sweep: 0.09, mat: M.gold },
+    { le: 2.72, chord: 0.15, y: 0.12, aoa: 0.24, bend: 0.05, sweep: 0.05, mat: M.flapMaroon },
+    { le: 2.6, chord: 0.125, y: 0.155, aoa: 0.4, bend: 0.07, sweep: 0.07, mat: M.flapSaffron },
+    { le: 2.5, chord: 0.105, y: 0.19, aoa: 0.56, bend: 0.09, sweep: 0.09, mat: M.flapGold },
   ];
   for (const el of fwEls) {
     add(
