@@ -6,7 +6,7 @@ A fictional Formula 1 team website for a group of friends. "Bilal" puns on *Bila
   Sinhala — *the cat owns the team*. Pit-wall callsign **RAT** (a cat whose callsign is RAT).
   **#9 / nine lives is the team's lucky number** (painted on the shark fin), not a car number.
 - **Drivers: Isuru Dharmadasa #13 (DHA)** and **Yasas Deegala #17 (DEE)**.
-- **Crew**: 11 friends in `src/data/crew.ts` (real names + face-cropped avatars; Isuru Perera, the new rear jack, has no photo yet → monogram token). No open seats.
+- **Crew**: 11 friends in `src/data/crew.ts` (real names + face-cropped avatars). No open seats.
 Shared among friends as a fun distraction, so it must be **funny, cool, and a showcase of modern
 web tech** (scroll animations, WebGL, Web Audio, View Transitions, CSS scroll-driven animations).
 Pronouns: the owner is referred to as "he"; for everyone else avoid gendered pronouns in copy

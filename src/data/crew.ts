@@ -120,8 +120,8 @@ export const crew: CrewRole[] = [
     id: 'rear-jack',
     group: 'pitcrew',
     role: 'Rear Jack',
-    duty: 'Newest signing. Guards the tail — the owner’s actual tail. Still learning which end of the car that is.',
+    duty: 'Guards the tail — the owner’s actual tail. Still learning which end of the car that is.',
     slot: { x: 50, y: 92 },
-    person: { name: 'Isuru Perera', nickname: 'The new guy', code: 'PER' },
+    person: { name: 'Isuru Perera', nickname: 'IsuruT', photo: 'isuru-perera.jpg', code: 'PER' },
   },
 ];
