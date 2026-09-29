@@ -101,7 +101,7 @@ export const drivers: Driver[] = [
     lastName: 'Dharmadasa',
     code: 'DHA',
     number: 13,
-    numberJoke: 'Unlucky — for everyone behind him.',
+    numberJoke: 'Unlucky — for everyone behind.',
     photo: 'isuru-dharmadasa.jpg',
     focal: '40% 35%',
     nationality: 'Sri Lanka',
@@ -132,16 +132,16 @@ export const drivers: Driver[] = [
     nationality: 'Sri Lanka',
     flag: '🇱🇰',
     role: 'Race Driver · Car #17',
-    bio: 'Does pre-season training beside waterfalls with no phone signal, which is also where the race engineer finds him on race day. Calm, fast and suspiciously well-hydrated.',
+    bio: 'Does pre-season training beside waterfalls with no phone signal, which is also where the race engineer finds #17 on race day. Calm, fast and suspiciously well-hydrated.',
     helmet: 'Jungle-green lid with a waterproof visor (tested at 17 waterfalls)',
     signatureMove: 'The switchback overtake',
     weakness: 'Stopping to take scenic photos on the out-lap',
     radioCatchphrase: 'No signal. Going flat out anyway.',
     stats: [
       { label: 'Waterfalls visited in pre-season', value: 17, suffix: '', note: 'Engineers visited zero.' },
-      { label: 'Top speed', value: 311, suffix: ' km/h', note: 'He says 313. Telemetry disagrees.' },
+      { label: 'Top speed', value: 311, suffix: ' km/h', note: '#17 says 313. Telemetry disagrees.' },
       { label: 'Reaction time', value: 0.17, suffix: ' s', decimals: 2, note: 'Also number-matched. Coincidence.' },
-      { label: 'Overtakes on his teammate', value: 0, suffix: '', note: 'Officially. Unofficially: classified.' },
+      { label: 'Overtakes on the teammate', value: 0, suffix: '', note: 'Officially. Unofficially: classified.' },
     ],
   },
 ];
@@ -220,26 +220,3 @@ export const sinhala = {
   kaema: { si: 'කෑම', latin: 'kæma', en: 'food' },
   ninda: { si: 'නින්ද', latin: 'ninda', en: 'sleep' },
 } as const;
-
-/* ------------------------------------------------------------------------ */
-/* DEPRECATED — temporary shims for the line-up migration. The site used to  */
-/* treat Nirod as the driver. Migrate every usage to `owner` / `drivers` /   */
-/* `ownerStats`; these exports are deleted once nothing imports them.        */
-/* ------------------------------------------------------------------------ */
-/** @deprecated use `owner` (Team Principal) or `drivers` */
-export const driver = {
-  ...owner,
-  code: owner.callsign,
-  number: team.luckyNumber,
-  helmet: 'Carbon lid with factory-fitted ear bumps',
-  favouriteTrack: 'The warm bonnet after a long drive',
-} as const;
-/** @deprecated use `ownerStats` or `drivers[i].stats` */
-export const stats = [
-  { label: 'Lives remaining', value: 9, suffix: '/9', note: 'Unconfirmed. Stewards investigating.' },
-  { label: 'Naps per race weekend', value: 14, suffix: '', note: 'Including one during the anthem.' },
-  { label: 'Top speed', value: 312, suffix: ' km/h', note: 'Only recorded when a tuna can opens.' },
-  { label: 'Pole positions', value: 0, suffix: '', note: 'Prefers boxes to poles.' },
-  { label: 'Reaction time to food', value: 0.09, suffix: ' s', decimals: 2, note: 'To alarm clocks: 9 minutes.' },
-  { label: 'Fastest laps', value: 99, suffix: '', note: 'Around the living room.' },
-] as const;

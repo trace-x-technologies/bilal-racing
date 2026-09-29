@@ -92,6 +92,3 @@ export const gallery: PhotoEntry[] = [
   { id: 'shed-selfie', folder: 'together', file: 'shed-selfie.jpg', alt: 'Friends in caps and hats taking a selfie under a shelter', caption: 'Rain delay. Morale: suspiciously high.', focal: '50% 45%' },
   { id: 'wedding-bouquet', folder: 'together', file: 'wedding-bouquet.jpg', alt: 'Two friends in wedding clothes taking a selfie with a bouquet', caption: 'Someone caught the bouquet. Stewards are investigating.', focal: '50% 40%' },
 ];
-
-/** @deprecated use `ownerPortrait` or `driverPortraits` — removed after the line-up migration. */
-export const driverPortrait = ownerPortrait;

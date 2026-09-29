@@ -35,6 +35,7 @@ const resolved = resolvePhoto(photo);
       widths={widths}
       sizes={sizes}
       loading={loading}
+      pictureAttributes={{ class: 'photo-slot-pic' }}
       class:list={['photo-slot', className]}
       style={resolved.focal ? `object-position: ${resolved.focal}` : undefined}
     />
@@ -42,7 +43,7 @@ const resolved = resolvePhoto(photo);
     <div class:list={['photo-slot', 'photo-placeholder', className]} role="img" aria-label={`${resolved.alt} (photo coming soon)`}>
       <Emblem size="100%" class="ph-emblem" title="" />
       <span class="ph-label t-mono">{resolved.placeholder ?? 'Photo incoming'}</span>
-      <span class="ph-sub t-mono">{photo.folder === 'driver' ? 'Driver is napping · photo pending' : 'Photo pending'}</span>
+      <span class="ph-sub t-mono">{photo.folder === 'team' ? 'Owner is napping · photo pending' : 'Photo pending'}</span>
     </div>
   )
 }
@@ -52,6 +53,15 @@ const resolved = resolvePhoto(photo);
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* The <picture> wrapper must fill fixed-aspect frames too, or the img
+     falls back to its natural aspect and object-position is ignored. In
+     auto-height contexts 100% resolves to auto, so natural flow is unchanged. */
+  :global(picture.photo-slot-pic) {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   :global(picture.photo-slot) :global(img),
