@@ -3,6 +3,11 @@
  * 04 · The Crew — top-down pit-box formation + scroll-scrubbed pit stop,
  * then the pit-wall cards and an accessible crew sheet.
  *
+ * Line-up: the pit stop is car #13's (lore `drivers`); the cat who owns the team
+ * (lore `owner`, callsign RAT) runs the pit wall and calls the car straight back in
+ * because he wants to sit in the box. Every crew member is a real friend with a
+ * face-cropped avatar (data/crew.ts) — tokens and cards show their photos.
+ *
  * Markup renders the FINAL state (crew in formation, car in the box, timer
  * stopped, stewards' stamp down) so no-JS and reduced-motion visitors get a
  * finished composition. With motion, a GSAP timeline scrubbed by the tall
@@ -12,10 +17,10 @@ import SectionHeading from '@/components/ui/SectionHeading.astro';
 import PhotoSlot from '@/components/ui/PhotoSlot.astro';
 import Emblem from '@/components/ui/Emblem.astro';
 import { crew, type CrewRole } from '@/data/crew';
-import { sinhala, driver } from '@/data/lore';
+import { sinhala, owner, drivers } from '@/data/lore';
 import { resolvePhoto, type PhotoEntry } from '@/data/photos';
 
-/** F1-timing-style three-letter codes. CAT = catering, obviously. */
+/** F1-timing-style three-letter role codes (open-seat fallback + crew sheet). CAT = catering, obviously. */
 const CODES: Record<string, string> = {
   lollipop: 'REL',
   'front-jack': 'FJK',
@@ -31,7 +36,7 @@ const CODES: Record<string, string> = {
   catering: 'CAT',
 };
 
-const codeFor = (r: CrewRole) =>
+const roleCodeFor = (r: CrewRole) =>
   CODES[r.id] ??
   r.role
     .replace(/[^A-Za-z ]/g, ' ')
@@ -60,16 +65,46 @@ const photoFor = (r: CrewRole): PhotoEntry | null => {
     file: r.person.photo,
     alt: `${r.person.name}, ${r.role}`,
     caption: r.duty,
-    focal: '50% 30%',
+    // 480×480 face crops, centred: square frames show the whole crop.
+    focal: '50% 45%',
   };
   return resolvePhoto(entry).src ? entry : null;
 };
 
-/** Small print on the open pit-wall seats, keyed by role id. */
+/**
+ * Nickname as HTML: "පූසා · Poosa" → the Sinhala part wrapped in lang="si" + .t-si
+ * (text is escaped; the words themselves come straight from data/crew.ts).
+ */
+const SINHALA = /[඀-෿]/;
+const esc = (s: string) =>
+  s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+const nickHtml = (nick?: string) =>
+  (nick ?? '')
+    .split(/\s*·\s*/)
+    .filter(Boolean)
+    .map((t) => (SINHALA.test(t) ? `<span class="t-si" lang="si">${esc(t)}</span>` : esc(t)))
+    .join(' · ');
+
+const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+const word = (n: number) => WORDS[n] ?? String(n);
+
+/** Small print on open pit-wall seats, keyed by role id (only shown if a seat is vacant). */
 const REQUIREMENTS: Record<string, string> = {
   engineer: 'Req: 1 × tuna, 0 × excuses',
   strategist: 'Must survive being ignored on the radio',
   catering: 'Interviews held during nap time',
+};
+
+const withCodes = (r: CrewRole) => {
+  const roleCode = roleCodeFor(r);
+  return {
+    ...r,
+    roleCode,
+    /** Token / card tag: the person's own code, or the role code for an open seat. */
+    code: r.person?.code ?? roleCode,
+    photo: photoFor(r),
+    nickHtml: nickHtml(r.person?.nickname),
+  };
 };
 
 const pitcrew = crew
@@ -77,11 +112,9 @@ const pitcrew = crew
   .map((r, i) => {
     const slot = r.slot ?? { x: 50, y: 50 };
     return {
-      ...r,
+      ...withCodes(r),
       slot,
       i,
-      code: codeFor(r),
-      photo: photoFor(r),
       /** Stands behind the car → can only run in once the car has stopped. */
       late: slot.y > 85,
       gun: r.id.startsWith('gun'),
@@ -91,20 +124,39 @@ const pitcrew = crew
 
 const pitwall = crew
   .filter((r) => r.group === 'pitwall')
-  .map((r, i) => ({ ...r, i, code: codeFor(r), photo: photoFor(r) }));
+  .map((r, i) => ({ ...withCodes(r), i, isOwner: r.id === 'principal' }));
 
 const openCrew = pitcrew.filter((r) => !r.person).length;
 const openWall = pitwall.filter((r) => !r.person).length;
+const openSeats = openCrew + openWall;
 const pad = (n: number) => String(n).padStart(2, '0');
+
+/** The car in the box: #13 (falls back gracefully if the line-up changes). */
+const car = drivers.find((d) => d.id === 'dha') ?? drivers[0];
+const carNo = car ? String(car.number) : String(9);
+const carCode = car?.code ?? 'BR';
+const carName = car?.firstName ?? 'Driver';
+
+const lead = [
+  `${word(pitcrew.length)} on the car, ${word(pitwall.length).toLowerCase()} on the pit wall — one of them is the cat who owns the team.`,
+  openSeats
+    ? `${word(openSeats)} ${openSeats === 1 ? 'seat' : 'seats'} still open — apply with snacks.`
+    : 'Every seat filled (the owner sat in each one first, to check).',
+  `Scroll to run car #${carNo}’s stop; hover, tap or Tab onto anyone for the job description.`,
+].join(' ');
+
+const wallNote = openWall
+  ? `${word(openWall)} of ${word(pitwall.length).toLowerCase()} seats open — the stewards have been notified.`
+  : `${word(pitwall.length)} seats, one cardboard box. Guess who sits in the box.`;
 
 /** Pit-stop choreography phases; `at` = timeline time the phase starts. */
 const phases = [
   { at: 0, label: 'Crew out', note: 'Sprint from the pit wall' },
-  { at: 2.4, label: 'Car in', note: 'Driver hits his marks. Mostly.' },
-  { at: 3.9, label: 'Jacks up', note: 'Car in the air. Driver asks if this is the vet.' },
+  { at: 2.4, label: 'Car in', note: `#${carNo} hits the marks. Mostly.` },
+  { at: 3.9, label: 'Jacks up', note: 'Car in the air. Owner asks if it came in a box.' },
   { at: 4.3, label: 'Tyres', note: 'Hards off, Purrelli Paw softs on' },
   { at: 5.7, label: 'Release', note: 'Lollipop says GO' },
-  { at: 7.4, label: 'Snack run', note: 'He came back. Of course he came back.' },
+  { at: 7.4, label: 'Box, box', note: 'Owner calls it back in. He wants the box.' },
 ];
 
 const wheels = [
@@ -130,7 +182,7 @@ const paws = [
       id="crew-title"
       title="Pit crew <em>formation</em>"
       si={sinhala.machan.si}
-      lead={`Eight people on the car, four on the pit wall, all of them on the snacks. ${openCrew + openWall} seats still open. Scroll to run the stop; hover, tap or Tab onto anyone for their job description.`}
+      lead={lead}
     />
   </div>
 
@@ -142,7 +194,7 @@ const paws = [
         <div class="hud">
           <p class="hud-label t-mono">
             <span class="live-dot loop" aria-hidden="true"></span>
-            <span>Box 9 · Pit stop · Lap 9</span>
+            <span>Box 9 · Car {carNo} {carCode} · Lap 9</span>
           </p>
 
           <div class="timer" aria-hidden="true">
@@ -156,7 +208,7 @@ const paws = [
           <div class="stamp" aria-hidden="true">
             <span class="stamp-top t-mono">Stewards · Official time</span>
             <span class="stamp-time t-condensed">9.9 s</span>
-            <span class="stamp-note t-mono">Driver requested a snack</span>
+            <span class="stamp-note t-mono">Owner wanted the box</span>
           </div>
 
           <ol class="phases" aria-hidden="true">
@@ -176,9 +228,9 @@ const paws = [
           <p class="phase-now t-mono" aria-hidden="true">Stop complete · stewards involved</p>
 
           <p class="visually-hidden">
-            Pit stop replay: the crew sprints from the pit wall into formation, the car rolls into box 9, jacks
-            up, swaps four tyres and is released in 2.9 seconds. Then it reverses back into the box. Official
-            time: 9.9 seconds — driver requested a snack.
+            Pit stop replay: the crew sprints from the pit wall into formation, car {carNo} rolls into box 9,
+            jacks up, swaps four tyres and is released in 2.9 seconds. Then the team principal radios “box, box”
+            and it reverses straight back in, because he wants to sit in the box. Official time: 9.9 seconds.
           </p>
           <p class="hud-hint t-mono">Hover · tap · Tab a crew member</p>
         </div>
@@ -249,7 +301,7 @@ const paws = [
               </g>
               <text class="g-boxno" x="104" y="56">BOX 9</text>
 
-              <!-- driver's paw prints (he walked in from the fast lane, obviously) -->
+              <!-- the owner's paw prints (he inspects every box personally, straight across the fast lane) -->
               <g class="g-paws">
                 {paws.map((p) => <use href="#crw-paw" transform={`translate(${p.x} ${p.y}) rotate(${p.r})`} />)}
               </g>
@@ -303,10 +355,16 @@ const paws = [
                       <stop offset="0.5" style="stop-color: var(--c-graphite)"></stop>
                       <stop offset="1" style="stop-color: var(--c-carbon)"></stop>
                     </linearGradient>
+                    <!-- #13's lid: matte carbon, mirrored visor (sunglasses underneath, obviously) -->
                     <radialGradient id="crw-helmet" cx="0.35" cy="0.3" r="0.8">
-                      <stop offset="0" style="stop-color: var(--c-gold)"></stop>
-                      <stop offset="1" style="stop-color: var(--c-saffron)"></stop>
+                      <stop offset="0" style="stop-color: var(--c-steel)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-carbon)"></stop>
                     </radialGradient>
+                    <linearGradient id="crw-visor" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0" style="stop-color: var(--c-teal)"></stop>
+                      <stop offset="0.5" style="stop-color: var(--c-purple)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-gold)"></stop>
+                    </linearGradient>
                     <path
                       id="crw-swoosh"
                       d="M57 222 C 60 202 70 190 80 186 L84 196 C 73 204 67 216 65 236 L63 318 C 63 334 69 348 77 358 L71 363 C 61 351 55 335 55 318 Z"
@@ -344,12 +402,12 @@ const paws = [
                   <rect class="f-carbon" x="9" y="22" width="7" height="27" rx="2"></rect>
                   <rect class="f-carbon" x="184" y="22" width="7" height="27" rx="2"></rect>
 
-                  <!-- nose + whiskers -->
+                  <!-- nose + whiskers (team livery) + car number -->
                   <path d="M93 20 Q100 8 107 20 L117 150 Q100 156 83 150 Z" fill="url(#crw-nose)"></path>
                   <g class="c-whiskers">
                     <path d="M90 64 L60 55 M90 72 L57 72 M90 80 L60 89 M110 64 L140 55 M110 72 L143 72 M110 80 L140 89"></path>
                   </g>
-                  <text class="c-nosenum" x="100" y="128">9</text>
+                  <text class="c-nosenum" x="100" y="130">{carNo}</text>
 
                   <!-- monocoque + sidepods -->
                   <path d="M83 148 L117 148 L124 190 L76 190 Z" fill="url(#crw-carbon)"></path>
@@ -363,10 +421,9 @@ const paws = [
                   <path class="f-graphite" d="M92 246 L108 246 L106 420 L94 420 Z"></path>
                   <path class="f-graphite" d="M88 398 L112 398 L116 446 L84 446 Z"></path>
 
-                  <!-- cockpit, halo, helmet with ears -->
+                  <!-- cockpit, halo, driver's helmet -->
                   <path class="f-carbon" d="M87 170 Q100 162 113 170 L111 226 Q100 232 89 226 Z"></path>
-                  <path class="f-gold" d="M91.5 198 L87.5 186.5 L96.5 193 Z M108.5 198 L112.5 186.5 L103.5 193 Z"></path>
-                  <circle cx="100" cy="204" r="11" fill="url(#crw-helmet)"></circle>
+                  <circle class="c-helmet" cx="100" cy="204" r="11" fill="url(#crw-helmet)"></circle>
                   <path class="c-visor" d="M91.5 199 Q100 192.5 108.5 199"></path>
                   <path class="c-halo" d="M86 208 C 86 182 92 173 100 173 C 108 173 114 182 114 208"></path>
                   <path class="c-halo" d="M100 173 V 160"></path>
@@ -377,10 +434,10 @@ const paws = [
                   <path class="c-ear" d="M107 238 L130 204 L101 226 Z"></path>
                   <path class="f-maroon" d="M91.5 232.5 L77 212 L96 226.5 Z M108.5 232.5 L123 212 L104 226.5 Z"></path>
 
-                  <!-- race number + timing code -->
+                  <!-- race number + the driver's timing code -->
                   <circle class="c-roundel" cx="100" cy="300" r="19"></circle>
-                  <text class="c-num" x="100" y="313">9</text>
-                  <text class="c-code" x="100" y="342">RAT</text>
+                  <text class="c-num" x="100" y="311">{carNo}</text>
+                  <text class="c-code" x="100" y="342">{carCode}</text>
 
                   <!-- rear wing + rain light -->
                   <rect x="34" y="444" width="132" height="24" rx="3" fill="url(#crw-wing)"></rect>
@@ -398,8 +455,8 @@ const paws = [
             </div>
 
             <p class="radio" aria-hidden="true">
-              <span class="radio-from t-mono">{driver.code} · Team radio</span>
-              <span class="radio-text">Box, box. I smelled tuna.</span>
+              <span class="radio-from t-mono">{owner.callsign} · Pit wall → #{carNo}</span>
+              <span class="radio-text">{carName}, box, box. I want to sit in the box.</span>
             </p>
 
             <!-- ================= Crew tokens ================= -->
@@ -425,7 +482,7 @@ const paws = [
                         <span class="tok-shoulders" />
                         <span class="tok-helmet">
                           {r.photo ? (
-                            <PhotoSlot photo={r.photo} sizes="80px" widths={[96, 160]} class="tok-photo" />
+                            <PhotoSlot photo={r.photo} sizes="64px" widths={[96, 160]} class="tok-photo" />
                           ) : r.person ? (
                             <span class="tok-ini">{initials(r.person.name)}</span>
                           ) : (
@@ -451,14 +508,27 @@ const paws = [
                       </span>
                     )}
                     <div class="crew-pop" id={`crew-pop-${r.id}`} popover data-placement="top">
-                      <p class="pop-top t-mono">
-                        <span class="pop-code">{r.code}</span>
-                        <span>{r.role}</span>
-                      </p>
-                      <p class="pop-name t-condensed">
-                        {r.person ? r.person.name : 'Seat open'}
-                        {r.person?.nickname && <span class="pop-nick">“{r.person.nickname}”</span>}
-                      </p>
+                      <div class="pop-id">
+                        {r.photo && (
+                          <span class="pop-avatar" aria-hidden="true">
+                            <PhotoSlot photo={r.photo} sizes="64px" widths={[96, 160]} />
+                          </span>
+                        )}
+                        <div class="pop-who">
+                          <p class="pop-top t-mono">
+                            <span class="pop-code">{r.code}</span>
+                            <span>{r.role}</span>
+                          </p>
+                          <p class="pop-name t-condensed">
+                            {r.person ? r.person.name : 'Seat open'}
+                            {r.nickHtml && (
+                              <span class="pop-nick">
+                                “<Fragment set:html={r.nickHtml} />”
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
                       <p class="pop-duty">{r.duty}</p>
                       {!r.person && (
                         <p class="pop-apply t-mono">
@@ -486,18 +556,27 @@ const paws = [
     <div class="pw-head">
       <h3 class="pw-title t-condensed" data-reveal="up">The pit wall</h3>
       <p class="pw-sub" data-reveal="up">
-        Best view on the circuit, worst snacks in the paddock. {openWall} of {pitwall.length} seats open — the stewards
-        have been notified.
+        Best view on the circuit, worst snacks in the paddock. {wallNote}
       </p>
     </div>
     <ul class="pw-grid" role="list" data-reveal-stagger="90">
       {
         pitwall.map((r) => (
           <li class="pw-item" data-reveal="up">
-            <article class="pw-card" data-vacant={r.person ? undefined : ''} aria-labelledby={`pw-${r.id}`}>
+            <article
+              class="pw-card"
+              data-vacant={r.person ? undefined : ''}
+              data-owner={r.isOwner && r.person ? '' : undefined}
+              aria-labelledby={`pw-${r.id}`}
+            >
               <div class="pw-screen" aria-hidden={r.photo ? undefined : 'true'}>
                 {r.photo ? (
-                  <PhotoSlot photo={r.photo} sizes="(min-width: 1024px) 22vw, 90vw" widths={[320, 640]} />
+                  <PhotoSlot
+                    photo={r.photo}
+                    sizes="(min-width: 64rem) 18rem, 9rem"
+                    widths={[160, 320, 480]}
+                    class="pw-photo"
+                  />
                 ) : r.person ? (
                   <span class="pw-mono">
                     <span class="pw-mono-name">{r.person.name.split(/\s+/)[0]}</span>
@@ -510,20 +589,32 @@ const paws = [
                 )}
                 <span class="pw-ch t-mono">CH {pad(r.i + 1)}</span>
                 <span class:list={['pw-live t-mono', { on: !!r.person }]}>{r.person ? 'On air' : 'Vacant'}</span>
+                {r.isOwner && r.person && (
+                  <span class="pw-crown t-mono" aria-hidden="true">
+                    Owner
+                  </span>
+                )}
               </div>
               <div class="pw-body">
                 <p class="pw-role t-mono">
-                  <span class="pw-code">{r.code}</span> {r.role}
+                  <span class="pw-code">{r.code}</span> {r.isOwner && r.person ? owner.role : r.role}
                 </p>
                 <h4 class="pw-name t-condensed" id={`pw-${r.id}`}>
                   {r.person ? r.person.name : 'Seat open'}
                 </h4>
-                {r.person?.nickname ? (
-                  <p class="pw-nick">“{r.person.nickname}”</p>
+                {r.nickHtml ? (
+                  <p class="pw-nick">
+                    “<Fragment set:html={r.nickHtml} />”
+                  </p>
                 ) : !r.person ? (
                   <p class="pw-apply">— apply with snacks</p>
                 ) : null}
                 <p class="pw-duty">{r.duty}</p>
+                {r.isOwner && r.person?.code && (
+                  <p class="pw-req t-mono">
+                    Callsign {r.person.code}. Yes, the cat’s callsign is {r.person.code}. Nobody has told him.
+                  </p>
+                )}
                 {!r.person && REQUIREMENTS[r.id] && <p class="pw-req t-mono">{REQUIREMENTS[r.id]}</p>}
               </div>
             </article>
@@ -543,12 +634,22 @@ const paws = [
         {
           pitcrew.map((r) => (
             <li class="sheet-row">
-              <span class="sheet-code t-mono">{r.code}</span>
+              <span class="sheet-face" aria-hidden="true">
+                {r.photo ? (
+                  <PhotoSlot photo={r.photo} sizes="64px" widths={[96, 160]} />
+                ) : (
+                  <span class="sheet-ini">{r.person ? initials(r.person.name) : '?'}</span>
+                )}
+                <span class="sheet-code t-mono">{r.code}</span>
+              </span>
               <span class="sheet-role">{r.role}</span>
               <span class:list={['sheet-who', { open: !r.person }]}>
-                {r.person
-                  ? `${r.person.name}${r.person.nickname ? ` “${r.person.nickname}”` : ''}`
-                  : 'Seat open — apply with snacks'}
+                {r.person ? r.person.name : 'Seat open — apply with snacks'}
+                {r.nickHtml && (
+                  <span class="sheet-nick">
+                    “<Fragment set:html={r.nickHtml} />”
+                  </span>
+                )}
               </span>
               <span class="sheet-duty">{r.duty}</span>
             </li>
@@ -1231,14 +1332,21 @@ const paws = [
     fill: var(--c-carbon);
     font-family: var(--f-display);
     font-weight: 900;
-    font-size: 22px;
+    font-size: 21px;
+    font-variation-settings: 'wdth' 62;
+    font-stretch: 62%;
     text-anchor: middle;
+  }
+
+  .c-helmet {
+    stroke: var(--c-mute);
+    stroke-width: 1;
   }
 
   .c-visor {
     fill: none;
-    stroke: var(--c-carbon);
-    stroke-width: 3.2;
+    stroke: url(#crw-visor);
+    stroke-width: 3.6;
     stroke-linecap: round;
   }
 
@@ -1266,7 +1374,10 @@ const paws = [
     fill: var(--c-gold);
     font-family: var(--f-display);
     font-weight: 900;
-    font-size: 36px;
+    font-size: 31px;
+    font-variation-settings: 'wdth' 62;
+    font-stretch: 62%;
+    letter-spacing: -0.02em;
     text-anchor: middle;
   }
 
@@ -1478,10 +1589,23 @@ const paws = [
     rotate: 26deg;
   }
 
-  .tok-helmet :global(.photo-slot) {
+  /* the avatar fills the helmet ring exactly: <picture> pinned to the circle, <img> covers it */
+  .tok-helmet :global(picture) {
+    position: absolute;
+    inset: 0;
+    display: block;
     border-radius: 50%;
-    overflow: hidden;
+    overflow: clip;
+    background: var(--c-graphite);
+  }
+
+  .tok-helmet :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
     min-height: 0;
+    border-radius: 50%;
+    object-fit: cover;
   }
 
   .tok-ini,
@@ -1709,12 +1833,52 @@ const paws = [
     background: var(--c-graphite);
   }
 
-  .pop-top {
+  .pop-id {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 0.8rem;
+  }
+
+  .pop-avatar {
+    position: relative;
+    flex: none;
+    width: 4rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid var(--c-gold);
+    box-shadow:
+      0 0 0 3px rgb(0 0 0 / 0.45),
+      0 0.6rem 1.2rem -0.4rem rgb(0 0 0 / 0.8);
+    overflow: clip;
+    background: var(--c-carbon);
+  }
+
+  .pop-avatar :global(picture) {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  .pop-avatar :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: cover;
+  }
+
+  .pop-who {
+    min-width: 0;
+  }
+
+  .pop-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem var(--space-2);
     color: var(--c-gold);
-    font-size: 0.66rem;
+    font-size: 0.62rem;
+    line-height: 1.3;
   }
 
   .pop-code {
@@ -1726,21 +1890,27 @@ const paws = [
   }
 
   .pop-name {
-    margin-top: 0.4rem;
+    margin-top: 0.35rem;
     font-family: var(--f-display);
     font-weight: 850;
-    font-size: 1.9rem;
+    font-size: 1.6rem;
     line-height: 0.95;
     text-transform: uppercase;
+    text-wrap: balance;
   }
 
   .pop-nick {
     display: block;
-    font-size: 0.55em;
+    margin-top: 0.15rem;
+    font-size: 0.6em;
     color: var(--c-gold);
     text-transform: none;
     font-variation-settings: 'wdth' 100;
     font-stretch: 100%;
+  }
+
+  .pop-nick :global(.t-si) {
+    font-size: 1.05em;
   }
 
   .pop-duty {
@@ -1792,25 +1962,40 @@ const paws = [
 
   .pw-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
     padding: 0;
     list-style: none;
+  }
+
+  @media (min-width: 40rem) {
+    .pw-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .pw-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 
   .pw-item {
     perspective: 60rem;
   }
 
+  /* phones + tablets: "monitor + readout" rows; desktop: square feed on top */
   .pw-card {
     --rx: 0deg;
     --ry: 0deg;
     --gx: 50%;
     --gy: 0%;
+    --shot: clamp(7.5rem, 30vw, 9.5rem);
     position: relative;
     height: 100%;
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-columns: var(--shot) minmax(0, 1fr);
+    align-items: start;
     border-radius: var(--radius-l);
     border: 1px solid var(--c-line-strong);
     background: linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 55%);
@@ -1819,6 +2004,23 @@ const paws = [
       transform 0.5s var(--ease-out-expo),
       border-color var(--dur-med),
       box-shadow var(--dur-med);
+  }
+
+  @media (min-width: 64rem) {
+    .pw-card {
+      grid-template-columns: none;
+      grid-template-rows: auto 1fr;
+      align-items: stretch;
+    }
+  }
+
+  /* the owner's card: gold trim, warm glow (he sat on it) */
+  .pw-card[data-owner] {
+    border-color: color-mix(in oklab, var(--c-gold) 50%, transparent);
+    background:
+      radial-gradient(90% 55% at 100% 0%, rgb(255 197 46 / 0.14), transparent 65%),
+      linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 55%);
+    box-shadow: 0 1.5rem 3rem -1.75rem rgb(255 197 46 / 0.35);
   }
 
   .pw-card:hover {
@@ -1853,10 +2055,11 @@ const paws = [
       box-shadow var(--dur-med);
   }
 
+  /* ---- the pit-wall camera feed ---- */
   .pw-screen {
     position: relative;
-    aspect-ratio: 16 / 9;
-    margin: 0.6rem 0.6rem 0;
+    aspect-ratio: 1;
+    margin: 0.55rem 0 0.55rem 0.55rem;
     border-radius: var(--radius-m);
     overflow: clip;
     background: var(--c-carbon);
@@ -1864,17 +2067,44 @@ const paws = [
     display: grid;
   }
 
+  @media (min-width: 64rem) {
+    .pw-screen {
+      margin: 0.6rem 0.6rem 0;
+    }
+  }
+
+  .pw-card[data-owner] .pw-screen {
+    border-color: color-mix(in oklab, var(--c-gold) 45%, transparent);
+  }
+
   .pw-screen::after {
-    /* scanlines */
+    /* scanlines + a soft CRT vignette over the feed */
     content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.22) 0 1px, transparent 1px 3px);
+    background:
+      repeating-linear-gradient(0deg, rgb(0 0 0 / 0.12) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 95% at 50% 42%, transparent 58%, rgb(0 0 0 / 0.5));
   }
 
-  .pw-screen :global(.photo-slot) {
+  .pw-screen :global(picture) {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  .pw-screen :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
     min-height: 0;
+    object-fit: cover;
+    transition: scale 0.9s var(--ease-out-expo);
+  }
+
+  .pw-card:hover .pw-screen :global(img) {
+    scale: 1.05;
   }
 
   .pw-mono {
@@ -1896,7 +2126,7 @@ const paws = [
     font-weight: 900;
     font-variation-settings: 'wdth' 62;
     font-stretch: 62%;
-    font-size: clamp(4.5rem, 3rem + 5vw, 7.5rem);
+    font-size: clamp(3.4rem, 2rem + 4vw, 6rem);
     line-height: 0.8;
     letter-spacing: -0.02em;
     text-transform: uppercase;
@@ -1907,6 +2137,8 @@ const paws = [
 
   .pw-mono :global(.pw-emblem) {
     position: relative;
+    width: clamp(2.8rem, 30%, 4rem);
+    height: auto;
     filter: drop-shadow(0 0.4rem 0.8rem rgb(0 0 0 / 0.45));
   }
 
@@ -1941,31 +2173,38 @@ const paws = [
   }
 
   .pw-nosig {
-    padding: 0.4em 0.8em;
+    padding: 0.35em 0.6em;
     background: var(--c-carbon);
     color: var(--c-chalk);
     border: 1px solid var(--c-chalk);
-    font-size: 0.7rem;
+    font-size: 0.56rem;
+  }
+
+  .pw-ch,
+  .pw-live,
+  .pw-crown {
+    position: absolute;
+    z-index: 1;
+    padding: 0.2em 0.5em;
+    border-radius: var(--radius-s);
+    font-size: 0.52rem;
+    line-height: 1.4;
   }
 
   .pw-ch,
   .pw-live {
-    position: absolute;
-    top: 0.5rem;
-    z-index: 1;
-    padding: 0.2em 0.5em;
-    border-radius: var(--radius-s);
-    background: rgb(7 7 11 / 0.75);
+    top: 0.45rem;
+    background: rgb(7 7 11 / 0.72);
     color: var(--c-chalk);
-    font-size: 0.56rem;
   }
 
   .pw-ch {
-    left: 0.5rem;
+    left: 0.45rem;
+    display: none;
   }
 
   .pw-live {
-    right: 0.5rem;
+    right: 0.45rem;
     color: var(--c-mute);
   }
 
@@ -1976,28 +2215,73 @@ const paws = [
   .pw-live.on::before {
     content: '';
     display: inline-block;
-    width: 0.45rem;
-    height: 0.45rem;
-    margin-right: 0.35rem;
+    width: 0.42rem;
+    height: 0.42rem;
+    margin-right: 0.3rem;
     border-radius: 50%;
     background: var(--c-red);
     box-shadow: var(--glow-red);
     vertical-align: 0.02em;
   }
 
+  /* broadcast lower-third on the owner's feed */
+  .pw-crown {
+    left: 0.45rem;
+    bottom: 0.45rem;
+    border-radius: 99px;
+    background: var(--c-maroon);
+    color: var(--c-chalk);
+    font-weight: 700;
+    box-shadow: 0 0 0 1px rgb(255 197 46 / 0.55);
+  }
+
+  @media (min-width: 64rem) {
+    .pw-ch,
+    .pw-live,
+    .pw-crown {
+      top: 0.55rem;
+      font-size: 0.58rem;
+    }
+
+    .pw-ch {
+      left: 0.55rem;
+      display: block;
+    }
+
+    .pw-live {
+      right: 0.55rem;
+    }
+
+    .pw-crown {
+      top: auto;
+      left: 0.6rem;
+      bottom: 0.6rem;
+    }
+  }
+
   .pw-body {
     display: grid;
     align-content: start;
-    gap: 0.35rem;
-    padding: 1rem 1.15rem 1.25rem;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 0.75rem 0.85rem 0.9rem;
+  }
+
+  @media (min-width: 64rem) {
+    .pw-body {
+      gap: 0.35rem;
+      padding: 1rem 1.15rem 1.25rem;
+    }
   }
 
   .pw-role {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.3rem 0.5rem;
     color: var(--c-gold);
     font-size: var(--fs-micro);
+    line-height: 1.3;
   }
 
   .pw-code {
@@ -2009,9 +2293,10 @@ const paws = [
   .pw-name {
     font-family: var(--f-display);
     font-weight: 850;
-    font-size: 2.2rem;
+    font-size: clamp(1.6rem, 1.3rem + 1vw, 2.2rem);
     line-height: 0.95;
     text-transform: uppercase;
+    text-wrap: balance;
   }
 
   .pw-card[data-vacant] .pw-name {
@@ -2025,87 +2310,35 @@ const paws = [
     font-weight: 600;
   }
 
+  .pw-nick :global(.t-si) {
+    font-size: 1.05em;
+  }
+
   .pw-apply {
     color: var(--c-teal);
   }
 
   .pw-duty {
-    margin-top: 0.25rem;
+    margin-top: 0.2rem;
     color: var(--c-mute);
-    font-size: 0.95rem;
-    line-height: 1.5;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  @media (min-width: 64rem) {
+    .pw-duty {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
   }
 
   .pw-req {
-    margin-top: 0.5rem;
-    padding-top: 0.6rem;
+    margin-top: 0.4rem;
+    padding-top: 0.55rem;
     border-top: 1px dashed var(--c-line-strong);
     color: var(--c-mute);
-    font-size: var(--fs-micro);
-  }
-
-  /* phones: compact "monitor + readout" rows instead of four tall cards */
-  @media (max-width: 39.99rem) {
-    .pw-card {
-      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-      grid-template-rows: none;
-    }
-
-    .pw-screen {
-      aspect-ratio: auto;
-      min-height: 8.5rem;
-      margin: 0.5rem 0 0.5rem 0.5rem;
-    }
-
-    .pw-body {
-      padding: 0.75rem 0.85rem 0.85rem;
-      gap: 0.25rem;
-    }
-
-    .pw-role {
-      flex-wrap: wrap;
-      gap: 0.3rem;
-    }
-
-    .pw-name {
-      font-size: 1.75rem;
-    }
-
-    .pw-nick,
-    .pw-apply {
-      font-size: 0.92rem;
-    }
-
-    .pw-duty {
-      font-size: 0.86rem;
-      line-height: 1.4;
-    }
-
-    .pw-ch {
-      display: none;
-    }
-
-    .pw-live {
-      top: auto;
-      bottom: 0.4rem;
-      right: 50%;
-      translate: 50% 0;
-      font-size: 0.5rem;
-    }
-
-    .pw-nosig {
-      font-size: 0.52rem;
-      padding: 0.35em 0.5em;
-    }
-
-    .pw-mono-name {
-      font-size: 3.4rem;
-    }
-
-    .pw-mono :global(.pw-emblem) {
-      width: 2.8rem;
-      height: 2.8rem;
-    }
+    font-size: 0.62rem;
+    line-height: 1.5;
   }
 
   /* ================= Crew sheet ================= */
@@ -2168,16 +2401,51 @@ const paws = [
 
   .sheet-row {
     display: grid;
-    grid-template-columns: 3rem 1fr;
+    grid-template-columns: 3rem minmax(0, 1fr);
     gap: 0.15rem var(--space-3);
     padding: 0.8rem 0;
     border-top: 1px solid var(--c-line);
   }
 
-  .sheet-code {
+  .sheet-face {
     grid-row: span 3;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 0.3rem;
+  }
+
+  .sheet-face :global(picture),
+  .sheet-ini {
+    position: relative;
+    display: block;
+    width: 2.75rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: clip;
+    border: 1.5px solid var(--c-gold);
+    background: var(--c-graphite);
+  }
+
+  .sheet-face :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: cover;
+  }
+
+  .sheet-ini {
+    display: grid;
+    place-items: center;
     color: var(--c-gold);
-    padding-top: 0.2rem;
+    font-weight: 800;
+  }
+
+  .sheet-code {
+    color: var(--c-gold);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
   }
 
   .sheet-role {
@@ -2192,6 +2460,11 @@ const paws = [
     color: var(--c-teal);
   }
 
+  .sheet-nick {
+    margin-left: 0.4em;
+    color: var(--c-gold);
+  }
+
   .sheet-duty {
     color: var(--c-mute);
     font-size: 0.92rem;
@@ -2200,10 +2473,10 @@ const paws = [
   @media (min-width: 48rem) {
     .sheet-row {
       grid-template-columns: 3.5rem minmax(10rem, 1fr) minmax(10rem, 1fr) 2fr;
-      align-items: baseline;
+      align-items: center;
     }
 
-    .sheet-code {
+    .sheet-face {
       grid-row: auto;
     }
   }
@@ -2229,6 +2502,12 @@ const paws = [
 
     .pw-card {
       transform: none;
+    }
+
+    .pw-screen :global(img),
+    .pw-card:hover .pw-screen :global(img) {
+      scale: none;
+      transition: none;
     }
   }
 </style>
@@ -2537,7 +2816,7 @@ const paws = [
       tl.to(speed, { autoAlpha: 0, duration: 0.3 }, 7.05);
     }
 
-    // 7 — snack run: he reverses straight back in
+    // 7 — box, box: the owner radios it straight back in (he wants to sit in the box)
     tl.to(carRig, { y: 0, duration: 0.9, ease: 'power2.out' }, 7.5);
     if (lolliBoard) tl.to(lolliBoard, { rotationY: 360, duration: 0.3, ease: 'power2.inOut' }, 8.3);
     if (radio) {
