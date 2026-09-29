@@ -13,7 +13,7 @@ const files = import.meta.glob<{ default: ImageMetadata }>(
   { eager: true },
 );
 
-export type PhotoFolder = 'driver' | 'together' | 'crew' | 'misc';
+export type PhotoFolder = 'driver' | 'team' | 'together' | 'crew' | 'misc';
 
 export interface PhotoEntry {
   id: string;
@@ -38,25 +38,60 @@ export function resolvePhoto(entry: PhotoEntry): ResolvedPhoto {
   return { ...entry, src: key && files[key] ? files[key].default : null };
 }
 
-/** Portrait of the driver used in Hero/Driver sections. */
-export const driverPortrait: PhotoEntry = {
-  id: 'driver-portrait',
-  folder: 'driver',
-  file: undefined, // TODO(owner): e.g. 'nirod-portrait.jpg'
-  alt: 'Nirod “Poosa” Rathnaweera, driver #9 for Bilal Racing',
-  caption: 'Official driver portrait. He asked for his good side. Both sides were asleep.',
-  focal: '50% 30%',
-  placeholder: 'Driver portrait',
+/** Team Principal & Owner portrait (full photo). */
+export const ownerPortrait: PhotoEntry = {
+  id: 'owner-portrait',
+  folder: 'team',
+  file: 'nirod-rathnaweera.jpg',
+  alt: 'Nirod “Poosa” Rathnaweera, Team Principal and Owner of Bilal Racing, in sunglasses',
+  caption: 'The owner. Sunglasses on, strategy off, nap pending.',
+  focal: '50% 45%',
+  placeholder: 'Owner portrait',
 };
 
-/** Paddock gallery — the owner will swap placeholders for real photos. */
+/** Driver portraits, keyed by driver id from lore.ts. */
+export const driverPortraits: Record<'dha' | 'dee', PhotoEntry> = {
+  dha: {
+    id: 'driver-dha',
+    folder: 'driver',
+    file: 'isuru-dharmadasa.jpg',
+    alt: 'Isuru Dharmadasa, driver #13, in sunglasses at the beach',
+    caption: 'Car #13. Qualifying in sunglasses since forever.',
+    focal: '40% 35%',
+    placeholder: 'Driver #13',
+  },
+  dee: {
+    id: 'driver-dee',
+    folder: 'driver',
+    file: 'yasas-deegala.jpg',
+    alt: 'Yasas Deegala, driver #17, taking a selfie beside a jungle waterfall',
+    caption: 'Car #17. Pre-season altitude training, waterfall edition.',
+    focal: '47% 45%',
+    placeholder: 'Driver #17',
+  },
+};
+
+/**
+ * Paddock gallery — real photos of the gang. Captions don't name anyone
+ * (group shots); keep it that way. Ordered roughly by how much they slap.
+ */
 export const gallery: PhotoEntry[] = [
-  { id: 'g1', folder: 'driver', alt: 'Nirod’s mid-race face', caption: 'Qualifying face. Also his “what’s for lunch” face.', placeholder: 'Qualifying face' },
-  { id: 'g2', folder: 'together', alt: 'The team together', caption: 'Team photo. Driver present, spiritually.', placeholder: 'Team photo' },
-  { id: 'g3', folder: 'driver', alt: 'Nirod relaxing', caption: 'Pre-race preparation (nap, lap 1 of 3).', placeholder: 'Pre-race prep' },
-  { id: 'g4', folder: 'together', alt: 'Friends at an event', caption: 'Wedding GP 2021. P1 at the buffet.', placeholder: 'Wedding GP' },
-  { id: 'g5', folder: 'together', alt: 'Road trip', caption: 'Balangoda GP recon lap. Essential services only.', placeholder: 'Balangoda recon' },
-  { id: 'g6', folder: 'driver', alt: 'Nirod smiling', caption: 'Podium smile, rehearsed daily in the mirror.', placeholder: 'Podium smile' },
-  { id: 'g7', folder: 'together', alt: 'Night out', caption: 'Night race. Nobody remembers who won.', placeholder: 'Night race' },
-  { id: 'g8', folder: 'misc', alt: 'A cat, for reference', caption: 'Reference image supplied to the livery designers.', placeholder: 'Livery reference' },
+  { id: 'team-pool', folder: 'together', file: 'team-pool.jpg', alt: 'The whole crew lined up beside a pool under palm trees', caption: 'Official team photo. Pre-season testing, poolside division.', focal: '50% 60%' },
+  { id: 'helmets', folder: 'together', file: 'helmets.jpg', alt: 'Two friends in motorbike helmets taking a selfie', caption: 'Drivers’ briefing. Helmets on. Seriousness off.', focal: '50% 40%' },
+  { id: 'night-celebration', folder: 'together', file: 'night-celebration.jpg', alt: 'A crowd of friends cheering at night with raised glasses', caption: 'Championship celebrations. The season hasn’t started yet.', focal: '50% 45%' },
+  { id: 'wedding-suits', folder: 'together', file: 'wedding-suits.jpg', alt: 'Friends in suits taking a group selfie at a wedding', caption: 'Wedding GP. Suits pressed, tyres warmed, buffet located.', focal: '50% 40%' },
+  { id: 'road-trip', folder: 'together', file: 'road-trip.jpg', alt: 'A group of friends posing on a road beside a car', caption: 'Balangoda-style recon lap. Essential services only.', focal: '50% 50%' },
+  { id: 'pool-strategy', folder: 'together', file: 'pool-strategy.jpg', alt: 'Five friends sitting at the edge of a pool, seen from behind, facing palm trees', caption: 'Strategy meeting. Nobody is taking notes.', focal: '50% 60%' },
+  { id: 'garage-five', folder: 'together', file: 'garage-five.jpg', alt: 'Five friends standing arm in arm under a carport', caption: 'Garage photo. Five crew, zero cars, full confidence.', focal: '50% 45%' },
+  { id: 'wedding-street', folder: 'together', file: 'wedding-street.jpg', alt: 'Three friends in wedding outfits taking a street selfie', caption: 'Formation lap to the ceremony.', focal: '50% 35%' },
+  { id: 'cycling', folder: 'together', file: 'cycling.jpg', alt: 'Four friends with bicycles and helmets on a road', caption: 'Fitness programme. Pedal-assisted, snack-powered.', focal: '50% 50%' },
+  { id: 'wedding-hotel', folder: 'together', file: 'wedding-hotel.jpg', alt: 'Friends dressed up for a wedding outside a hotel', caption: 'Team kit launch. Dress code: podium.', focal: '50% 40%' },
+  { id: 'parc-ferme', folder: 'together', file: 'parc-ferme.jpg', alt: 'Two friends slumped on the steps outside a bank', caption: 'Parc fermé. Cars impounded, drivers exhausted.', focal: '50% 60%' },
+  { id: 'hospitality', folder: 'together', file: 'hospitality.jpg', alt: 'Three friends standing by a dining table with drinks and ice cream', caption: 'Hospitality suite. Ice-cream budget: unlimited.', focal: '50% 45%' },
+  { id: 'wedding-laughs', folder: 'together', file: 'wedding-laughs.jpg', alt: 'Three friends laughing and holding up a printed wedding photo', caption: 'Photo of a photo. Peak engineering.', focal: '50% 40%' },
+  { id: 'shed-selfie', folder: 'together', file: 'shed-selfie.jpg', alt: 'Friends in caps and hats taking a selfie under a shelter', caption: 'Rain delay. Morale: suspiciously high.', focal: '50% 45%' },
+  { id: 'wedding-bouquet', folder: 'together', file: 'wedding-bouquet.jpg', alt: 'Two friends in wedding clothes taking a selfie with a bouquet', caption: 'Someone caught the bouquet. Stewards are investigating.', focal: '50% 40%' },
 ];
+
+/** @deprecated use `ownerPortrait` or `driverPortraits` — removed after the line-up migration. */
+export const driverPortrait = ownerPortrait;

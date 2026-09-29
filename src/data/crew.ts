@@ -1,7 +1,8 @@
 /**
- * The crew — friends who make up Bilal Racing. Data-driven so the owner can
- * drop in names/photos later. `person: null` = seat still open (render a
- * funny "vacancy" card, never an empty hole).
+ * The crew — friends who make up Bilal Racing (roles assigned for fun; the owner
+ * can reshuffle them here). `person: null` = seat still open (render a funny
+ * "vacancy" card, never an empty hole). Photos are face-cropped 480×480 avatars in
+ * src/assets/photos/crew/.
  *
  * `slot` places the member in the top-down pit-stop formation (see Crew section):
  * coordinates are % of the formation stage, car pointing up (nose at top).
@@ -13,6 +14,8 @@ export interface CrewPerson {
   nickname?: string;
   /** File name inside src/assets/photos/crew/ (optional). */
   photo?: string;
+  /** Short three-letter code for tokens/labels (optional). */
+  code?: string;
 }
 
 export interface CrewRole {
@@ -32,29 +35,29 @@ export const crew: CrewRole[] = [
     id: 'principal',
     group: 'pitwall',
     role: 'Team Principal',
-    duty: 'Built this website instead of a car. Signs every cheque with “lol”.',
-    person: { name: 'Isuru', nickname: 'The Boss' }, // TODO(owner): confirm
+    duty: 'Owns the team. Owns the pit wall. Owns every cardboard box in the garage. Signs every cheque with a paw print.',
+    person: { name: 'Nirod Rathnaweera', nickname: 'පූසා · Poosa', photo: 'nirod-rathnaweera.jpg', code: 'RAT' },
   },
   {
     id: 'engineer',
     group: 'pitwall',
     role: 'Race Engineer',
-    duty: 'Talks to the driver on the radio. Has not been listened to once.',
-    person: null,
+    duty: 'Talks to both drivers on the radio. Has been listened to zero times, in stereo.',
+    person: { name: 'Mahela Manamperi', photo: 'mahela-manamperi.jpg', code: 'MAN' },
   },
   {
     id: 'strategist',
     group: 'pitwall',
     role: 'Head of Strategy',
     duty: 'Plan A: win. Plan B: fish. There is no Plan C.',
-    person: null,
+    person: { name: 'Hashan Rahubaddha', photo: 'hashan-rahubaddha.jpg', code: 'RAH' },
   },
   {
     id: 'catering',
     group: 'pitwall',
     role: 'Head of Catering',
-    duty: 'Keeps the tuna supply chain running. Most important person on the team.',
-    person: null,
+    duty: 'Keeps the tea and tuna supply chain running. Most important person on the team.',
+    person: { name: 'Monte Buultjens', photo: 'monte-buultjens.jpg', code: 'BUU' },
   },
   // ---------------- Pit crew (formation around the car) ----------------
   {
@@ -63,7 +66,7 @@ export const crew: CrewRole[] = [
     role: 'Release Controller',
     duty: 'Holds the lollipop. Frequently eats it.',
     slot: { x: 50, y: 6 },
-    person: null,
+    person: { name: 'Nisal Matharage', photo: 'nisal-matharage.jpg', code: 'MAT' },
   },
   {
     id: 'front-jack',
@@ -71,7 +74,7 @@ export const crew: CrewRole[] = [
     role: 'Front Jack',
     duty: 'Lifts the car. Also lifts spirits. Mostly the car.',
     slot: { x: 50, y: 20 },
-    person: null,
+    person: { name: 'Charith Premakumara', photo: 'charith-premakumara.jpg', code: 'PRE' },
   },
   {
     id: 'gun-fl',
@@ -79,7 +82,7 @@ export const crew: CrewRole[] = [
     role: 'Wheel Gun · Front Left',
     duty: 'Fastest hands on the team. Slowest to reply on WhatsApp.',
     slot: { x: 22, y: 30 },
-    person: null,
+    person: { name: 'Damindu Lakmal', photo: 'damindu-lakmal.jpg', code: 'LAK' },
   },
   {
     id: 'gun-fr',
@@ -87,7 +90,7 @@ export const crew: CrewRole[] = [
     role: 'Wheel Gun · Front Right',
     duty: 'Tightens wheel nuts to “firm but loving”.',
     slot: { x: 78, y: 30 },
-    person: null,
+    person: { name: 'Sudheera Eranga', photo: 'sudheera-eranga.jpg', code: 'ERA' },
   },
   {
     id: 'stabiliser',
@@ -95,7 +98,7 @@ export const crew: CrewRole[] = [
     role: 'Side Stabiliser',
     duty: 'Holds the car steady while the driver stretches.',
     slot: { x: 16, y: 52 },
-    person: null,
+    person: { name: 'Sámídul Iddamalgoda', photo: 'samidul-iddamalgoda.jpg', code: 'IDD' },
   },
   {
     id: 'gun-rl',
@@ -103,7 +106,7 @@ export const crew: CrewRole[] = [
     role: 'Wheel Gun · Rear Left',
     duty: 'Once changed a tyre in 1.8 s. Talks about it daily.',
     slot: { x: 22, y: 74 },
-    person: null,
+    person: { name: 'Chamod Srimal', photo: 'chamod-srimal.jpg', code: 'SRI' },
   },
   {
     id: 'gun-rr',
@@ -111,13 +114,13 @@ export const crew: CrewRole[] = [
     role: 'Wheel Gun · Rear Right',
     duty: 'Brings the snacks. Also the wheel gun, sometimes.',
     slot: { x: 78, y: 74 },
-    person: null,
+    person: { name: 'Melan Kalana', photo: 'melan-kalana.jpg', code: 'KAL' },
   },
   {
     id: 'rear-jack',
     group: 'pitcrew',
     role: 'Rear Jack',
-    duty: 'Guards the tail. The driver’s actual tail. Do not touch the tail.',
+    duty: 'Guards the tail. The owner’s actual tail. Do not touch the tail.',
     slot: { x: 50, y: 92 },
     person: null,
   },
