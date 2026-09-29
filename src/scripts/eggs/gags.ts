@@ -1,9 +1,10 @@
 /**
- * Typed-word gags.
- *  - "meow": the driver peeks up from the bottom edge ("mrrp?").
- *  - "box":  a cardboard box drops in, the cat sprints over and hops in.
+ * Typed-word gags — starring the owner, Poosa (the cat owns the team).
+ *  - "meow": the owner peeks up from the bottom edge ("mrrp?").
+ *  - "box":  someone calls "box, box" for a driver; a cardboard box drops in
+ *            and the owner sprints over and claims it as his office.
  */
-import { driver } from '@/data/lore';
+import { owner } from '@/data/lore';
 import { sound } from '@/scripts/audio';
 import { EASE_IN, EASE_OUT_BACK, EASE_OUT_EXPO, foundEgg, play, reduced, toast, wait } from './util';
 
@@ -20,7 +21,7 @@ export function initGags(root: HTMLElement): GagControl {
 
   async function meow(): Promise<void> {
     sound.play('meow');
-    toast('Poosa heard you.', 'gold');
+    toast(`${owner.nicknameLatin} heard you. The owner will now ignore you personally.`, 'gold');
     foundEgg('meow', 'Meow detected on the radio');
     if (!peek || peekBusy) return;
     peekBusy = true;
@@ -62,7 +63,7 @@ export function initGags(root: HTMLElement): GagControl {
 
   async function box(): Promise<void> {
     sound.play('radio');
-    toast(driver.radioCatchphrase, 'gold');
+    toast(`${owner.nicknameLatin}: ${owner.radioCatchphrase}`, 'gold');
     foundEgg('box', 'Box, box');
     if (!stage || boxBusy) return;
     boxBusy = true;
@@ -108,7 +109,7 @@ export function initGags(root: HTMLElement): GagControl {
         { duration: 440, easing: 'ease-out' },
       );
 
-      // Enter the driver: flat out along the floor, then a hop into the box.
+      // Enter the owner: flat out along the floor, then a hop into the box.
       await play(
         cat,
         [

@@ -1,8 +1,8 @@
 /**
- * Laser pointer ("l"): a red dot glued to the pointer, and a cat arm reaching
- * up from below the screen. The paw lags behind the dot, the shoulder (a base
- * point under the bottom edge) lags behind the paw, so the arm swings like a
- * real reach. Every so often it swipes — and the dot dodges.
+ * Laser pointer ("l"): a red dot glued to the pointer, and the owner's arm
+ * reaching up from below the pit wall (his one weakness). The paw lags behind
+ * the dot, the shoulder (a base point under the bottom edge) lags behind the
+ * paw, so the arm swings like a real reach. Every so often it swipes — and the dot dodges.
  * rAF only runs while something is still moving; Esc also turns it off.
  */
 import { sound } from '@/scripts/audio';
@@ -133,7 +133,7 @@ export function initLaser(root: HTMLElement): LaserControl | null {
       kick();
       scheduleSwipe();
       sound.play('click');
-      toast('Laser pointer armed. Driver focus: gone.', 'red');
+      toast('Laser pointer armed. Team Principal focus: gone.', 'red');
       foundEgg('laser', 'Laser pointer in the braking zone');
       if (!reduced()) {
         void play(dot, [{ opacity: 0, scale: '3' }, { opacity: 1, scale: '1' }], { duration: 360, easing: 'ease-out' });
