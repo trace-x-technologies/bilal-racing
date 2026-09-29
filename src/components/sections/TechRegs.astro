@@ -6,7 +6,7 @@
  * the Navigation Timing API to report how fast the page loaded.
  */
 import SectionHeading from '@/components/ui/SectionHeading.astro';
-import { stats, driver } from '@/data/lore';
+import { owner, ownerStats, drivers } from '@/data/lore';
 
 interface Article {
   no: string;
@@ -28,21 +28,21 @@ const articles: Article[] = [
     no: '1.1',
     title: 'Chassis & circuit',
     tech: 'Astro 7 static build · Cloudflare edge',
-    rule: 'The car shall be assembled at the factory: every page is pre-rendered to static HTML, with JavaScript fitted only to parts that actually move, then served from Cloudflare’s edge, as close to the spectator as possible. The driver prefers to be served at home, with snacks.',
+    rule: 'The car shall be assembled at the factory: every page is pre-rendered to static HTML, with JavaScript fitted only to parts that actually move, then served from Cloudflare’s edge, as close to the spectator as possible. The team owner prefers to be served at home, with snacks.',
     check: 'edge',
   },
   {
     no: '2.1',
     title: 'Bodywork',
     tech: 'Scroll-driven animations · View Transitions',
-    rule: 'Bodywork shall move against scroll position, not the clock, via <code>animation-timeline: view()</code>, and changes of state shall morph rather than teleport (see the calendar’s grid view). Teleporting is reserved for the driver when a food bowl is filled.',
+    rule: 'Bodywork shall move against scroll position, not the clock, via <code>animation-timeline: view()</code>, and changes of state shall morph rather than teleport (see the calendar’s grid view). Teleporting is reserved for the team owner when a food bowl is filled.',
     check: 'bodywork',
   },
   {
     no: '3.1',
     title: 'Power unit',
     tech: 'WebGL · Three.js · lazy import()',
-    rule: 'The car shall be rendered in WebGL (Three.js) and must possess <mark class="pen">no fewer than two ears<svg class="pen__ring" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M18 30 C4 22 10 8 54 5 C110 1 186 4 194 18 C200 30 150 37 92 37 C46 37 14 32 12 22 C11 15 24 9 40 8"/></svg></mark>. The engine is only fetched when the car comes into view, and shall idle whenever nobody is watching. Much like the driver.',
+    rule: 'The car shall be rendered in WebGL (Three.js) and must possess <mark class="pen">no fewer than two ears<svg class="pen__ring" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M18 30 C4 22 10 8 54 5 C110 1 186 4 194 18 C200 30 150 37 92 37 C46 37 14 32 12 22 C11 15 24 9 40 8"/></svg></mark>. The engine is only fetched when the car comes into view, and shall idle whenever nobody is watching. Much like the owner on the pit wall.',
     check: 'webgl',
   },
   {
@@ -70,7 +70,7 @@ const articles: Article[] = [
     no: '7.1',
     title: 'Aerodynamics',
     tech: 'Container queries · :has() · @property',
-    rule: 'Components shall size themselves to the box they sit in, not to the screen — a regulation the driver has followed for years. Parents may react to their children via <code>:has()</code>, and custom properties shall be typed with <code>@property</code>. Untyped properties are reserved for the driver’s messages in the group chat.',
+    rule: 'Components shall size themselves to the box they sit in, not to the screen — a regulation the team owner has followed for years. Parents may react to their children via <code>:has()</code>, and custom properties shall be typed with <code>@property</code>. Untyped properties are reserved for the owner’s messages in the group chat.',
     check: 'aero',
   },
   {
@@ -104,9 +104,15 @@ const note = {
   by: 'Technical delegate · margin note',
 };
 
-const food = stats.find((s) => s.label === 'Reaction time to food');
+// The owner's reaction times (lore.ownerStats): 0.09 s to food, 9 business days to team emails.
+const food = ownerStats.find((s) => s.label === 'Reaction time to food');
 const foodSeconds = food?.value ?? 0.09;
 const foodMs = Math.round(foodSeconds * 1000);
+const emailDays = Number(/(\d+) business days/.exec(food?.note ?? '')?.[1] ?? 9);
+
+const cars = drivers.map((d) => `#${d.number} ${d.code}`).join(' & ');
+// lore: car #13's driver built this website instead of doing a single practice lap.
+const buildDriver = drivers.find((d) => d.id === 'dha');
 ---
 
 <section class="section regs" id="tech" aria-labelledby="tech-title">
@@ -130,8 +136,8 @@ const foodMs = Math.round(foodSeconds * 1000);
         <p class="tele__big t-condensed">
           <span data-tele-load>—</span><small>ms</small>
         </p>
-        <p class="tele__verdict" data-tele-verdict data-food-ms={foodMs}>
-          Measuring. Unlike the driver, we arrive on time.
+        <p class="tele__verdict" data-tele-verdict data-food-ms={foodMs} data-email-days={emailDays}>
+          Measuring. Unlike the owner’s email replies, this won’t take {emailDays} business days.
         </p>
 
         <ul class="tele__sectors" role="list">
@@ -209,7 +215,7 @@ const foodMs = Math.round(foodSeconds * 1000);
               <div><dt>Document</dt><dd>BR-TECH-09</dd></div>
               <div><dt>Issue</dt><dd>9 (one per life)</dd></div>
               <div><dt>Date</dt><dd>23.09.2026</dd></div>
-              <div><dt>Status</dt><dd>Published while the driver slept</dd></div>
+              <div><dt>Status</dt><dd>Published while the owner slept</dd></div>
             </dl>
           </header>
 
@@ -289,14 +295,21 @@ const foodMs = Math.round(foodSeconds * 1000);
     <p class="decision__org t-mono">Fédération Internationale de l’Automeowbile</p>
     <h3 class="decision__title t-condensed">Stewards’ Decision · Document 9</h3>
     <dl class="decision__grid">
-      <div><dt class="t-mono">No / Driver</dt><dd>{driver.number} — {driver.fullName} (“{driver.nicknameLatin}”)</dd></div>
-      <div><dt class="t-mono">Competitor</dt><dd>Bilal Racing</dd></div>
+      <div><dt class="t-mono">Summoned</dt><dd>{owner.role} — {owner.fullName} (“{owner.nicknameLatin}”), callsign {owner.callsign}</dd></div>
+      <div><dt class="t-mono">Competitor</dt><dd>Bilal Racing · Cars {cars}</dd></div>
       <div><dt class="t-mono">Time</dt><dd>03:00 (zoomies o’clock)</dd></div>
       <div><dt class="t-mono">Session</dt><dd>Scrutineering</dd></div>
-      <div><dt class="t-mono">Fact</dt><dd>Car found to possess two ears, one tail and a website considerably faster than its driver.</dd></div>
+      <div>
+        <dt class="t-mono">Fact</dt>
+        <dd>
+          Both cars found to possess two ears and one tail.{
+            buildDriver && ` Car #${buildDriver.number} also possesses this website, built instead of a single practice lap.`
+          }
+        </dd>
+      </div>
       <div><dt class="t-mono">Infringement</dt><dd>Excessive cuteness — Art. 3.1.</dd></div>
       <div><dt class="t-mono">Decision</dt><dd><strong>No further action.</strong></dd></div>
-      <div><dt class="t-mono">Reason</dt><dd>The driver slept through the hearing. So did the stewards.</dd></div>
+      <div><dt class="t-mono">Reason</dt><dd>The team principal slept through the hearing. So did the stewards.</dd></div>
     </dl>
     <button type="button" class="decision__close" popovertarget="stewards-decision" popovertargetaction="hide">
       Close · Esc
@@ -1453,7 +1466,9 @@ const foodMs = Math.round(foodSeconds * 1000);
     const bytesEl = root.querySelector<HTMLElement>('[data-tele-bytes]');
     const reqsEl = root.querySelector<HTMLElement>('[data-tele-reqs]');
     const foodMs = Number(verdictEl?.dataset.foodMs) || 90;
-    const alarmMs = 9 * 60 * 1000; // lore: "To alarm clocks: 9 minutes."
+    // lore.ownerStats: "To team emails: 9 business days." Counted as whole days — he naps through weekends too.
+    const emailDays = Number(verdictEl?.dataset.emailDays) || 9;
+    const emailMs = emailDays * 24 * 60 * 60 * 1000;
 
     interface Timing {
       ttfb: number;
@@ -1487,8 +1502,8 @@ const foodMs = Math.round(foodSeconds * 1000);
       if (t.load <= foodMs) return `Faster than Poosa reacts to food (${food}). Stewards suspect tuna.`;
       if (t.ttfb > 0 && t.ttfb <= foodMs)
         return `First byte in ${Math.round(t.ttfb)} ms — faster than Poosa reacts to food (${food}). The rest stopped for a nap.`;
-      const x = Math.round(alarmMs / Math.max(1, t.load));
-      return `Slower than Poosa reacts to food (${food}), but ${fmt.format(x)}× faster than he reacts to an alarm clock (9 min).`;
+      const x = Math.round(emailMs / Math.max(1, t.load));
+      return `Slower than Poosa reacts to food (${food}), but ${fmt.format(x)}× faster than his email replies (${emailDays} business days).`;
     }
 
     let timing: Timing | null = null;
