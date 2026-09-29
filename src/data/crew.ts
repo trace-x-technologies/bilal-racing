@@ -43,7 +43,7 @@ export const crew: CrewRole[] = [
     group: 'pitwall',
     role: 'Race Engineer',
     duty: 'Talks to both drivers on the radio. Has been listened to zero times, in stereo.',
-    person: { name: 'Mahela Manamperi', photo: 'mahela-manamperi.jpg', code: 'MAN' },
+    person: { name: 'Sámídul Iddamalgoda', photo: 'samidul-iddamalgoda.jpg', code: 'IDD' },
   },
   {
     id: 'strategist',
@@ -98,7 +98,7 @@ export const crew: CrewRole[] = [
     role: 'Side Stabiliser',
     duty: 'Holds the car steady while the driver stretches.',
     slot: { x: 16, y: 52 },
-    person: { name: 'Sámídul Iddamalgoda', photo: 'samidul-iddamalgoda.jpg', code: 'IDD' },
+    person: { name: 'Mahela Manamperi', photo: 'mahela-manamperi.jpg', code: 'MAN' },
   },
   {
     id: 'gun-rl',
@@ -120,8 +120,8 @@ export const crew: CrewRole[] = [
     id: 'rear-jack',
     group: 'pitcrew',
     role: 'Rear Jack',
-    duty: 'Guards the tail. The owner’s actual tail. Do not touch the tail.',
+    duty: 'Newest signing. Guards the tail — the owner’s actual tail. Still learning which end of the car that is.',
     slot: { x: 50, y: 92 },
-    person: null,
+    person: { name: 'Isuru Perera', nickname: 'The new guy', code: 'PER' },
   },
 ];
