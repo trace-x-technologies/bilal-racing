@@ -1,27 +1,51 @@
 ---
 /**
  * Hero (#top): the page's only <h1>. Massive BILAL RACING wordmark with the
- * procedural BR-09 parked *in front of it* (WebGL canvas between a solid and an
- * outline copy of the wordmark), Sinhala sticker, driver badge, CTAs and an
- * ignition button that revs the car (and meows, if sound is on).
+ * procedural BR-09 (car #13) parked *in front of it* (WebGL canvas between a solid
+ * and an outline copy of the wordmark), Sinhala sticker, the line-up (owner +
+ * both drivers), CTAs and an ignition button that revs the car (and meows, if
+ * sound is on).
  *
  * Three.js is loaded with a dynamic import() after first paint; an SVG blueprint
  * poster covers loading, no-WebGL and (until the still frame lands) reduced motion.
  */
-import { team, driver, sinhala } from '@/data/lore';
+import { Image } from 'astro:assets';
+import { team, owner, drivers, sinhala } from '@/data/lore';
+import { crew } from '@/data/crew';
+import { resolvePhoto } from '@/data/photos';
 import { carPosterSVG } from '@/scripts/three/poster';
 
-const poster = carPosterSVG('hero-bp');
+// The hero garage holds car #13; the exploded view in #car is #17.
+const heroCar = drivers.find((d) => d.id === 'dha') ?? drivers[0];
+const livery = { number: heroCar.number, code: heroCar.code };
+const poster = carPosterSVG('hero-bp', livery);
+// Face-cropped owner avatar (same file the crew section uses).
+const principal = crew.find((c) => c.id === 'principal')?.person;
+const ownerAvatar = resolvePhoto({
+  id: 'owner-avatar',
+  folder: 'crew',
+  file: principal?.photo ?? 'nirod-rathnaweera.jpg',
+  alt: owner.fullName,
+  caption: '',
+});
 const leds = Array.from({ length: 15 }, (_, i) => (i < 5 ? 'g' : i < 10 ? 'r' : 'p'));
 const streaks = Array.from({ length: 10 }, (_, i) => i);
-// "cat (his nickname)" → ["cat", "(his nickname)"] for a two-line caption
+// "cat (the owner’s nickname)" → ["cat", "(the owner’s nickname)"] for a two-line caption
 const siMeaning = ((m: string) => {
   const cut = m.indexOf(' (');
   return cut > 0 ? [m.slice(0, cut), m.slice(cut + 1)] : [m, ''];
 })(sinhala.poosa.en);
 ---
 
-<section class="hero" id="top" aria-labelledby="hero-title" data-hero data-intro="pending">
+<section
+  class="hero"
+  id="top"
+  aria-labelledby="hero-title"
+  data-hero
+  data-intro="pending"
+  data-car-number={livery.number}
+  data-car-code={livery.code}
+>
   <div class="hero-bg" aria-hidden="true">
     <div class="hero-spot"></div>
     <div class="hero-wall"></div>
@@ -57,7 +81,7 @@ const siMeaning = ((m: string) => {
         <defs>
           <path id="si-ring-path" d="M100,100 m-80,0 a80,80 0 1,1 160,0 a80,80 0 1,1 -160,0"></path>
         </defs>
-        <text><textPath href="#si-ring-path">{`${sinhala.poosa.latin} · means cat · also our driver · `.toUpperCase()}</textPath></text>
+        <text><textPath href="#si-ring-path">{`${sinhala.poosa.latin} · means cat · owns the team · `.toUpperCase()}</textPath></text>
       </svg>
       <span class="si-word t-si" lang="si">{sinhala.poosa.si}</span>
       <figcaption class="si-caption t-mono">
@@ -91,23 +115,63 @@ const siMeaning = ((m: string) => {
       <p class="visually-hidden" aria-live="polite" data-ignite-live></p>
     </div>
 
-    <div class="hero-driver" data-intro-item>
-      <p class="driver-badge">
-        <span class="badge-num" aria-hidden="true">{driver.number}</span>
-        <span class="badge-body">
-          <span class="badge-top t-mono">
-            <span class="visually-hidden">Car number {driver.number}, timing code</span>
-            <span class="badge-code">{driver.code}</span>
-            <span class="badge-flag" aria-hidden="true">{driver.flag}</span>
-            <span>#{driver.number} · {driver.nationality}</span>
+    <div class="hero-lineup">
+      <ul class="lineup" role="list" aria-label={`${team.name} line-up`}>
+        <li class="chip chip--owner" data-intro-item>
+          <span class="owner-avatar">
+            {
+              ownerAvatar.src ? (
+                <Image
+                  src={ownerAvatar.src}
+                  alt={ownerAvatar.alt}
+                  width={48}
+                  height={48}
+                  densities={[1, 2]}
+                  loading="lazy"
+                  decoding="async"
+                  class="owner-img"
+                />
+              ) : (
+                <span class="owner-img owner-img--empty" role="img" aria-label={ownerAvatar.alt}>
+                  {owner.callsign}
+                </span>
+              )
+            }
           </span>
-          <span class="badge-name">{driver.fullName}</span>
-          <span class="badge-role t-mono">{driver.role}</span>
-        </span>
-      </p>
-      <div class="hero-ctas">
+          <span class="chip-body">
+            <span class="owner-name">
+              <span class="t-si" lang="si">{sinhala.poosa.si}</span>
+              <span>{owner.nicknameLatin}</span>
+            </span>
+            <span class="owner-meta t-mono">
+              <span>{owner.role}</span>
+              <span class="owner-callsign">
+                <span class="owner-sep" aria-hidden="true">·</span> Callsign <span class="chip-code">{owner.callsign}</span>
+              </span>
+            </span>
+          </span>
+        </li>
+        {
+          drivers.map((d) => (
+            <li class="chip chip--driver" data-intro-item>
+              <span class="chip-num" aria-hidden="true">
+                {d.number}
+              </span>
+              <span class="chip-body">
+                <span class="chip-top t-mono">
+                  <span class="visually-hidden">Race driver, car {d.number}, timing code</span>
+                  <span class="chip-code">{d.code}</span>
+                  <span>{d.firstName}</span>
+                </span>
+                <span class="chip-last">{d.lastName}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+      <div class="hero-ctas" data-intro-item>
         <a class="cta cta--gold" href="#driver">
-          <span>Meet the driver</span>
+          <span>Meet the line-up</span>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6"></path></svg>
         </a>
         <a class="cta cta--ghost" href="#lights-out">
@@ -234,7 +298,7 @@ const siMeaning = ((m: string) => {
       'stage'
       'pitch'
       'ignition'
-      'driver';
+      'lineup';
     row-gap: var(--space-4);
     pointer-events: none;
   }
@@ -247,7 +311,7 @@ const siMeaning = ((m: string) => {
 
   /* scrolled away: the faded-out foot (see the exit timeline) must not catch taps.
      Keyboard focus still reaches it, and brings the hero back into view. */
-  .hero:global(.is-foot-gone) .hero-layout > :is(.hero-kicker, .si-stamp, .hero-pitch, .hero-ignition, .hero-driver, .hero-scroll) {
+  .hero:global(.is-foot-gone) .hero-layout > :is(.hero-kicker, .si-stamp, .hero-pitch, .hero-ignition, .hero-lineup, .hero-scroll) {
     pointer-events: none;
   }
 
@@ -662,80 +726,200 @@ const siMeaning = ((m: string) => {
     color: var(--c-chalk);
   }
 
-  /* ---------------- driver badge + CTAs ---------------- */
-  .hero-driver {
-    grid-area: driver;
+  /* ---------------- line-up (owner + drivers) + CTAs ---------------- */
+  .hero-lineup {
+    grid-area: lineup;
     display: grid;
     gap: var(--space-4);
     align-content: end;
   }
 
-  .driver-badge {
+  .lineup {
+    container: lineup / inline-size;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    width: min(100%, 30rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* slanted timing-tower chips */
+  .chip {
+    --cut: 0.75rem;
     display: flex;
     align-items: stretch;
-    width: fit-content;
-    max-width: 100%;
+    min-width: 0;
     border: 1px solid var(--c-line-strong);
     background: color-mix(in oklab, var(--c-asphalt) 80%, transparent);
     backdrop-filter: blur(10px);
-    clip-path: polygon(0.9rem 0, 100% 0, calc(100% - 0.9rem) 100%, 0 100%);
+    clip-path: polygon(var(--cut) 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%);
   }
 
-  .badge-num {
+  .chip-body {
     display: grid;
-    place-items: center;
-    padding: 0 1.1rem 0 1.4rem;
-    background: var(--g-livery);
-    color: var(--c-on-gold);
-    font-family: var(--f-display);
-    font-weight: 900;
-    font-stretch: var(--stretch-condensed);
-    font-variation-settings: 'wdth' 62;
-    font-size: 3.2rem;
-    line-height: 1;
-  }
-
-  .badge-body {
-    display: grid;
+    align-content: center;
     gap: 0.15rem;
-    padding: var(--space-3) 1.6rem var(--space-3) var(--space-4);
     min-width: 0;
   }
 
-  .badge-top {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--c-mute);
-    font-size: 0.64rem;
-  }
-
-  .badge-code {
-    padding: 0.1rem 0.4rem;
+  .chip-code {
+    padding: 0.08rem 0.38rem;
     background: var(--c-gold);
     color: var(--c-on-gold);
     font-weight: 800;
     letter-spacing: 0.08em;
   }
 
-  .badge-flag {
-    letter-spacing: 0;
+  /* owner: the cat who owns the team, cat ears on the avatar */
+  .chip--owner {
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0.55rem 1.5rem 0.55rem 1.15rem;
+    background:
+      linear-gradient(100deg, color-mix(in oklab, var(--c-gold) 13%, transparent), transparent 60%),
+      color-mix(in oklab, var(--c-asphalt) 80%, transparent);
   }
 
-  .badge-name {
+  .owner-avatar {
+    --avatar: 2.75rem;
+    position: relative;
+    flex: none;
+    width: var(--avatar);
+    height: var(--avatar);
+    margin-top: 0.3rem;
+  }
+
+  .owner-avatar::before,
+  .owner-avatar::after {
+    content: '';
+    position: absolute;
+    top: calc(var(--avatar) * -0.13);
+    width: calc(var(--avatar) * 0.36);
+    height: calc(var(--avatar) * 0.4);
+    background: linear-gradient(to top, var(--c-saffron), var(--c-gold) 70%);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  }
+
+  .owner-avatar::before {
+    left: calc(var(--avatar) * 0.02);
+    rotate: -26deg;
+  }
+
+  .owner-avatar::after {
+    right: calc(var(--avatar) * 0.02);
+    rotate: 26deg;
+  }
+
+  .owner-avatar :global(.owner-img) {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--c-graphite);
+    box-shadow:
+      0 0 0 2px var(--c-gold),
+      0 0 0 4px var(--c-carbon);
+  }
+
+  .owner-img--empty {
+    color: var(--c-gold);
+    font-family: var(--f-mono);
+    font-size: 0.62rem;
+    font-weight: 800;
+  }
+
+  .owner-name {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 0.5rem;
     font-family: var(--f-display);
     font-weight: 800;
     font-stretch: 75%;
     font-variation-settings: 'wdth' 75;
-    font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.35rem);
-    line-height: 1.1;
+    font-size: clamp(1.1rem, 0.95rem + 0.6vw, 1.4rem);
+    line-height: 1.15;
     text-transform: uppercase;
   }
 
-  .badge-role {
+  .owner-name .t-si {
+    color: var(--c-gold);
+    font-size: 0.92em;
+  }
+
+  .owner-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem 0.45rem;
     color: var(--c-mute);
     font-size: 0.6rem;
     letter-spacing: 0.1em;
+  }
+
+  .owner-callsign {
+    white-space: nowrap;
+  }
+
+  /* narrow: "Callsign RAT" gets its own line under the role, without the separator */
+  @container lineup (width < 27rem) {
+    .owner-callsign {
+      flex-basis: 100%;
+    }
+
+    .owner-sep {
+      display: none;
+    }
+  }
+
+  /* drivers: livery number block + code, first name, surname */
+  .chip-num {
+    display: grid;
+    place-items: center;
+    flex: none;
+    min-width: 3.3rem;
+    padding: 0 0.6rem 0 1.05rem;
+    background: var(--g-livery);
+    color: var(--c-on-gold);
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    font-size: 2.35rem;
+    line-height: 1;
+  }
+
+  .chip--driver .chip-body {
+    padding: 0.45rem 1.3rem 0.45rem 0.65rem;
+  }
+
+  .chip-top {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--c-mute);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+  }
+
+  .chip-last {
+    overflow: hidden;
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-stretch: 75%;
+    font-variation-settings: 'wdth' 75;
+    font-size: clamp(0.98rem, 0.88rem + 0.4vw, 1.2rem);
+    line-height: 1.1;
+    text-transform: uppercase;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .hero-ctas {
@@ -927,7 +1111,7 @@ const siMeaning = ((m: string) => {
         'kicker kicker kicker'
         'wm wm wm'
         'stage stage stage'
-        'pitch ignition driver';
+        'pitch ignition lineup';
       column-gap: var(--space-6);
       row-gap: var(--space-3);
     }
@@ -954,7 +1138,7 @@ const siMeaning = ((m: string) => {
       justify-items: center;
     }
 
-    .hero-driver {
+    .hero-lineup {
       justify-items: end;
     }
 
@@ -971,8 +1155,8 @@ const siMeaning = ((m: string) => {
         'kicker kicker'
         'wm wm'
         'stage stage'
-        'pitch driver'
-        'ignition driver';
+        'pitch lineup'
+        'ignition lineup';
     }
 
     .hero-ignition {
@@ -1017,8 +1201,20 @@ const siMeaning = ((m: string) => {
       font-size: clamp(1.3rem, 0.9rem + 1.3vw, 2rem);
     }
 
-    .badge-num {
-      font-size: 2.6rem;
+    .hero-lineup {
+      gap: var(--space-3);
+    }
+
+    .chip-num {
+      font-size: 2rem;
+    }
+
+    .chip--owner {
+      padding-block: 0.4rem;
+    }
+
+    .owner-avatar {
+      --avatar: 2.4rem;
     }
 
     .cta {
@@ -1100,13 +1296,14 @@ const siMeaning = ((m: string) => {
       letter-spacing: 0.08em;
     }
 
-    .driver-badge {
-      width: 100%;
+    .chip-num {
+      min-width: 2.7rem;
+      font-size: 2rem;
+      padding-inline: 0.85rem 0.45rem;
     }
 
-    .badge-num {
-      font-size: 2.6rem;
-      padding-inline: 0.9rem 0.7rem;
+    .chip--driver .chip-body {
+      padding-inline: 0.5rem 0.95rem;
     }
 
     .cta {
@@ -1151,6 +1348,7 @@ const siMeaning = ((m: string) => {
     const revsEl = hero.querySelector<HTMLElement>('[data-revs]');
     const leds = Array.from(hero.querySelectorAll<HTMLElement>('[data-leds] .led'));
     const streaks = hero.querySelector<HTMLElement>('[data-hero-streaks]');
+    const livery = { number: Number(hero.dataset.carNumber) || 13, code: hero.dataset.carCode || 'DHA' };
 
     /* ---------------- 3D scene (lazy) ---------------- */
     let scene: HeroScene | null = null;
@@ -1175,6 +1373,7 @@ const siMeaning = ((m: string) => {
           canvas,
           host: hero,
           stage,
+          livery,
           reduced,
           lowPower: isLowPowerDevice(),
           onFirstFrame: () => hero.classList.add('is-3d'),
@@ -1242,7 +1441,7 @@ const siMeaning = ((m: string) => {
       revs += 1;
       if (revsEl) revsEl.textContent = String(Math.min(revs, 9));
       const lives = Math.min(revs, 9);
-      if (live) live.textContent = `Engine started. Purr-brid V6 at full meow. ${lives} of 9 lives used.`;
+      if (live) live.textContent = `Engine started. Car #${livery.number}’s Purr-brid V6 at full meow. ${lives} of the team’s 9 lives used.`;
       // Restart the shake/flash on every rev and let only the latest rev end it.
       window.clearTimeout(revTimer);
       hero.classList.remove('is-revving');
@@ -1276,7 +1475,7 @@ const siMeaning = ((m: string) => {
       }
       if (revs === 9) {
         emit('bilal:egg', { id: 'nine-revs', label: 'Revved all nine lives' });
-        emit('bilal:toast', { message: 'Nine revs. Nine lives. The stewards have been informed.', tone: 'gold' });
+        emit('bilal:toast', { message: 'Nine revs. All nine team lives used. The owner woke up from his nap to complain.', tone: 'gold' });
       }
     };
     igniteBtn?.addEventListener('click', ignite);
@@ -1397,7 +1596,7 @@ const siMeaning = ((m: string) => {
       if (canvas) exitTl.to(canvas, { yPercent: 38, duration: 1 }, 0);
       const wm = [wordmark, ghost].filter(Boolean) as HTMLElement[];
       exitTl.to(wm, { yPercent: -45, opacity: 0.12, duration: 0.6 }, 0);
-      const foot = hero.querySelectorAll('.hero-pitch, .hero-ignition, .hero-driver, .hero-scroll, .si-stamp, .hero-kicker');
+      const foot = hero.querySelectorAll('.hero-pitch, .hero-ignition, .hero-lineup, .hero-scroll, .si-stamp, .hero-kicker');
       exitTl.to(foot, { y: -60, opacity: 0, duration: 0.22, stagger: 0.012 }, 0.02);
       // Once every foot element is fully faded (0.02 + 0.22 + 5 × 0.012 = 0.3), stop it
       // catching taps: on short screens it is still on screen, just invisible.

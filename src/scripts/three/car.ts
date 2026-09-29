@@ -5,7 +5,7 @@
  * Car-local space: ground at y = 0, nose towards +z, x lateral. ≈5.6 × 2.0 × 0.95 units.
  * Every major part is its own named THREE.Group with exploded-view metadata (see parts.ts).
  *
- *   const car = buildCar({ anisotropy: renderer.capabilities.getMaxAnisotropy() });
+ *   const car = buildCar({ livery: { number: 13, code: 'DHA' }, anisotropy: renderer.capabilities.getMaxAnisotropy() });
  *   scene.add(car.root);
  *   car.spinWheels(0.2); car.setDRS(1); car.setPartExplode('rearwing', 0.5); car.dispose();
  */
@@ -79,11 +79,25 @@ export interface Car {
   dispose(): void;
 }
 
+/**
+ * Per-car race livery: the driver's number (nose + sidepods) and three-letter
+ * timing code (chip on the nose). The shark fin always wears the team's lucky
+ * 9 (nine lives), whoever is driving.
+ */
+export interface CarLivery {
+  number: number;
+  code: string;
+}
+
 export interface BuildCarOptions {
+  livery: CarLivery;
   anisotropy?: number;
   /** Fewer segments for phones. */
   lowPower?: boolean;
 }
+
+/** Team lucky number painted on the shark fin of every car. */
+const LUCKY_NUMBER = '9';
 
 /* ================================================================== */
 /* Geometry helpers                                                    */
@@ -370,7 +384,7 @@ const CRASH: Sec[] = [
 /* ================================================================== */
 /* buildCar                                                            */
 /* ================================================================== */
-export function buildCar(opts: BuildCarOptions = {}): Car {
+export function buildCar(opts: BuildCarOptions): Car {
   TX.setMaxAnisotropy(opts.anisotropy ?? 4);
   const low = Boolean(opts.lowPower);
   const RING = low ? 40 : 56;
@@ -1030,16 +1044,22 @@ export function buildCar(opts: BuildCarOptions = {}): Car {
     m.renderOrder = 1;
     add(part, m, parent);
   };
-  const nine = decalMat(TX.numberDecal());
-  const rat = decalMat(TX.codeDecal('RAT'));
-  const bilal = decalMat(TX.wordDecal('BILAL', { sub: 'RACING · 09', gradient: false }));
-  decal('frontwing', nose, [0, 0.47, 2.12], [-Math.PI / 2, 0, 0], [0.24, 0.24, 0.2], nine);
-  decal('frontwing', nose, [0, 0.58, 1.52], [-Math.PI / 2, 0, 0], [0.27, 0.1, 0.16], rat);
+  const raceNumber = String(opts.livery.number);
+  const code = opts.livery.code.toUpperCase();
+  // nose number: same height as the old single digit, wider canvas for two digits
+  const noseH = raceNumber.length > 1 ? 0.2 : 0.24;
+  const noseW = noseH * TX.numberDecalAspect(raceNumber);
+  const numberMat = decalMat(TX.numberDecal(raceNumber, { outline: true }));
+  const codeMat = decalMat(TX.codeDecal(code));
+  const bilal = decalMat(TX.wordDecal('BILAL', { sub: `RACING · #${raceNumber} ${code}`, gradient: false }));
+  const lucky = decalMat(TX.numberDecal(LUCKY_NUMBER));
+  decal('frontwing', nose, [0, 0.47, 2.12], [-Math.PI / 2, 0, 0], [noseW, noseH, 0.2], numberMat);
+  decal('frontwing', nose, [0, 0.58, 1.52], [-Math.PI / 2, 0, 0], [0.27, 0.1, 0.16], codeMat);
   podMeshes.forEach((pod, i) => {
     const s = i === 0 ? 1 : -1;
     decal('sidepods', pod, [s * 0.78, 0.42, 0.02], [0, (s * Math.PI) / 2, 0], [0.56, 0.17, 0.16], bilal, pod.parent ?? undefined);
   });
-  for (const s of [1, -1]) decal('enginecover', fin, [s * 0.006, 0.72, -1.2], [0, (s * Math.PI) / 2, 0], [0.24, 0.22, 0.004], nine);
+  for (const s of [1, -1]) decal('enginecover', fin, [s * 0.006, 0.72, -1.2], [0, (s * Math.PI) / 2, 0], [0.24, 0.22, 0.004], lucky);
 
   /* ---------------- parts + movers ---------------- */
   const moverOf = (obj: THREE.Object3D, offset: THREE.Vector3, rot = new THREE.Vector3()): Mover => ({

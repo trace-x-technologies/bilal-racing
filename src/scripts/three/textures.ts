@@ -222,24 +222,46 @@ export function liveryTexture(kind: LiveryKind): THREE.CanvasTexture {
 /* ------------------------------------------------------------------ */
 /* Decals (transparent)                                                */
 /* ------------------------------------------------------------------ */
-export function numberDecal(): THREE.CanvasTexture {
-  const [c, ctx] = makeCanvas(256, 256);
+/**
+ * Livery race number with a maroon drop shadow. One digit paints on a square
+ * canvas; two digits get a wider one (see `numberDecalAspect`) so they keep
+ * their proportions instead of being squeezed. `outline` adds a carbon keyline so
+ * the number still reads on the nose's gold centre stripe.
+ */
+export function numberDecal(text: string, opts: { outline?: boolean } = {}): THREE.CanvasTexture {
+  const H = 256;
+  const W = Math.round(H * numberDecalAspect(text));
+  const [c, ctx] = makeCanvas(W, H);
   displayFont(ctx, 250, 900, 'condensed');
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.save();
-  ctx.translate(128, 136);
+  ctx.translate(W / 2, 136);
   ctx.transform(1, 0, -0.16, 1, 0, 0);
   ctx.lineJoin = 'round';
   ctx.lineWidth = 16;
+  // leave room for the skew, the stroke(s) and the drop shadow
+  const fit = W - (opts.outline ? 64 : 44);
+  if (opts.outline) {
+    ctx.lineWidth = 30;
+    ctx.strokeStyle = LIVERY.carbon;
+    ctx.strokeText(text, 0, 0, fit);
+    ctx.strokeText(text, 6, 6, fit);
+    ctx.lineWidth = 16;
+  }
   ctx.strokeStyle = LIVERY.maroon;
-  ctx.strokeText('9', 6, 6);
+  ctx.strokeText(text, 6, 6, fit);
   ctx.fillStyle = LIVERY.maroon;
-  ctx.fillText('9', 6, 6);
+  ctx.fillText(text, 6, 6, fit);
   ctx.fillStyle = liveryGradient(ctx, 0, 110, 0, -110);
-  ctx.fillText('9', 0, 0);
+  ctx.fillText(text, 0, 0, fit);
   ctx.restore();
   return toTexture(c);
+}
+
+/** Width / height of the canvas `numberDecal(text)` paints on. */
+export function numberDecalAspect(text: string): number {
+  return text.length > 1 ? 1.45 : 1;
 }
 
 export function wordDecal(text: string, opts: { w?: number; h?: number; sub?: string; gradient?: boolean } = {}): THREE.CanvasTexture {
@@ -268,16 +290,21 @@ export function wordDecal(text: string, opts: { w?: number; h?: number; sub?: st
   return toTexture(c);
 }
 
-/** "RAT" timing-screen chip. */
+/** Driver's three-letter timing-screen chip ("DHA", "DEE"). */
 export function codeDecal(code: string): THREE.CanvasTexture {
   const [c, ctx] = makeCanvas(512, 192);
-  ctx.fillStyle = LIVERY.gold;
   ctx.beginPath();
   ctx.moveTo(40, 16);
   ctx.lineTo(500, 16);
   ctx.lineTo(472, 176);
   ctx.lineTo(12, 176);
   ctx.closePath();
+  // carbon keyline: the chip sits on the gold nose stripe
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 18;
+  ctx.strokeStyle = LIVERY.carbon;
+  ctx.stroke();
+  ctx.fillStyle = LIVERY.gold;
   ctx.fill();
   ctx.fillStyle = LIVERY.carbon;
   displayFont(ctx, 150, 900, 'condensed');
@@ -508,7 +535,10 @@ export function shadowTexture(): THREE.CanvasTexture {
   return toTexture(c, { srgb: false });
 }
 
-/** Painted pit-box floor markings ("Box, box? I love a box."). */
+/**
+ * Painted pit-box floor markings ("Box, box? I love a box."). Box 09 is the
+ * team's lucky number; the owner treats it as his personal nap spot.
+ */
 export function pitBoxTexture(): THREE.CanvasTexture {
   const S = 1024;
   const [c, ctx] = makeCanvas(S, S);
@@ -561,7 +591,7 @@ export function pitBoxTexture(): THREE.CanvasTexture {
   ctx.fillText('BOX 09', S / 2, fy + u * 1.5);
   ctx.font = `700 ${u * 0.2}px ${MONO_FONT}`;
   ctx.fillStyle = 'rgba(244,241,234,0.75)';
-  ctx.fillText('BILAL RACING · RESERVED FOR NAPS', S / 2, by - u * 0.4);
+  ctx.fillText('BILAL RACING · THE OWNER’S NAP BOX', S / 2, by - u * 0.4);
   // radial fade so the plane edge never shows
   ctx.globalCompositeOperation = 'destination-in';
   const g = ctx.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.5);

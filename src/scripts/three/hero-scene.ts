@@ -7,7 +7,7 @@
  */
 import * as THREE from 'three';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
-import { buildCar } from './car';
+import { buildCar, type CarLivery } from './car';
 import * as TX from './textures';
 import { clamp01, nextFrame, createLoop, createRenderer, disposeObject, easeIn, easeInOut, lerp, span, studioEnvironment } from './stage';
 
@@ -17,6 +17,8 @@ export interface HeroSceneOptions {
   host: HTMLElement;
   /** The car is framed to fit this element's box. */
   stage: HTMLElement;
+  /** Race number + timing code painted on this car (the hero car is #13 DHA). */
+  livery: CarLivery;
   reduced: boolean;
   lowPower: boolean;
   onFirstFrame?: () => void;
@@ -98,7 +100,7 @@ export async function createHeroScene(o: HeroSceneOptions): Promise<HeroScene | 
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 90);
   await nextFrame();
-  const car = buildCar({ anisotropy: renderer.capabilities.getMaxAnisotropy(), lowPower: o.lowPower });
+  const car = buildCar({ livery: o.livery, anisotropy: renderer.capabilities.getMaxAnisotropy(), lowPower: o.lowPower });
   scene.add(car.root);
 
   /* ---------- lights ---------- */
