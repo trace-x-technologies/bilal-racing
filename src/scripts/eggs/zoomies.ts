@@ -1,8 +1,9 @@
 /**
- * ZOOMIES MODE — Konami code or nine emblem taps.
- * html.zoomies + emit('bilal:zoomies'), speed-line overlay, a livery cat that
- * skids in, winds up, and blasts off, and a brief shake of visible page elements
- * (animated on `translate`/`rotate` so it composes with sections' own transforms).
+ * ZOOMIES MODE — Konami code or nine emblem taps (the owner's nine lives).
+ * html.zoomies + emit('bilal:zoomies'), speed-line overlay, the owner — a livery
+ * cat wearing the team's lucky #9 — skids in, winds up and blasts off past both
+ * drivers, and a brief shake of visible page elements (animated on
+ * `translate`/`rotate` so it composes with sections' own transforms).
  */
 import { emit, on } from '@/scripts/bus';
 import { sound } from '@/scripts/audio';
@@ -18,8 +19,15 @@ export interface ZoomiesControl {
 
 const EGG_LABEL: Record<ZoomiesSource, string> = {
   konami: 'The ancient cheat code',
-  'nine-lives': 'Nine lives, nine taps',
+  'nine-lives': 'The owner’s nine lives',
 };
+
+const ENGAGED: Record<ZoomiesSource, string> = {
+  konami: 'ZOOMIES MODE: ENGAGED. The owner has left the pit wall.',
+  'nine-lives': 'Nine lives, one owner, zero chill. ZOOMIES MODE: ENGAGED.',
+};
+
+const DISENGAGED = 'Zoomies disengaged. Owner back in his box, nap resumed.';
 
 const SHAKE_TARGETS = 'main :is(h1, h2, h3, img, canvas, button, .photo-slot), footer :is(h2, h3, img)';
 
@@ -119,10 +127,10 @@ export function initZoomies(root: HTMLElement): ZoomiesControl | null {
     apply(next, true);
     if (next) {
       sound.play('revMeow');
-      toast('ZOOMIES MODE: ENGAGED', 'red');
+      toast(ENGAGED[source], 'red');
     } else {
       sound.play('purr');
-      toast('Zoomies disengaged. Nap resumed.', 'info');
+      toast(DISENGAGED, 'info');
     }
     foundEgg(source, EGG_LABEL[source]);
   }
@@ -131,7 +139,7 @@ export function initZoomies(root: HTMLElement): ZoomiesControl | null {
     if (!active) return;
     apply(false, true);
     sound.play('purr');
-    toast('Zoomies disengaged. Nap resumed.', 'info');
+    toast(DISENGAGED, 'info');
   });
 
   // Another section may flip Zoomies too — stay in sync without re-emitting.

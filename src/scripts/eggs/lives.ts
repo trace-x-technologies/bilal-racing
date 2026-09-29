@@ -1,12 +1,15 @@
 /**
  * "Nine lives": tap the nav emblem (a[data-egg="emblem"]) nine times quickly
- * to toggle Zoomies — the touch-friendly Konami. The first tap navigates as
- * normal; from the 2nd rapid tap on we preventDefault so the page stays put.
+ * to spend all of the owner's nine lives (the team's lucky number) and toggle
+ * Zoomies — the touch-friendly Konami. The first tap navigates as normal; from
+ * the 2nd rapid tap on we preventDefault so the page stays put.
  */
+import { team } from '@/data/lore';
 import { floatText } from './util';
 
 const GAP_MS = 900;
-const LIVES = 9;
+/** The owner's lives = the team's lucky number. */
+const LIVES = team.luckyNumber;
 
 export function initNineLives(root: HTMLElement, onNine: () => void): void {
   let count = 0;
@@ -30,7 +33,7 @@ export function initNineLives(root: HTMLElement, onNine: () => void): void {
       const x = event.clientX || rect.left + rect.width / 2;
       const y = rect.bottom + 22;
       const done = count >= LIVES;
-      floatText(root, done ? '9/9 · ZOOMIES' : `${count}/${LIVES}`, x, y, done ? 'red' : 'gold');
+      floatText(root, done ? `${LIVES}/${LIVES} LIVES · ZOOMIES` : `${count}/${LIVES}`, x, y, done ? 'red' : 'gold');
       if (done) {
         count = 0;
         onNine();

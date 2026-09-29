@@ -6,13 +6,15 @@
  *  - Egg tracker: emit('bilal:egg', { id, label }) → "Easter egg 3/7 found".
  *  - Lazy (after idle): paw-print cursor trail, Konami / nine-lives ZOOMIES MODE,
  *    typed "meow" / "box", "l" laser pointer, 60 s idle nap, console greeting.
+ *  - The cat in every gag is the owner, Poosa; the drivers only get lapped.
  *
  * All art is inline SVG, hidden until used; every decorative layer is aria-hidden.
  */
-import { driver, stats, team } from '@/data/lore';
+import { drivers, owner, team } from '@/data/lore';
 
-const topSpeed = stats.find((s) => s.label === 'Top speed')?.value ?? 312;
-const carCode = team.car.split(' ')[0];
+// The owner's zoomies out-drag both drivers' best top speed — by exactly 1 km/h.
+const driversTop = Math.max(0, ...drivers.map((d) => d.stats.find((s) => s.label === 'Top speed')?.value ?? 0));
+const zoomiesSpeed = (driversTop || 312) + 1;
 
 // Deterministic speed-line field so SSR output is stable between builds.
 const streaks = Array.from({ length: 22 }, (_, i) => {
@@ -50,7 +52,7 @@ const streaks = Array.from({ length: 22 }, (_, i) => {
     </div>
     <p class="zl-word" data-zl-word>
       <span>Zoomies</span>
-      <small>Mode engaged · {topSpeed} km/h · lap record pending</small>
+      <small>{owner.nicknameLatin} on the loose · {zoomiesSpeed} km/h · both drivers lapped</small>
     </p>
     <div class="zl-cat" data-zl-cat>
       <div class="zl-bob">
@@ -86,7 +88,8 @@ const streaks = Array.from({ length: 22 }, (_, i) => {
           <path class="f-light" d="M86 73 C 110 77, 140 77, 160 72 C 150 67, 102 67, 86 73 Z"></path>
           <path class="s-stripe" d="M92 38 q3 8 -1 15 M106 37 q3 9 -1 17 M120 37 q3 9 -1 17 M78 43 q2 7 -2 12"></path>
           <circle class="f-chalk ol-thin" cx="142" cy="55" r="11"></circle>
-          <text class="zl-num" x="142" y="60">{driver.number}</text>
+          <!-- the team's lucky number (nine lives), not a car number -->
+          <text class="zl-num" x="142" y="60">{team.luckyNumber}</text>
           <!-- near legs -->
           <g class="zl-leg leg-back near">
             <path class="limb-o" d="M88 66 L84 100"></path>
@@ -115,7 +118,7 @@ const streaks = Array.from({ length: 22 }, (_, i) => {
     </div>
   </div>
 
-  <!-- ============ "meow": the driver peeks up ============ -->
+  <!-- ============ "meow": the owner peeks up from under the pit wall ============ -->
   <div class="peek floor" data-peek hidden aria-hidden="true">
     <span class="peek-bubble">mrrp?</span>
     <div class="peek-head">
@@ -144,7 +147,7 @@ const streaks = Array.from({ length: 22 }, (_, i) => {
     </div>
   </div>
 
-  <!-- ============ "box": box, box ============ -->
+  <!-- ============ "box": box, box — the owner claims his office ============ -->
   <div class="box floor" data-box hidden aria-hidden="true">
     <span class="box-dust"></span>
     <div class="box-body">
@@ -184,7 +187,7 @@ const streaks = Array.from({ length: 22 }, (_, i) => {
         <path class="k-hi ol-k" d="M12 61 H138 L145 77 H5 Z"></path>
         <path class="k-tape" d="M66 61.5 H84 L85.5 76.5 H64.5 Z"></path>
         <rect class="k-label" x="24" y="90" width="66" height="32" rx="2"></rect>
-        <text class="k-label-t" x="29" y="102">{carCode} SPARES</text>
+        <text class="k-label-t" x="29" y="102">OWNER’S BOX</text>
         <text class="k-label-s" x="29" y="110">THIS WAY UP</text>
         <path class="k-arrows" d="M31 117 l3 -4 3 4 M38 117 l3 -4 3 4"></path>
         <g class="k-stamp" transform="rotate(-11 116 106)">
@@ -201,7 +204,7 @@ const streaks = Array.from({ length: 22 }, (_, i) => {
     </div>
   </div>
 
-  <!-- ============ Idle: the driver naps on a spare tyre ============ -->
+  <!-- ============ Idle: the owner naps on a spare tyre ============ -->
   <div class="nap floor" data-nap hidden aria-hidden="true">
     <span class="nap-z" style="--i:0">z</span>
     <span class="nap-z" style="--i:1">Z</span>

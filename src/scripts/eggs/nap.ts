@@ -1,7 +1,8 @@
 /**
- * Idle 60 s → the driver curls up on a spare Purrelli in the corner.
- * Any activity wakes him. Uses one timeout that re-arms itself from the
- * last-activity timestamp (no per-event timer churn). Hidden tabs don't count.
+ * Idle 60 s → the owner curls up on a spare Purrelli in the corner (the drivers
+ * are out racing; somebody has to guard the tyres). Any activity wakes him.
+ * Uses one timeout that re-arms itself from the last-activity timestamp (no
+ * per-event timer churn). Hidden tabs don't count.
  */
 import { sound } from '@/scripts/audio';
 import { EASE_IN, EASE_OUT_EXPO, foundEgg, play, reduced, toast, wait } from './util';
@@ -48,8 +49,8 @@ export function initNap(root: HTMLElement): void {
       { duration: reduced() ? 240 : 900, easing: EASE_OUT_EXPO },
     );
     sound.play('purr', { volume: 0.5 });
-    toast('Driver is napping. Move to wake him.', 'info');
-    foundEgg('nap', 'Driver asleep on the grid');
+    toast('The owner is napping on the spare tyres. Move to wake him.', 'info');
+    foundEgg('nap', 'Owner asleep on the spare tyres');
   }
 
   async function wake(): Promise<void> {
