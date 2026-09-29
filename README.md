@@ -1,6 +1,7 @@
 # Bilal Racing 🐾🏎️
 
-The official (entirely fictional) Formula 1 team of **Nirod “පූසා” Rathnaweera**, driver #9.
+The official (entirely fictional) Formula 1 team owned by a cat: Team Principal & Owner
+**Nirod “පූසා” Rathnaweera**, with drivers **#13 Isuru Dharmadasa (DHA)** and **#17 Yasas Deegala (DEE)**.
 *Nine lives. Zero pit-stop discipline.*
 
 A friends-only joke site that doubles as a showcase of modern web tech: Astro 7, a procedural
@@ -18,18 +19,17 @@ npm run preview
 npx astro check    # type-check
 ```
 
-## Add photos
+## Photos
 
-1. Drop images into `src/assets/photos/<folder>/` — `driver/` (solo shots of Nirod),
-   `together/` (the gang), `crew/` (one per crew member).
-2. Point the matching entry at the file:
-   - driver portrait → `driverPortrait.file` in `src/data/photos.ts`
-   - gallery tiles → `gallery[].file` (+ tweak the caption) in `src/data/photos.ts`
-   - crew avatars → `person.photo` in `src/data/crew.ts`
-3. Missing files render a styled placeholder, so nothing breaks while you collect them.
+Photos live in `src/assets/photos/<folder>/` and are listed in `src/data/photos.ts`:
+- `team/` — the owner's portrait (`ownerPortrait`)
+- `driver/` — one portrait per driver (`driverPortraits`)
+- `crew/` — 480×480 face-cropped avatars (referenced from `src/data/crew.ts`)
+- `together/` — the paddock gallery (`gallery`, with captions)
 
-Photos are re-encoded by `astro:assets` (AVIF/WebP, resized), which strips EXIF metadata —
-including GPS location — from everything that ships.
+Before committing a new photo, auto-orient it and strip its metadata (phones embed GPS in
+EXIF). `astro:assets` re-encodes everything it ships (AVIF/WebP, resized), so the published
+site never carries EXIF either. Entries whose file is missing render a styled placeholder.
 
 ## Edit the crew
 
