@@ -9,6 +9,7 @@
  *
  * Extras (additive, optional):
  *   sound.blip({ pitch: 440, vowel: 'a', radio: true })  // one "cat-speak" syllable
+ *   sound.blip({ pitch: 540, formant: 1.25, mew: true })  // the owner: a tiny mew per syllable
  *   sound.getAnalyser()                                  // AnalyserNode on the master bus, or null
  *   sound.running                                        // true once the AudioContext is live
  *
@@ -53,6 +54,13 @@ export interface BlipOptions {
   glide?: number;
   /** Route through the band-limited team-radio bus. */
   radio?: boolean;
+  /**
+   * Vocal-tract size: multiplies the formant frequencies (default 1).
+   * >1 = smaller, cattier mouth; <1 = bigger, chestier voice. Clamped 0.6–1.6.
+   */
+  formant?: number;
+  /** Glide the formants m → ee → vowel → oo inside the syllable: a tiny "mew". */
+  mew?: boolean;
 }
 
 /* ------------------------------------------------------------------ helpers */
@@ -221,7 +229,10 @@ class SoundSystem {
     }
   }
 
-  /** One syllable of garbled "cat-speak" (used by Team Radio). */
+  /**
+   * One syllable of garbled "cat-speak" (used by Team Radio — each speaker gets
+   * their own pitch / formant / mew settings so you can tell who's talking).
+   */
   blip(opts: BlipOptions = {}): void {
     if (!this._enabled) return;
     try {
@@ -231,21 +242,49 @@ class SoundSystem {
       const f = clamp(opts.pitch ?? 320, 60, 1400);
       const dur = clamp(opts.duration ?? 0.085, 0.03, 0.4);
       const glide = opts.glide ?? 0.94;
-      const [f1, f2, f3] = FORMANTS[opts.vowel ?? 'a'];
+      const size = clamp(opts.formant ?? 1, 0.6, 1.6);
+      const vowel = opts.vowel ?? 'a';
+      const target = FORMANTS[vowel];
 
       const src = this.source(ctx);
-      automate(src.frequency, t, [
-        [0, f * 0.9],
-        [dur * 0.3, f * 1.06],
-        [dur, f * glide],
-      ]);
+      // A mew arcs up then lands on the glide; plain speech is a gentle hump.
+      automate(
+        src.frequency,
+        t,
+        opts.mew
+          ? [
+              [0, f * 0.82],
+              [dur * 0.45, f * 1.16],
+              [dur, f * glide],
+            ]
+          : [
+              [0, f * 0.9],
+              [dur * 0.3, f * 1.06],
+              [dur, f * glide],
+            ],
+      );
       const sum = ctx.createGain();
       sum.gain.value = 1;
+      const shape: ReadonlyArray<readonly [number, (Vowel | 'm')]> = [
+        [0, 'm'],
+        [0.2, 'i'],
+        [0.55, vowel],
+        [1, 'u'],
+      ];
       ([
-        [f1, 5, 1],
-        [f2, 8, 0.6],
-        [f3, 10, 0.25],
-      ] as const).forEach(([freq, q, g]) => this.formant(ctx, src, sum, freq, q, g));
+        [5, 1],
+        [8, 0.6],
+        [10, 0.25],
+      ] as const).forEach(([q, g], k) => {
+        const bp = this.formant(ctx, src, sum, target[k] * size, q, g);
+        if (opts.mew) {
+          automate(
+            bp.frequency,
+            t,
+            shape.map(([frac, vw]) => [dur * frac, FORMANTS[vw][k] * size] as const),
+          );
+        }
+      });
       const env = ctx.createGain();
       automate(env.gain, t, [
         [0, 0],

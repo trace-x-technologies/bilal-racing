@@ -1,24 +1,120 @@
 ---
 /**
  * 08 · TEAM RADIO — an F1-TV-style onboard with the radio overlay.
- * Plays lore.radioMessages as Engineer ↔ Poosa exchanges: typewriter
- * transcript, canvas waveform, squelch in/out and (sound on) garbled
- * "cat-speak" syllable blips. Autoplays the first exchange when seen.
+ * Plays lore.radioMessages: the owner (Poosa, callsign RAT) on the pit wall
+ * talking to both drivers, #13 Isuru (DHA) and #17 Yasas (DEE). Typewriter
+ * transcript, per-speaker name bar + team colour, canvas waveform, squelch
+ * in/out and (sound on) garbled "cat-speak" blips pitched per speaker — the
+ * owner is the cattiest. Autoplays the first exchange when seen.
  */
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import Emblem from '@/components/ui/Emblem.astro';
-import { driver, radioMessages, sinhala, team } from '@/data/lore';
+import PhotoSlot from '@/components/ui/PhotoSlot.astro';
+import { drivers, owner, radioMessages, sinhala, team, type Driver, type RadioSpeaker } from '@/data/lore';
+import { driverPortraits, type PhotoEntry } from '@/data/photos';
 
-const laps = [12, 23, 31, 44, 57];
-const exchanges: { lap: number; lines: { from: string; text: string }[] }[] = [];
-for (let i = 0; i < radioMessages.length; i += 2) {
+interface Speaker {
+  id: RadioSpeaker;
+  /** Name on the transcript ("Poosa", "Isuru"). */
+  name: string;
+  /** Big name on the name bar. */
+  surname: string;
+  /** Pit-wall callsign (owner) or timing code (drivers). */
+  code: string;
+  /** Car number; null = pit wall. */
+  car: number | null;
+  /** Small line under the name. */
+  role: string;
+  /** Decorative avatar (the name bar is aria-hidden, so alt stays empty). */
+  photo: PhotoEntry;
+  /** Avatar crop: zoom into the portrait around `origin`, then nudge sideways to centre the face. */
+  zoom: number;
+  origin: string;
+  shift: string;
+}
+
+const OWNER: RadioSpeaker = 'Poosa';
+
+/** Face crops into the full driver portraits (the owner already has a face-cropped avatar). */
+const CROPS: Record<Driver['id'], { focal: string; zoom: number; origin: string; shift: string }> = {
+  dha: { focal: '36% 43%', zoom: 1.7, origin: '36% 50%', shift: '12%' },
+  dee: { focal: '48% 60%', zoom: 1.45, origin: '48% 50%', shift: '2%' },
+};
+
+const driverSpeaker = (id: Exclude<RadioSpeaker, 'Poosa'>): Speaker => {
+  const d = drivers.find((x) => x.firstName === id) ?? drivers[0];
+  const crop = CROPS[d.id];
+  return {
+    id,
+    name: d.firstName,
+    surname: d.lastName,
+    code: d.code,
+    car: d.number,
+    role: `${d.code} · ${team.name}`,
+    photo: { ...driverPortraits[d.id], id: `radio-${d.id}`, alt: '', focal: crop.focal },
+    zoom: crop.zoom,
+    origin: crop.origin,
+    shift: crop.shift,
+  };
+};
+
+const speakers: Record<RadioSpeaker, Speaker> = {
+  Poosa: {
+    id: 'Poosa',
+    name: owner.nicknameLatin,
+    surname: owner.lastName,
+    code: owner.callsign,
+    car: null,
+    role: `${owner.nicknameLatin} · Team Principal`,
+    photo: { id: 'radio-owner', folder: 'crew', file: 'nirod-rathnaweera.jpg', alt: '', caption: '', focal: '50% 45%' },
+    zoom: 1,
+    origin: '50% 50%',
+    shift: '0%',
+  },
+  Isuru: driverSpeaker('Isuru'),
+  Yasas: driverSpeaker('Yasas'),
+};
+const cast = [speakers.Poosa, speakers.Isuru, speakers.Yasas];
+
+type Line = { from: RadioSpeaker; text: string };
+type Exchange = { lap: number; car: RadioSpeaker; lines: Line[] };
+
+/**
+ * Group the radio into exchanges that each end on the owner's punchline
+ * (driver asks → cat answers). An exchange's car is the driver in it.
+ */
+const laps = [9, 13, 17, 31, 44, 57];
+const exchanges: Exchange[] = [];
+const close = (lines: Line[]) =>
   exchanges.push({
     lap: laps[exchanges.length] ?? 57,
-    lines: radioMessages.slice(i, i + 2).map((m) => ({ from: m.from, text: m.text })),
+    car: lines.find((l) => l.from !== OWNER)?.from ?? 'Isuru',
+    lines,
   });
+let pending: Line[] = [];
+for (const m of radioMessages) {
+  pending.push({ from: m.from, text: m.text });
+  if (m.from === OWNER && pending.some((l) => l.from !== OWNER)) {
+    close(pending);
+    pending = [];
+  }
 }
+if (pending.length) close(pending);
+
 const totalLaps = 57;
+const slots = Math.max(2, ...exchanges.map((ex) => ex.lines.length));
+const firstCar = speakers[exchanges[0]?.car ?? 'Isuru'];
+const route = (ex: Exchange) => {
+  const opener = speakers[ex.lines[0].from];
+  const car = speakers[ex.car];
+  return opener.car == null ? `Pit wall → Car ${car.car}` : `Car ${opener.car} → Pit wall`;
+};
+const spoken = (ex: Exchange) =>
+  `Lap ${ex.lap}, ${route(ex).replace('→', 'to')}. ${ex.lines.map((l) => `${l.from}: ${l.text}`).join(' ')}`;
 const payload = JSON.stringify(exchanges);
+const speakerPayload = JSON.stringify(
+  Object.fromEntries(cast.map((s) => [s.id, { name: s.name, code: s.code, car: s.car }])),
+);
 ---
 
 <section class="section radio" id="radio" aria-labelledby="radio-title">
@@ -28,11 +124,11 @@ const payload = JSON.stringify(exchanges);
       kicker="Team Radio"
       id="radio-title"
       title="Box, box?<br/><em>Say less.</em>"
-      lead="Genuine* radio from car nine, transcribed by the stewards. Switch on the meow engine for the full, deeply unprofessional audio. *Not genuine."
+      lead={`Genuine* pit-wall radio: the owner (callsign ${owner.callsign}, species: cat) versus cars ${speakers.Isuru.car} and ${speakers.Yasas.car}. Transcribed by the stewards. Switch on the meow engine for the full, deeply unprofessional audio. *Not genuine.`}
       si={sinhala.hari.si}
     />
 
-    <div class="rd-layout" data-rd-root data-exchanges={payload}>
+    <div class="rd-layout" data-rd-root data-exchanges={payload} data-speakers={speakerPayload}>
       <div class="rd-main">
         <div class="rd-screen" data-rd-screen data-reveal="up">
           <!-- ======== onboard camera ======== -->
@@ -142,7 +238,7 @@ const payload = JSON.stringify(exchanges);
               <!-- nose with livery stripe + number -->
               <path d="M700 900 L770 600 Q800 580 830 600 L900 900 Z" fill="url(#rd-carbon)"></path>
               <path d="M786 604 L814 604 L846 900 H754 Z" fill="url(#rd-livery)" opacity="0.9"></path>
-              <text x="800" y="840" text-anchor="middle" font-family="Saira Variable, sans-serif" font-weight="900" font-size="64" fill="#07070b">9</text>
+              <text x="800" y="840" text-anchor="middle" font-family="Saira Variable, sans-serif" font-weight="900" font-size="58" fill="#07070b" data-rd-carnum>{firstCar.car}</text>
               <!-- cockpit sides -->
               <path d="M0 900 V700 Q150 690 300 760 Q420 820 520 900 Z" fill="url(#rd-carbon)"></path>
               <path d="M1600 900 V700 Q1450 690 1300 760 Q1180 820 1080 900 Z" fill="url(#rd-carbon)"></path>
@@ -177,11 +273,13 @@ const payload = JSON.stringify(exchanges);
               <b data-rd-lap>{exchanges[0].lap}</b>
               <span class="rd-lap-total">/{totalLaps}</span>
             </div>
-            <div class="rd-live t-mono"><i></i> Live · Onboard {driver.code}</div>
+            <div class="rd-live t-mono">
+              <i></i> Live · Onboard <span data-rd-onboard>#{firstCar.car} {firstCar.code}</span>
+            </div>
           </div>
 
           <!-- ======== radio overlay ======== -->
-          <div class="rd-overlay" data-rd-overlay data-who="">
+          <div class="rd-overlay" data-rd-overlay data-who="" data-card={firstCar.id}>
             <p class="rd-tag t-mono" aria-hidden="true">
               <span class="rd-tag-dot"></span>
               <span data-rd-dir>Team radio</span>
@@ -189,16 +287,30 @@ const payload = JSON.stringify(exchanges);
             <div class="rd-namebar" aria-hidden="true">
               <span class="rd-sweep" data-rd-sweep></span>
               <span class="rd-stripe"></span>
-              <span class="rd-num t-condensed">{driver.number}</span>
-              <span class="rd-id">
-                <b>{driver.lastName}</b>
-                <small><Emblem size="0.95em" title="" /> {team.name}</small>
+              <span class="rd-cards">
+                {
+                  cast.map((s) => (
+                    <span class="rd-card" data-spk={s.id}>
+                      <span class="rd-av" style={`--av-zoom: ${s.zoom}; --av-origin: ${s.origin}; --av-shift: ${s.shift}`}>
+                        <PhotoSlot photo={s.photo} widths={[112, 200]} sizes={`${Math.round(48 * s.zoom)}px`} />
+                      </span>
+                      <span class:list={['rd-num t-condensed', { 'is-code': s.car == null }]}>{s.car ?? s.code}</span>
+                      <span class="rd-id">
+                        <b>{s.surname}</b>
+                        <small>
+                          <Emblem size="0.95em" title="" />
+                          <span class="rd-role">{s.role}</span>
+                        </small>
+                      </span>
+                    </span>
+                  ))
+                }
               </span>
               <canvas class="rd-wave" data-rd-wave width="160" height="40"></canvas>
             </div>
             <div class="rd-transcript" aria-hidden="true">
               {
-                [0, 1].map((i) => (
+                Array.from({ length: slots }, (_, i) => (
                   <p class="rd-line" data-rd-line={i} hidden>
                     <span class="rd-who t-mono" data-rd-who />
                     <span class="rd-text">
@@ -208,7 +320,7 @@ const payload = JSON.stringify(exchanges);
                   </p>
                 ))
               }
-              <p class="rd-idle t-mono" data-rd-idle>Channel open · waiting for the pit wall</p>
+              <p class="rd-idle t-mono" data-rd-idle>Channel open · the owner is choosing a box</p>
             </div>
           </div>
         </div>
@@ -235,7 +347,7 @@ const payload = JSON.stringify(exchanges);
           <div class="rd-progress">
             <span class="rd-status t-mono" data-rd-status>Message 1 / {exchanges.length} · Lap {exchanges[0].lap}</span>
             <span class="rd-segs" aria-hidden="true">
-              {exchanges.map((_, i) => <i data-rd-seg={i} />)}
+              {exchanges.map((ex, i) => <i data-rd-seg={i} data-spk={ex.car} />)}
             </span>
           </div>
         </div>
@@ -251,19 +363,26 @@ const payload = JSON.stringify(exchanges);
           {
             exchanges.map((ex, i) => (
               <li>
-                <button type="button" class="rd-item" data-rd-item={i}>
-                  <span class="rd-item-lap t-mono">L{ex.lap}</span>
+                <button type="button" class="rd-item" data-rd-item={i} data-spk={ex.car}>
+                  <span class="rd-item-lap t-mono" aria-hidden="true">L{ex.lap}</span>
                   <span class="rd-item-body">
-                    <span class="rd-item-q">“{ex.lines[0].text}”</span>
+                    <span class="rd-item-route t-mono" aria-hidden="true">
+                      {route(ex)}
+                    </span>
+                    <span class="rd-item-q" aria-hidden="true">
+                      <b class="rd-from" data-spk={ex.lines[0].from}>{ex.lines[0].from}</b> “{ex.lines[0].text}”
+                    </span>
                     <span class="rd-item-a" aria-hidden="true">
                       <span class="rd-redact">Reply redacted by the stewards</span>
                       <span class="rd-reply">
-                        {driver.nicknameLatin}: “{ex.lines[1]?.text}”
+                        {ex.lines.slice(1).map((l) => (
+                          <span class="rd-reply-line">
+                            <b class="rd-from" data-spk={l.from}>{l.from}</b> “{l.text}”
+                          </span>
+                        ))}
                       </span>
                     </span>
-                    <span class="visually-hidden">
-                      {ex.lines.map((l) => `${l.from}: ${l.text}`).join(' ')}
-                    </span>
+                    <span class="visually-hidden">{spoken(ex)}</span>
                   </span>
                   <span class="rd-item-eq" aria-hidden="true">
                     <i />
@@ -282,29 +401,65 @@ const payload = JSON.stringify(exchanges);
 </section>
 
 <script>
-  import { sound, type Vowel } from '@/scripts/audio';
+  import { sound, type Vowel, type BlipOptions } from '@/scripts/audio';
   import { prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
+  import type { RadioSpeaker } from '@/data/lore';
 
   interface Line {
-    from: string;
+    from: RadioSpeaker;
     text: string;
   }
   interface Exchange {
     lap: number;
+    car: RadioSpeaker;
     lines: Line[];
   }
-  type Who = 'Engineer' | 'Poosa' | '';
+  interface SpeakerInfo {
+    name: string;
+    code: string;
+    /** null = pit wall (the owner). */
+    car: number | null;
+  }
+  type Who = RadioSpeaker | '';
+
+  /**
+   * How each speaker sounds in cat-speak. The owner is the cattiest: high,
+   * small-mouthed, every syllable a tiny rising mew. #13 talks low and fast
+   * (deploying the overtake); #17 sits in between and keeps losing signal.
+   */
+  interface Voice extends Pick<BlipOptions, 'formant' | 'mew' | 'duration' | 'volume'> {
+    pitch: number;
+    jitter: number;
+    glide: number;
+    /** ms per typed character. */
+    pace: number;
+    /** Share of syllables lost to "no signal" (0–1). */
+    dropout: number;
+  }
+  const VOICES: Record<RadioSpeaker, Voice> = {
+    Poosa: { pitch: 540, jitter: 0.26, formant: 1.25, mew: true, duration: 0.11, glide: 1.14, volume: 0.5, pace: 42, dropout: 0 },
+    Isuru: { pitch: 158, jitter: 0.12, formant: 0.9, duration: 0.068, glide: 0.9, volume: 0.64, pace: 31, dropout: 0 },
+    Yasas: { pitch: 224, jitter: 0.16, formant: 1.04, duration: 0.078, glide: 0.97, volume: 0.58, pace: 35, dropout: 0.22 },
+  };
+  const OWNER: RadioSpeaker = 'Poosa';
 
   const root = document.querySelector<HTMLElement>('[data-rd-root]');
   const screen = root?.querySelector<HTMLElement>('[data-rd-screen]');
 
-  let exchanges: Exchange[] = [];
-  try {
-    const parsed: unknown = JSON.parse(root?.dataset.exchanges ?? '[]');
-    if (Array.isArray(parsed)) exchanges = parsed as Exchange[];
-  } catch {
-    exchanges = [];
+  function parse(raw: string | undefined): unknown {
+    try {
+      return JSON.parse(raw ?? 'null');
+    } catch {
+      return null;
+    }
   }
+  const rawExchanges = parse(root?.dataset.exchanges);
+  const exchanges = (Array.isArray(rawExchanges) ? (rawExchanges as Exchange[]) : []).filter(
+    (ex) => ex && Array.isArray(ex.lines) && ex.lines.length > 0,
+  );
+  const rawSpeakers = parse(root?.dataset.speakers);
+  const speakers: Partial<Record<RadioSpeaker, SpeakerInfo>> =
+    rawSpeakers && typeof rawSpeakers === 'object' ? (rawSpeakers as Partial<Record<RadioSpeaker, SpeakerInfo>>) : {};
 
   if (root && screen && exchanges.length) {
     function $<T extends Element = HTMLElement>(sel: string): T | null {
@@ -313,6 +468,8 @@ const payload = JSON.stringify(exchanges);
     const overlay = $('[data-rd-overlay]');
     const dirEl = $('[data-rd-dir]');
     const lapEl = $('[data-rd-lap]');
+    const onboardEl = $('[data-rd-onboard]');
+    const carNumEl = $<SVGTextElement>('[data-rd-carnum]');
     const idleEl = $('[data-rd-idle]');
     const statusEl = $('[data-rd-status]');
     const liveEl = document.querySelector<HTMLElement>('[data-rd-live]');
@@ -350,9 +507,12 @@ const payload = JSON.stringify(exchanges);
     let freq: Uint8Array<ArrayBuffer> | null = null;
     let cw = 0;
     let chh = 0;
+    let waveColour = '';
 
     const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
-    const isPoosa = (from: string) => from.toLowerCase() !== 'engineer';
+    const isOwner = (from: RadioSpeaker) => from === OWNER;
+    const info = (id: RadioSpeaker): SpeakerInfo => speakers[id] ?? { name: id, code: '', car: null };
+    const carOf = (ex: Exchange) => info(ex.car).car;
 
     /* ---------------- UI state ---------------- */
     function setPlaying(value: boolean): void {
@@ -364,8 +524,11 @@ const payload = JSON.stringify(exchanges);
     function setCurrent(idx: number): void {
       current = idx;
       const ex = exchanges[idx];
+      const car = info(ex.car);
       if (lapEl) lapEl.textContent = String(ex.lap);
       if (statusEl) statusEl.textContent = `Message ${idx + 1} / ${exchanges.length} · Lap ${ex.lap}`;
+      if (onboardEl) onboardEl.textContent = `#${car.car ?? ''} ${car.code}`.trim();
+      if (carNumEl) carNumEl.textContent = String(car.car ?? '');
       items.forEach((b, i) => {
         if (i === idx) b.setAttribute('aria-current', 'true');
         else b.removeAttribute('aria-current');
@@ -373,14 +536,25 @@ const payload = JSON.stringify(exchanges);
       segs.forEach((s, i) => {
         s.dataset.state = i === idx ? 'on' : heard.has(i) ? 'done' : '';
       });
+      setWho('');
     }
 
-    function setWho(from: string): void {
-      who = from ? (isPoosa(from) ? 'Poosa' : 'Engineer') : '';
-      if (overlay) overlay.dataset.who = who;
+    /** Who's keyed up: drives the name bar card, team colour and the direction tag. */
+    function setWho(from: RadioSpeaker | ''): void {
+      who = from;
+      const ex = exchanges[current];
+      if (overlay) {
+        overlay.dataset.who = who;
+        overlay.dataset.card = who || ex.car;
+      }
+      waveColour = '';
       if (dirEl) {
-        dirEl.textContent =
-          who === 'Engineer' ? 'Pit wall → Car 9' : who === 'Poosa' ? 'Car 9 → Pit wall' : 'Team radio';
+        const car = carOf(ex);
+        dirEl.textContent = !who
+          ? 'Team radio'
+          : isOwner(who)
+            ? `Pit wall → Car ${car ?? ''}`.trim()
+            : `Car ${info(who).car ?? car ?? ''} → Pit wall`;
       }
     }
 
@@ -410,20 +584,31 @@ const payload = JSON.stringify(exchanges);
     /* ---------------- cat-speak ---------------- */
     const VOWELS: Record<string, Vowel> = { a: 'a', e: 'e', i: 'i', o: 'o', u: 'u', y: 'i' };
 
-    function syllable(ch: string, from: string, question: boolean): void {
+    function syllable(ch: string, from: RadioSpeaker, question: boolean): void {
+      const v = VOICES[from] ?? VOICES.Isuru;
+      // "No signal": some syllables never make it out of the jungle.
+      if (v.dropout && Math.random() < v.dropout) {
+        pulse = 0.25;
+        return;
+      }
       pulse = 1;
       if (!sound.enabled) return;
-      const poosa = isPoosa(from);
-      const base = poosa ? 470 : 172;
-      const jitter = poosa ? 0.22 : 0.14;
       sound.blip({
-        pitch: base * (1 - jitter / 2 + Math.random() * jitter),
+        pitch: v.pitch * (1 - v.jitter / 2 + Math.random() * v.jitter),
         vowel: VOWELS[ch.toLowerCase()] ?? 'a',
-        duration: poosa ? 0.1 : 0.075,
-        glide: question ? 1.4 : poosa ? 1.12 : 0.92,
-        volume: poosa ? 0.5 : 0.62,
+        duration: v.duration,
+        formant: v.formant,
+        mew: v.mew,
+        glide: question ? (v.mew ? 1.5 : 1.35) : v.glide,
+        volume: v.volume,
         radio: true,
       });
+    }
+
+    /** Transcript label: "Poosa · RAT · Pit wall" / "Isuru · #13 DHA". */
+    function label(from: RadioSpeaker): string {
+      const s = info(from);
+      return s.car == null ? `${s.name} · ${s.code} · Pit wall` : `${s.name} · #${s.car} ${s.code}`;
     }
 
     /* ---------------- playback ---------------- */
@@ -431,9 +616,12 @@ const payload = JSON.stringify(exchanges);
       const typed = el.querySelector<HTMLElement>('[data-rd-typed]');
       const rest = el.querySelector<HTMLElement>('[data-rd-rest]');
       const whoEl = el.querySelector<HTMLElement>('[data-rd-who]');
-      const poosa = isPoosa(line.from);
-      if (whoEl) whoEl.textContent = poosa ? `${line.from} · RAT` : line.from;
-      el.dataset.who = poosa ? 'Poosa' : 'Engineer';
+      const pace = (VOICES[line.from] ?? VOICES.Isuru).pace;
+      if (whoEl) whoEl.textContent = label(line.from);
+      el.dataset.spk = line.from;
+      // Captions roll like the broadcast: only the last two lines stay up.
+      const idx = lineEls.indexOf(el);
+      if (idx >= 2) lineEls[idx - 2].hidden = true;
       if (typed) typed.textContent = reduced ? line.text : '';
       if (rest) rest.textContent = reduced ? '' : line.text;
       if (!reduced) el.setAttribute('data-typing', '');
@@ -474,7 +662,7 @@ const payload = JSON.stringify(exchanges);
         }
         prevVowel = vowel;
         const pause = /[.?!…]/.test(ch) ? 190 : ch === ',' ? 130 : ch === ' ' ? 14 : 0;
-        await wait((poosa ? 40 : 34) + pause);
+        await wait(pace + pause);
         if (id !== runId) {
           setSpeaking(false);
           return false;
@@ -587,7 +775,14 @@ const payload = JSON.stringify(exchanges);
       draw(performance.now());
     }
 
-    const colour = () => (who === 'Poosa' ? '#ffc52e' : who === 'Engineer' ? '#14d5b4' : '#6c6a78');
+    /** The speaker's team colour, read once per key-up from the overlay's --who token. */
+    function colour(): string {
+      if (!waveColour) {
+        const v = overlay ? getComputedStyle(overlay).getPropertyValue('--who').trim() : '';
+        waveColour = v || '#6c6a78';
+      }
+      return waveColour;
+    }
     const centreWeight = (i: number) => 1 - Math.abs(i - (BARS - 1) / 2) / (BARS / 2);
     const wobble = (i: number, t: number) =>
       0.45 + 0.55 * Math.abs(Math.sin(i * 1.7 + t * 0.017) * Math.cos(i * 0.6 - t * 0.011));
@@ -981,12 +1176,32 @@ const payload = JSON.stringify(exchanges);
     contain: layout paint;
   }
 
-  .rd-overlay[data-who='Engineer'] {
-    --who: var(--c-teal);
+  /* Team colours per voice: the owner is cat-eye gold, #13 saffron, #17 teal. */
+  .radio [data-spk='Poosa'],
+  .rd-overlay[data-card='Poosa'] {
+    --spk: var(--c-gold);
+  }
+
+  .radio [data-spk='Isuru'],
+  .rd-overlay[data-card='Isuru'] {
+    --spk: var(--c-saffron);
+  }
+
+  .radio [data-spk='Yasas'],
+  .rd-overlay[data-card='Yasas'] {
+    --spk: var(--c-teal);
   }
 
   .rd-overlay[data-who='Poosa'] {
     --who: var(--c-gold);
+  }
+
+  .rd-overlay[data-who='Isuru'] {
+    --who: var(--c-saffron);
+  }
+
+  .rd-overlay[data-who='Yasas'] {
+    --who: var(--c-teal);
   }
 
   .rd-tag {
@@ -1013,10 +1228,10 @@ const payload = JSON.stringify(exchanges);
   .rd-namebar {
     position: relative;
     display: grid;
-    grid-template-columns: 6px auto minmax(0, 1fr) auto;
+    grid-template-columns: 6px minmax(0, 1fr) auto;
     align-items: center;
     gap: clamp(0.5rem, 0.3rem + 1cqi, 0.9rem);
-    min-height: 3.1rem;
+    min-height: 3.4rem;
     padding-right: 0.75rem;
     border-radius: 6px 6px 0 0;
     background: linear-gradient(90deg, rgb(12 12 18 / 0.95), rgb(20 20 28 / 0.92));
@@ -1025,7 +1240,66 @@ const payload = JSON.stringify(exchanges);
 
   .rd-stripe {
     align-self: stretch;
-    background: var(--g-livery);
+    background: linear-gradient(to bottom, var(--spk, var(--c-gold)), color-mix(in oklab, var(--spk, var(--c-gold)) 45%, var(--c-maroon)));
+  }
+
+  /* One card per speaker, stacked; the keyed-up voice (or the car on track) shows. */
+  .rd-cards {
+    display: grid;
+    align-self: stretch;
+    min-width: 0;
+  }
+
+  .rd-card {
+    grid-area: 1 / 1;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(0.45rem, 0.3rem + 0.8cqi, 0.75rem);
+    min-width: 0;
+    opacity: 0;
+    transform: translateY(40%);
+    /* Outgoing: fade fast, then reset below (unseen) for its next entrance. */
+    transition:
+      opacity 120ms ease,
+      transform 0s linear 120ms;
+  }
+
+  .rd-overlay[data-card='Poosa'] .rd-card[data-spk='Poosa'],
+  .rd-overlay[data-card='Isuru'] .rd-card[data-spk='Isuru'],
+  .rd-overlay[data-card='Yasas'] .rd-card[data-spk='Yasas'] {
+    opacity: 1;
+    transform: none;
+    /* Incoming: rises in once the old card has gone. */
+    transition:
+      opacity var(--dur-fast) ease 100ms,
+      transform var(--dur-med) var(--ease-out-expo) 100ms;
+  }
+
+  .rd-av {
+    position: relative;
+    display: block;
+    width: clamp(2.1rem, 1.7rem + 1.6cqi, 2.6rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--c-graphite);
+    box-shadow:
+      0 0 0 2px var(--spk),
+      0 0 0.9rem color-mix(in oklab, var(--spk) 35%, transparent);
+  }
+
+  .rd-av :global(picture),
+  .rd-av :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .rd-av :global(img) {
+    object-fit: cover;
+    transform: translateX(var(--av-shift, 0%)) scale(var(--av-zoom, 1));
+    transform-origin: var(--av-origin, 50% 50%);
   }
 
   /* Light sweep across the name bar when a new line keys up. */
@@ -1042,7 +1316,14 @@ const payload = JSON.stringify(exchanges);
     font-weight: 900;
     font-size: 2rem;
     line-height: 1;
-    color: var(--c-gold);
+    color: var(--spk, var(--c-gold));
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The owner has no car number: his pit-wall callsign goes there instead. */
+  .rd-num.is-code {
+    font-size: 1.3rem;
+    letter-spacing: 0.04em;
   }
 
   .rd-id {
@@ -1065,9 +1346,10 @@ const payload = JSON.stringify(exchanges);
   }
 
   .rd-id small {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.35rem;
+    min-width: 0;
     font-family: var(--f-mono);
     font-size: 0.6rem;
     letter-spacing: 0.12em;
@@ -1075,9 +1357,45 @@ const payload = JSON.stringify(exchanges);
     color: var(--c-mute);
   }
 
+  .rd-role {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .rd-wave {
     width: clamp(4.5rem, 3rem + 10cqi, 8.5rem);
     height: 1.9rem;
+  }
+
+  /* Phone-sized broadcast: give the names the room, keep the waveform. */
+  @container (max-width: 34rem) {
+    .rd-wave {
+      width: 3.25rem;
+    }
+
+    .rd-num {
+      font-size: 1.7rem;
+    }
+
+    .rd-num.is-code {
+      font-size: 1.1rem;
+    }
+
+    .rd-id b {
+      font-stretch: normal;
+      font-variation-settings: 'wdth' 100;
+      letter-spacing: 0.01em;
+    }
+
+    .rd-id small {
+      letter-spacing: 0.06em;
+    }
+
+    .rd-id small :global(.emblem) {
+      display: none;
+    }
   }
 
   .rd-transcript {
@@ -1096,11 +1414,7 @@ const payload = JSON.stringify(exchanges);
 
   .rd-who {
     font-size: 0.6rem;
-    color: var(--c-teal);
-  }
-
-  .rd-line[data-who='Poosa'] .rd-who {
-    color: var(--c-gold);
+    color: var(--spk, var(--c-mute));
   }
 
   .rd-text {
@@ -1244,12 +1558,12 @@ const payload = JSON.stringify(exchanges);
   }
 
   .rd-segs i[data-state='done'] {
-    background: color-mix(in oklab, var(--c-gold) 45%, var(--c-steel));
+    background: color-mix(in oklab, var(--spk, var(--c-gold)) 45%, var(--c-steel));
   }
 
   .rd-segs i[data-state='on'] {
-    background: var(--c-gold);
-    box-shadow: 0 0 0.5rem rgb(255 197 46 / 0.6);
+    background: var(--spk, var(--c-gold));
+    box-shadow: 0 0 0.5rem color-mix(in oklab, var(--spk, var(--c-gold)) 60%, transparent);
   }
 
   /* ======================= Radio log ======================= */
@@ -1307,14 +1621,37 @@ const payload = JSON.stringify(exchanges);
   }
 
   .rd-item[aria-current='true'] {
-    border-color: color-mix(in oklab, var(--c-gold) 45%, transparent);
-    background: linear-gradient(90deg, rgb(255 197 46 / 0.12), rgb(255 197 46 / 0.02));
+    border-color: color-mix(in oklab, var(--spk, var(--c-gold)) 45%, transparent);
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--spk, var(--c-gold)) 12%, transparent),
+      color-mix(in oklab, var(--spk, var(--c-gold)) 2%, transparent)
+    );
   }
 
   .rd-item-lap {
     padding-top: 0.2rem;
-    color: var(--c-gold);
+    color: var(--spk, var(--c-gold));
     font-weight: 700;
+  }
+
+  .rd-item-route {
+    font-size: 0.6rem;
+    color: var(--c-mute);
+  }
+
+  .rd-from {
+    margin-right: 0.2em;
+    font-family: var(--f-mono);
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--spk, var(--c-mute));
+  }
+
+  .rd-reply-line {
+    display: block;
   }
 
   .rd-item-body {
@@ -1356,7 +1693,8 @@ const payload = JSON.stringify(exchanges);
   }
 
   .rd-item[data-heard] .rd-reply {
-    display: inline;
+    display: grid;
+    gap: 0.15rem;
   }
 
   .rd-item-eq {
@@ -1371,7 +1709,7 @@ const payload = JSON.stringify(exchanges);
   .rd-item-eq i {
     flex: 1;
     height: 100%;
-    background: var(--c-gold);
+    background: var(--spk, var(--c-gold));
     border-radius: 1px;
     transform-origin: bottom;
     transform: scaleY(0.3);
@@ -1414,6 +1752,11 @@ const payload = JSON.stringify(exchanges);
     }
 
     .rd-item:hover {
+      transform: none;
+    }
+
+    /* Name-bar cards simply crossfade. */
+    .rd-card {
       transform: none;
     }
   }

@@ -4,32 +4,67 @@
  * Five pods light one per second, hold for a random 0.2–3 s, then go out.
  * Input: pointerdown (tap/click) or Space/Enter on the stage button.
  * PB + last five attempts persist via `store`; the classification tower
- * mixes your PB with the (entirely fictional) team.
+ * mixes your PB with the team: both drivers (#13 DHA, #17 DEE — times from
+ * their lore stats), the owner's two very different launches, and a DNS.
  */
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import Emblem from '@/components/ui/Emblem.astro';
-import { driver, sinhala, team } from '@/data/lore';
+import { drivers, owner, sinhala, team, type Driver } from '@/data/lore';
 
 const pods = [1, 2, 3, 4, 5];
+
+type Tone = 'gold' | 'maroon' | 'teal' | 'saffron' | 'purple' | 'faint' | 'you';
 
 interface Entry {
   code: string;
   name: string;
-  /** Reaction in ms; null = did not start. */
+  /** Reaction in ms; null = no time. */
   ms: number | null;
+  /** Shown instead of a time when there is none (DNS, DSQ). */
+  status?: string;
   note: string;
-  tone: 'gold' | 'maroon' | 'teal' | 'saffron' | 'purple' | 'faint' | 'you';
+  tone: Tone;
 }
 
+/** Driver colours (match Team Radio): #13 saffron, #17 teal. Notes are pure fiction. */
+const DRIVER_ROW: Record<Driver['id'], { tone: Tone; note: string; excuse: string }> = {
+  dha: { tone: 'saffron', note: 'number-matched on purpose', excuse: 'Already blaming a merge conflict.' },
+  dee: { tone: 'teal', note: 'no signal, went anyway', excuse: 'Already blaming the signal.' },
+};
+
+/** A driver's launch in ms, from their lore stats. */
+const reaction = (d: Driver): number | null => {
+  const s = d.stats.find((x) => /reaction/i.test(x.label));
+  return s ? Math.round(s.value * 1000) : null;
+};
+
+/** For the result copy: the drivers' launches, fastest first. */
+const rivals = drivers
+  .map((d) => ({ name: d.firstName, number: d.number, ms: reaction(d), excuse: DRIVER_ROW[d.id].excuse }))
+  .filter((r): r is { name: string; number: number; ms: number; excuse: string } => r.ms != null)
+  .sort((a, b) => a.ms - b.ms);
+
 const field: Entry[] = [
-  { code: driver.code, name: `${driver.nicknameLatin} #${driver.number}`, ms: 90, note: 'food was involved', tone: 'gold' },
-  { code: 'TPR', name: 'Team Principal', ms: 231, note: 'practised instead of building a car', tone: 'maroon' },
-  { code: 'ENG', name: 'Race Engineer (seat open)', ms: 300, note: 'still checking', tone: 'teal' },
-  { code: 'CAT', name: 'Head of Catering (seat open)', ms: 342, note: 'distracted by tuna', tone: 'saffron' },
-  { code: 'STR', name: 'Head of Strategy (seat open)', ms: 417, note: 'was executing Plan\u00a0B', tone: 'purple' },
-  { code: 'ZZZ', name: `${driver.nicknameLatin}, no food`, ms: 9000, note: 'woke up for the podium photo', tone: 'faint' },
+  { code: owner.callsign, name: `${owner.nicknameLatin} (owner)`, ms: 90, note: 'food was involved', tone: 'gold' },
+  ...drivers.map<Entry>((d) => ({
+    code: d.code,
+    name: `${d.firstName} ${d.lastName} #${d.number}`,
+    ms: reaction(d),
+    note: DRIVER_ROW[d.id].note,
+    tone: DRIVER_ROW[d.id].tone,
+  })),
+  { code: 'PIT', name: 'Pit crew (average)', ms: 342, note: 'distracted by tuna', tone: 'maroon' },
+  { code: 'ZZZ', name: `${owner.nicknameLatin}, no food`, ms: 9000, note: 'woke up for the podium photo', tone: 'faint' },
   { code: 'YOU', name: 'You', ms: null, note: 'no time set — yet', tone: 'you' },
-  { code: 'VAC', name: 'The vacuum cleaner', ms: null, note: 'DNS · Poosa fled the building', tone: 'faint' },
+  {
+    code: 'DOT',
+    name: 'The laser dot',
+    ms: null,
+    status: 'DSQ',
+    note: 'moved before the lights · the owner gave chase',
+    tone: 'purple',
+  },
+  { code: 'VAC', name: 'The vacuum cleaner', ms: null, status: 'DNS', note: 'the owner fled the building', tone: 'faint' },
 ];
 
 const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3));
@@ -44,20 +79,20 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       kicker="Lights Out"
       id="lights-out-title"
       title="Lights out,<br/><em>ears up.</em>"
-      lead="Five red lights. Wait for them to go out, then pounce. Jump the start and the start marshal (a cat) will know."
+      lead="Five red lights. Wait for them to go out, then pounce. Beat both drivers; beating the owner means hiding the tuna first. Jump the start and the start marshal (a cat) will know."
       si={sinhala.ikmanata.si}
     />
 
     <div class="lo-layout">
       <!-- ================= The stage ================= -->
-      <div class="lo-rig" data-lo-rig data-state="idle" style="--lit: 0" data-reveal="up">
+      <div class="lo-rig" data-lo-rig data-state="idle" style="--lit: 0" data-reveal="up" data-rivals={JSON.stringify(rivals)}>
         <div class="lo-scene" aria-hidden="true">
           <div class="lo-sky"></div>
           <div class="lo-ambient"></div>
           <div class="lo-floor">
             <div class="lo-floor-grid" data-lo-floor></div>
-            <div class="lo-slot lo-slot-a"><span>P9</span></div>
-            <div class="lo-slot lo-slot-b"><span>P10</span></div>
+            <div class="lo-slot lo-slot-a"><span>{drivers[0]?.number ?? 13}</span></div>
+            <div class="lo-slot lo-slot-b"><span>{drivers[1]?.number ?? 17}</span></div>
           </div>
           <div class="lo-vignette"></div>
         </div>
@@ -89,7 +124,9 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
           </p>
           <p class="lo-badge t-mono" data-lo-badge hidden>New PB</p>
           <p class="lo-verdict t-condensed" data-lo-verdict>Beat the cat</p>
-          <p class="lo-sub" data-lo-sub>Average human ≈ 0.250 s. {driver.nicknameLatin}, when food is involved: 0.090 s.</p>
+          <p class="lo-sub" data-lo-sub>
+            Average human ≈ 0.250 s. The owner, when food is involved: 0.090 s.
+          </p>
         </div>
 
         <button class="lo-trigger" type="button" data-lo-trigger aria-describedby="lo-help">
@@ -163,7 +200,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
                     <small data-note>{e.note}</small>
                   </span>
                   <span class="lo-t" data-t>
-                    {e.ms == null ? (e.code === 'VAC' ? 'DNS' : '—') : fmt(e.ms)}
+                    {e.ms == null ? (e.status ?? '—') : fmt(e.ms)}
                   </span>
                 </li>
               ))
@@ -192,6 +229,12 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     tone: Tone;
     subs: string[];
   }
+  interface Rival {
+    name: string;
+    number: number;
+    ms: number;
+    excuse: string;
+  }
 
   /** Under this, humans are guessing — shown, but not counted. */
   const ANTICIPATION = 100;
@@ -216,9 +259,9 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       label: 'Podium material',
       tone: 'teal',
       subs: [
-        'Clean launch. Poosa would like to see your paperwork.',
+        'Clean launch. The owner wants to sign you. The contract is a cardboard box.',
         'Sharp. Like claws on a brand-new sofa.',
-        'On the podium, behind a cat who was bribed with food. Respectable.',
+        'Quick. The drivers were quicker, and the owner was bribed with food. Respectable.',
       ],
     },
     {
@@ -233,7 +276,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     },
     {
       max: Infinity,
-      label: 'Asleep on the grid, like Poosa',
+      label: 'Napping like the owner',
       tone: 'red',
       subs: ['Box, box? More like nap, nap.', 'The lights went out. So did you.', 'Nine lives, and you spent one waiting.'],
     },
@@ -251,6 +294,15 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     function q<T extends HTMLElement = HTMLElement>(sel: string): T | null {
       return document.querySelector<T>(sel);
     }
+    /** #13 and #17's launches (from lore), fastest first. */
+    const rivals: Rival[] = (() => {
+      try {
+        const v: unknown = JSON.parse(rig.dataset.rivals ?? '[]');
+        return Array.isArray(v) ? (v as Rival[]).filter((r) => r && Number.isFinite(r.ms)) : [];
+      } catch {
+        return [];
+      }
+    })();
     const pods = Array.from(rig.querySelectorAll<HTMLElement>('[data-pod]'));
     const timeEl = q('[data-lo-time]');
     const verdictEl = q('[data-lo-verdict]');
@@ -302,6 +354,16 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       return arr[Math.floor(Math.random() * arr.length)];
     }
     const tierFor = (ms: number) => TIERS.find((t) => ms < t.max) ?? TIERS[TIERS.length - 1];
+    /** Beat a driver off the line? That deserves its own line. */
+    function rivalLine(ms: number): string | null {
+      const beaten = rivals.filter((r) => ms < r.ms);
+      if (!beaten.length) return null;
+      if (beaten.length > 1 && beaten.length === rivals.length) {
+        return `Quicker than ${rivals.map((r) => `#${r.number}`).join(' and ')}. The owner is drafting your contract on a napkin.`;
+      }
+      const r = beaten[0];
+      return `You out-launched #${r.number} ${r.name}. ${r.excuse}`;
+    }
     const announce = (msg: string) => {
       if (!liveEl) return;
       liveEl.textContent = '';
@@ -504,10 +566,11 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         store.set('lo-best', ms);
       }
       record({ ms, kind: 'ok' });
-      setReadout(fmt(ms), tier.label, pick(tier.subs), tier.tone);
+      const rival = rivalLine(ms);
+      setReadout(fmt(ms), tier.label, rival ?? pick(tier.subs), tier.tone);
       if (badgeEl) badgeEl.hidden = !isPb;
       renderStats();
-      announce(`${fmt(ms)} seconds. ${tier.label}.${isPb ? ' New personal best!' : ''}`);
+      announce(`${fmt(ms)} seconds. ${tier.label}.${isPb ? ' New personal best!' : ''}${rival ? ` ${rival}` : ''}`);
       if (isPb && ms < 300) {
         sound.play('revMeow', { volume: 0.8 });
         pawBurst(tier.tone);
@@ -546,9 +609,9 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       setState('dnf');
       lockedUntil = performance.now() + COOLDOWN;
       record({ ms: null, kind: 'dnf' });
-      setReadout('DNF', 'Asleep on the grid, like Poosa', 'Reaction: none. Snoring: detected.', 'red');
+      setReadout('DNF', 'Asleep on the grid', 'Reaction: none. Snoring: detected. The owner approves.', 'red');
       renderStats();
-      announce('Did not finish. You fell asleep on the grid, like Poosa.');
+      announce('Did not finish. You fell asleep on the grid. The owner approves.');
       sound.play('purr');
     }
 
