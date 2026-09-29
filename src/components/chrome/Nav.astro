@@ -8,22 +8,25 @@
  */
 import Emblem from '@/components/ui/Emblem.astro';
 import SoundToggle from './SoundToggle.astro';
-import { driver } from '@/data/lore';
+import { drivers, owner } from '@/data/lore';
 
 interface Props {
   base?: string;
 }
 const { base = '' } = Astro.props;
 
+// Brand chip shows the two race numbers ("#13 · #17"). The cat on the pit wall doesn't race.
+const carNumbers = drivers.map((d) => `#${d.number}`);
+
 const links = [
-  { id: 'driver', label: 'Driver', sub: 'Meet RAT. He is a cat.' },
+  { id: 'driver', label: 'Line-up', sub: `${carNumbers.join(' & ')}. The boss is a cat.` },
   { id: 'career', label: 'Career', sub: 'Nine lives, abridged' },
   { id: 'car', label: 'Car', sub: 'The BR-09, in pieces' },
-  { id: 'crew', label: 'Crew', sub: 'Pit crew & open seats' },
+  { id: 'crew', label: 'Crew', sub: 'Pit wall, pit crew, tuna' },
   { id: 'paddock', label: 'Paddock', sub: 'Photos. Evidence.' },
   { id: 'calendar', label: 'Calendar', sub: 'Races & nap windows' },
-  { id: 'lights-out', label: 'Lights Out', sub: 'Beat his reaction time' },
-  { id: 'radio', label: 'Radio', sub: 'He is not listening' },
+  { id: 'lights-out', label: 'Lights Out', sub: 'Out-pounce the whole grid' },
+  { id: 'radio', label: 'Radio', sub: `${owner.callsign} has the mic. Plan B: fish.` },
   // `extra`: the desktop bar only shows these once Saira has loaded (see `nav-fonts`):
   // in the wider fallback face ten links don't fit. The pit-lane menu always lists all ten.
   { id: 'sponsors', label: 'Partners', sub: 'Imaginary. Grateful.', extra: true },
@@ -48,7 +51,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       <span class="brand-word t-condensed" aria-hidden="true">
         <span class="brand-bilal">Bilal</span><span class="brand-racing">Racing</span>
       </span>
-      <span class="brand-code t-mono" aria-hidden="true">#{driver.number} · {driver.code}</span>
+      <span class="brand-code t-mono" aria-hidden="true">{carNumbers.join(' · ')}</span>
     </a>
 
     <nav class="nav-main" aria-label="Sections">
