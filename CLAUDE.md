@@ -1,10 +1,16 @@
 # Bilal Racing — project guide
 
-A fictional Formula 1 team website for our friend **Nirod Punsara Rathnaweera**, nickname
-**පූසා (Poosa) = "cat"** in Sinhala. "Bilal" puns on *Bilala* (cat). Driver #9 (nine lives),
-timing code **RAT** (a cat whose code is RAT). Shared among friends as a fun distraction, so it
-must be **funny, cool, and a showcase of modern web tech** (scroll animations, WebGL, Web Audio,
-View Transitions, CSS scroll-driven animations, etc.).
+A fictional Formula 1 team website for a group of friends. "Bilal" puns on *Bilala* (cat).
+**Line-up** (source of truth: `src/data/lore.ts`):
+- **Team Principal & Owner: Nirod Punsara Rathnaweera**, nickname **පූසා (Poosa) = "cat"** in
+  Sinhala — *the cat owns the team*. Pit-wall callsign **RAT** (a cat whose callsign is RAT).
+  **#9 / nine lives is the team's lucky number** (painted on the shark fin), not a car number.
+- **Drivers: Isuru Dharmadasa #13 (DHA)** and **Yasas Deegala #17 (DEE)**.
+- **Crew**: 10 friends in `src/data/crew.ts` (real names + face-cropped avatars), one open seat.
+Shared among friends as a fun distraction, so it must be **funny, cool, and a showcase of modern
+web tech** (scroll animations, WebGL, Web Audio, View Transitions, CSS scroll-driven animations).
+Pronouns: the owner is referred to as "he"; for everyone else avoid gendered pronouns in copy
+(use names, "the driver", "#13"). Never name people in group photos.
 
 ## Stack & commands
 - Astro 7 (static output) · TypeScript strict · vanilla CSS (component-scoped `<style>`)
@@ -25,9 +31,9 @@ src/styles/global.css            reset, .container/.section, type utils, [data-r
 src/scripts/motion.ts            gsap, ScrollTrigger, SplitText, Lenis, prefersReducedMotion(), isLowPowerDevice(), lockScroll(), scrollToTarget(), initReveals()
 src/scripts/bus.ts               emit()/on() typed window events + `store` (safe localStorage)
 src/scripts/audio.ts             `sound.play(name)` Web Audio synth, muted by default
-src/data/lore.ts                 driver facts, stats, timeline, radio lines, approved Sinhala
+src/data/lore.ts                 team, owner, ownerStats, drivers[], timeline, radioMessages, approved Sinhala
 src/data/crew.ts                 crew roles + formation slots (person: null = vacancy)
-src/data/photos.ts               photo manifest + resolvePhoto(); missing files → placeholder
+src/data/photos.ts               ownerPortrait, driverPortraits, gallery (15 real photos), resolvePhoto()
 src/components/ui/               Emblem, SectionHeading, PhotoSlot (shared, don't edit)
 src/components/chrome/           Loader, Nav, SoundToggle, Ticker, Footer, EasterEggs
 src/components/sections/         one file per section
@@ -65,7 +71,7 @@ src/scripts/three/               Three.js car model + scenes
 ## Tone & content
 - Affectionate roast. F1 jargon + cat puns ("box, box" → he loves boxes; nine lives; zoomies;
   laser pointers; tuna). Punchy, short lines. Never mean about looks, weight, job, family or money.
-- Facts about Nirod come **only** from `src/data/lore.ts`. Everything else is obviously fictional.
+- Facts about real people come **only** from `src/data/lore.ts` / `crew.ts`. Everything else is obviously fictional.
 - Parody sponsor names are fine (Purrelli, Meowcedes-ish). No real brand logos.
 - **Sinhala**: use only the words in `lore.sinhala` (render with `class="t-si" lang="si"`). Never
   invent Sinhala text.
