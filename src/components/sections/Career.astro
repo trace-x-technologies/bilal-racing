@@ -1,9 +1,11 @@
 ---
 /**
- * 02 — CAREER.
- * Desktop (motion OK): pinned horizontal scroll. A cat-head-shaped circuit
- * paints one colour per lap (stroke-dashoffset), a tiny cat-car rides the
- * racing line, and the lore.timeline cards slide past with a LAP n/5 HUD.
+ * 02 — HISTORY.
+ * Team history: the owner's backstory (Poosa's own driving days) up to the
+ * cat buying the team. Desktop (motion OK): pinned horizontal scroll. A
+ * cat-head-shaped circuit paints one colour per lap (stroke-dashoffset), a
+ * tiny cat-car rides the racing line, and the lore.timeline cards slide past
+ * with a LAP n/5 HUD.
  * Mobile: vertical timeline with a CSS scroll-driven progress line (JS
  * fallback where animation-timeline is unsupported).
  * Reduced motion / no JS: static vertical list beside a fully drawn map.
@@ -12,6 +14,11 @@ import SectionHeading from '@/components/ui/SectionHeading.astro';
 import { timeline } from '@/data/lore';
 
 const laps = timeline.length;
+const realLaps = timeline.filter((t) => t.tag === 'Real story').length;
+
+// Headline numbers read as words ("Five laps", "Two of these…").
+const WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+const word = (n: number) => WORDS[n] ?? String(n);
 
 // One colour per lap — the circuit is repainted in this colour as you drive it.
 // Gold is reserved for the laps that really happened ('Real story'), so lap one is chalk.
@@ -22,7 +29,7 @@ const tyres = [
   { c: 'S', name: 'Socks on tiles', color: 'var(--c-red)' },
   { c: 'I', name: 'Inters · essential travel only', color: 'var(--c-teal)' },
   { c: 'S', name: 'Softs · buffet spec', color: 'var(--c-red)' },
-  { c: 'M', name: 'Mediums · budget: zero', color: 'var(--c-gold)' },
+  { c: 'H', name: 'Hards · signed with a paw print', color: 'var(--c-chalk)' },
   { c: 'P', name: 'Pillows', color: 'var(--c-purple)' },
 ];
 
@@ -50,9 +57,9 @@ const track =
   <div class="container">
     <SectionHeading
       index="02"
-      kicker="Career"
-      title="Five laps. <em>Zero poles.</em>"
-      lead="From cement-floor karting to the World Championship of napping. Two of these laps actually happened — they’re marked in gold, for legal reasons."
+      kicker="History"
+      title={`${word(laps)} laps. <em>One takeover.</em>`}
+      lead={`How a kitten who karted on cement floors ended up owning the whole team. ${word(realLaps)} of these laps actually happened — they’re marked in gold, for legal reasons.`}
       id="career-title"
     />
   </div>
@@ -178,8 +185,8 @@ const track =
           </g>
         </svg>
         <figcaption class="circuit-cap t-mono">
-          <span class="t-gold">Autodromo Nove Vite</span> · {laps} laps · 3 turns. Any resemblance to the driver is
-          entirely intentional.
+          <span class="t-gold">Autodromo Nove Vite</span> · {laps} laps · 3 turns. Any resemblance to the team owner
+          is entirely intentional.
         </figcaption>
       </figure>
     </aside>
@@ -1123,7 +1130,7 @@ const track =
         if (finished && armed && !flagged && dwell() > 2000) {
           flagged = true;
           emit('bilal:toast', {
-            message: 'Chequered flag! P1 in the World Napping Championship (provisional).',
+            message: 'Chequered flag! History made. The owner celebrated by napping on the trophy.',
             tone: 'gold',
           });
         }
