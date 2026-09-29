@@ -76,7 +76,7 @@ export const driverPortraits: Record<'dha' | 'dee', PhotoEntry> = {
  * (group shots); keep it that way. Ordered roughly by how much they slap.
  */
 export const gallery: PhotoEntry[] = [
-  { id: 'team-pool', folder: 'together', file: 'team-pool.jpg', alt: 'The whole crew lined up beside a pool under palm trees', caption: 'Official team photo. Pre-season testing, poolside division.', focal: '50% 60%' },
+  { id: 'team-pool', folder: 'together', file: 'team-pool.jpg', alt: 'The whole crew lined up beside a pool under palm trees', caption: 'Official team photo. Pre-season testing, poolside division.', focal: '50% 88%' },
   { id: 'helmets', folder: 'together', file: 'helmets.jpg', alt: 'Two friends in motorbike helmets taking a selfie', caption: 'Drivers’ briefing. Helmets on. Seriousness off.', focal: '50% 40%' },
   { id: 'night-celebration', folder: 'together', file: 'night-celebration.jpg', alt: 'A crowd of friends cheering at night with raised glasses', caption: 'Championship celebrations. The season hasn’t started yet.', focal: '50% 45%' },
   { id: 'wedding-suits', folder: 'together', file: 'wedding-suits.jpg', alt: 'Friends in suits taking a group selfie at a wedding', caption: 'Wedding GP. Suits pressed, tyres warmed, buffet located.', focal: '50% 40%' },
