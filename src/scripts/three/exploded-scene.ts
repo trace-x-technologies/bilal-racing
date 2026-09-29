@@ -5,7 +5,7 @@
  * everything snaps back together.
  */
 import * as THREE from 'three';
-import { buildCar, type CarPart } from './car';
+import { buildCar, type CarLivery, type CarPart } from './car';
 import * as TX from './textures';
 import { clamp01, nextFrame, createLoop, createRenderer, disposeObject, easeInOut, lerp, span, studioEnvironment } from './stage';
 
@@ -20,6 +20,8 @@ export interface ExplodedSceneOptions {
   /** Leader lines + anchor dots, same order. */
   lines: SVGLineElement[];
   dots: SVGCircleElement[];
+  /** Race number + timing code painted on this car (the exploded car is #17 DEE). */
+  livery: CarLivery;
   reduced: boolean;
   lowPower: boolean;
   onFirstFrame?: () => void;
@@ -108,7 +110,7 @@ export async function createExplodedScene(o: ExplodedSceneOptions): Promise<Expl
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
   await nextFrame();
-  const car = buildCar({ anisotropy: renderer.capabilities.getMaxAnisotropy(), lowPower: o.lowPower });
+  const car = buildCar({ livery: o.livery, anisotropy: renderer.capabilities.getMaxAnisotropy(), lowPower: o.lowPower });
   scene.add(car.root);
 
   /* ---------- lights ---------- */

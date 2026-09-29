@@ -8,11 +8,20 @@
  * parts list below. Reduced motion: no pin, one static exploded render + list.
  */
 import SectionHeading from '@/components/ui/SectionHeading.astro';
-import { team, stats, sinhala } from '@/data/lore';
+import { team, drivers, sinhala } from '@/data/lore';
 import { PART_INFO, SPEC_JOKES } from '@/scripts/three/parts';
 import { carPosterSVG } from '@/scripts/three/poster';
 
-const topSpeed = stats.find((s) => s.label === 'Top speed');
+// The car on the bench is #17 (the hero garage has #13): its number and timing
+// code are painted on the 3D model and the blueprint poster.
+const benchCar = drivers.find((d) => d.id === 'dee') ?? drivers[drivers.length - 1];
+const livery = { number: benchCar.number, code: benchCar.code };
+// Top speed: the quicker claim of the two drivers, with both on the record.
+const speeds = drivers.flatMap((d) => {
+  const s = d.stats.find((st) => st.label === 'Top speed');
+  return s ? [{ name: d.firstName, value: s.value, suffix: s.suffix }] : [];
+});
+const fastest = speeds.reduce<(typeof speeds)[number] | null>((a, b) => (!a || b.value > a.value ? b : a), null);
 const specs: Array<{ k: string; v: string; note?: string }> = [
   { k: 'Chassis', v: team.car },
   { k: 'Power unit', v: team.engine },
@@ -20,7 +29,15 @@ const specs: Array<{ k: string; v: string; note?: string }> = [
   { k: 'Tyres', v: team.tyres },
   { k: 'Weight', v: SPEC_JOKES.weight },
   { k: '0–100 km/h', v: SPEC_JOKES.zeroToHundred },
-  ...(topSpeed ? [{ k: 'Top speed', v: `${topSpeed.value}${topSpeed.suffix}`, note: topSpeed.note }] : []),
+  ...(fastest
+    ? [
+        {
+          k: 'Top speed',
+          v: `${fastest.value}${fastest.suffix}`,
+          note: `${speeds.map((s) => `${s.name} ${s.value}`).join(', ')}. Only recorded when a tuna can opens.`,
+        },
+      ]
+    : []),
   { k: 'Gearbox', v: SPEC_JOKES.gearbox },
   { k: 'Brakes', v: SPEC_JOKES.brakes },
   { k: 'Fuel', v: SPEC_JOKES.fuel },
@@ -33,10 +50,10 @@ const phases = [
   { id: 'rebuild', label: 'Rebuild', from: 0.87 },
 ];
 const pad = (n: number) => String(n).padStart(2, '0');
-const poster = carPosterSVG('car-bp');
+const poster = carPosterSVG('car-bp', livery);
 ---
 
-<section class="section car" id="car" aria-labelledby="car-title" data-car>
+<section class="section car" id="car" aria-labelledby="car-title" data-car data-car-number={livery.number} data-car-code={livery.code}>
   <div class="container">
     <SectionHeading
       index="03"
@@ -44,7 +61,7 @@ const poster = carPosterSVG('car-bp');
       title="BR-09 <em>Purrari</em>"
       si={sinhala.vegaya.si}
       id="car-title"
-      lead="Hand-built in a Malabe garage from carbon fibre, gold paint and questionable decisions. Scroll to take it apart. The stewards said it’s fine."
+      lead={`Hand-built in a Malabe garage from carbon fibre, gold paint and questionable decisions. On the bench today: ${benchCar.fullName}’s car #${benchCar.number}. Scroll to take it apart. The stewards said it’s fine.`}
     />
   </div>
 
@@ -97,7 +114,7 @@ const poster = carPosterSVG('car-bp');
       </div>
 
       <aside class="car-spec car-spec--pinned" aria-labelledby="car-spec-title">
-        <p class="spec-kicker t-mono">Tech spec · BR-09</p>
+        <p class="spec-kicker t-mono">Tech spec · BR-09 · #{livery.number} {livery.code}</p>
         <h3 class="spec-title" id="car-spec-title">Purr-formance</h3>
         <dl class="spec-list">
           {
@@ -119,7 +136,7 @@ const poster = carPosterSVG('car-bp');
 
   <div class="container car-after">
     <aside class="car-spec car-spec--flow" aria-labelledby="car-spec-title-flow">
-      <p class="spec-kicker t-mono">Tech spec · BR-09</p>
+      <p class="spec-kicker t-mono">Tech spec · BR-09 · #{livery.number} {livery.code}</p>
       <h3 class="spec-title" id="car-spec-title-flow">Purr-formance</h3>
       <dl class="spec-list">
         {
@@ -841,6 +858,7 @@ const poster = carPosterSVG('car-bp');
     const benchJoke = root.querySelector<HTMLElement>('[data-bench-joke]');
     const partItems = Array.from(root.querySelectorAll<HTMLElement>('[data-part-item]'));
     if (!scroller || !stage || !canvas || !frame) return;
+    const livery = { number: Number(root.dataset.carNumber) || 17, code: root.dataset.carCode || 'DEE' };
 
     let scene: ExplodedScene | null = null;
     let progress = reduced ? 0.5 : 0;
@@ -871,7 +889,7 @@ const poster = carPosterSVG('car-bp');
       } else if (progress >= 0.86) {
         benchNum.textContent = '12';
         benchLabel.textContent = 'Reassembled. Mostly.';
-        benchJoke.textContent = 'There are two screws left over. The driver is sitting on them.';
+        benchJoke.textContent = 'There are two screws left over. The owner is napping on them.';
       } else {
         benchNum.textContent = '—';
         benchLabel.textContent = progress > 0.05 ? 'Unscrewing everything…' : 'Scroll to take it apart';
@@ -915,6 +933,7 @@ const poster = carPosterSVG('car-bp');
           labels,
           lines,
           dots,
+          livery,
           reduced,
           lowPower: isLowPowerDevice(),
           onFirstFrame: () => root.classList.add('is-3d'),

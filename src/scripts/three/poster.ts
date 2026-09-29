@@ -2,7 +2,17 @@
  * SVG side-view "blueprint poster" of the BR-09, generated from the same world
  * coordinates as the 3D model. Shown while Three.js loads, and as the fallback
  * for no-WebGL. Pure string → safe to use at build time with `set:html`.
+ *
+ * It wears the same livery as the 3D car it stands in for: the driver's number on
+ * the nose, "#number CODE" on the sidepod, and the team's lucky 9 on the shark fin.
  */
+export interface PosterLivery {
+  number: number;
+  code: string;
+}
+
+const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+const esc = (v: string) => v.replace(/[&<>"]/g, (ch) => ESCAPES[ch] ?? ch);
 const X = (z: number) => +(60 + (z + 2.7) * 185).toFixed(1);
 const Y = (y: number) => +(292 - y * 185).toFixed(1);
 const P = (pts: Array<[number, number]>) => pts.map(([z, y], i) => `${i ? 'L' : 'M'}${X(z)} ${Y(y)}`).join(' ');
@@ -27,7 +37,9 @@ function wheel(z: number, r: number, id: string): string {
     </g>`;
 }
 
-export function carPosterSVG(id = 'bp'): string {
+export function carPosterSVG(id: string, livery: PosterLivery): string {
+  const num = esc(String(livery.number));
+  const code = esc(livery.code.toUpperCase());
   const body = P([
     [-2.62, 0.3],
     [-2.62, 0.38],
@@ -128,7 +140,7 @@ export function carPosterSVG(id = 'bp'): string {
     )
     .join('');
 
-  return `<svg class="car-poster-svg" viewBox="0 0 1160 330" role="img" aria-label="Side view of the BR-09 Purrari: a black and gold Formula 1 car with cat ears on the airbox, whiskers on the nose, a curled tail antenna and paw-print wheel covers" preserveAspectRatio="xMidYMid meet">
+  return `<svg class="car-poster-svg" viewBox="0 0 1160 330" role="img" aria-label="Side view of the BR-09 Purrari in car #${num} livery: a black and gold Formula 1 car with cat ears on the airbox, whiskers on the nose, a curled tail antenna and paw-print wheel covers" preserveAspectRatio="xMidYMid meet">
     <defs>
       <linearGradient id="${id}-body" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#2a2a37"/><stop offset="0.55" stop-color="#101017"/><stop offset="1" stop-color="#07070b"/>
@@ -144,18 +156,20 @@ export function carPosterSVG(id = 'bp'): string {
     <path d="${P([[-1.9, 0.79], [-2.2, 0.85]])} ${P([[-2.14, 0.86], [-2.32, 0.985]])}" stroke="#ffc52e" stroke-width="8" stroke-linecap="round"/>
     <path d="${tail}" fill="none" stroke="#ffc52e" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 7"/>
     <path d="${fin}" fill="#07070b" stroke="#ffc52e" stroke-width="2.5" stroke-linejoin="round"/>
+    <text x="${X(-1.22)}" y="${Y(0.7)}" font-family="Saira Variable, Arial Narrow, sans-serif" font-weight="900" font-size="30" fill="#ffc52e" text-anchor="middle">9</text>
     <path d="${body}" fill="url(#${id}-body)" stroke="#ffc52e" stroke-width="3" stroke-linejoin="round"/>
     <path d="${P([[-2.05, 0.505], [-0.6, 0.79], [0.95, 0.67], [2.9, 0.3]])}" fill="none" stroke="#ffc52e" stroke-width="3" opacity="0.9"/>
     <path d="${pod}" fill="#0c0c12" stroke="#ffc52e" stroke-width="2.5" stroke-linejoin="round"/>
     <path d="${sweep}" fill="url(#${id}-livery)"/>
     <text x="${X(0.02)}" y="${Y(0.36)}" font-family="Saira Variable, Arial Narrow, sans-serif" font-weight="900" font-size="40" font-stretch="62%" fill="#ffc52e" text-anchor="middle" transform="skewX(-10)" transform-origin="${X(0.02)} ${Y(0.36)}">BILAL</text>
+    <text x="${X(0.02)}" y="${Y(0.27)}" font-family="JetBrains Mono Variable, ui-monospace, monospace" font-weight="700" font-size="12" letter-spacing="1.5" fill="#f4f1ea" text-anchor="middle">RACING · #${num} ${code}</text>
     <path d="${ear(-0.3)}" fill="#07070b" stroke="#ffc52e" stroke-width="2.5" stroke-linejoin="round"/>
     <path d="${P([[-0.34, 0.94], [-0.31, 1.02], [-0.27, 0.94]])}" fill="#e0457b"/>
     <circle cx="${X(0.1)}" cy="${Y(0.79)}" r="${0.125 * 185}" fill="#0d0d12" stroke="#ffc52e" stroke-width="2.5"/>
     <path d="M${X(0.1) + 4} ${Y(0.82)} a${0.125 * 185} ${0.125 * 185} 0 0 1 ${0.12 * 185} 16 l-2 18 h-${0.12 * 185 - 8} z" fill="#ffc52e"/>
     <path d="${P([[0.05, 0.9], [0.08, 0.97], [0.12, 0.9]])}" fill="#07070b" stroke="#ffc52e" stroke-width="2"/>
     <path d="${halo}" fill="none" stroke="#ffc52e" stroke-width="9" stroke-linecap="round"/>
-    <text x="${X(2.0)}" y="${Y(0.3)}" font-family="Saira Variable, Arial Narrow, sans-serif" font-weight="900" font-size="46" fill="#ffc52e" text-anchor="middle">9</text>
+    <text x="${X(1.2)}" y="${Y(0.3)}" font-family="Saira Variable, Arial Narrow, sans-serif" font-weight="900" font-size="46" font-stretch="75%" fill="#ffc52e" text-anchor="middle">${num}</text>
     <ellipse cx="${X(2.92)}" cy="${Y(0.262)}" rx="9" ry="6" fill="#e0457b"/>
     ${whiskers}
     <path d="${P([[2.98, 0.08], [2.68, 0.1]])}" stroke="#2a2a37" stroke-width="9" stroke-linecap="round"/>
