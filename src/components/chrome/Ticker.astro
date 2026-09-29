@@ -1,21 +1,27 @@
 ---
 /**
- * Crossed "caution tape" band between Hero and Driver: parody sponsor lines on
- * gold, approved Sinhala words (with meanings) on carbon. Rows run in opposite
- * directions, speed up with scroll velocity, reverse when scrolling up, pause on
- * hover or via the flag button. Reduced motion: static tapes.
+ * Crossed "caution tape" band between Hero and the Line-up: parody sponsor and
+ * line-up lines on gold, approved Sinhala words (with meanings) on carbon. Rows
+ * run in opposite directions, speed up with scroll velocity, reverse when
+ * scrolling up, pause on hover or via the flag button. Reduced motion: static tapes.
  */
-import { team, driver, sinhala } from '@/data/lore';
+import { team, owner, drivers, sinhala } from '@/data/lore';
+
+/** "#13 DHA · #17 DEE" — timing-screen style. */
+const grid = drivers.map((d) => `#${d.number} ${d.code}`).join(' · ');
+const rebel = drivers.find((d) => d.id === 'dha');
 
 const jokes = [
+  'Owner: a cat',
   'Fuel: 100% tuna, 0% urgency',
-  'Box, box = nap time',
+  `${grid} · box, box = owner nap`,
   'Nine lives · zero pit-stop discipline',
   `Tyres by ${team.tyres}`,
+  `Team orders: typed by paw${rebel ? `, ignored by #${rebel.number}` : ''}`,
   'DRS: Deploy Rest Sequence',
   `${team.engine}`,
-  'Undercut? He prefers a cushion',
-  `Car #${driver.number} · code ${driver.code} · yes, a cat called RAT`,
+  'Undercut? The owner prefers a cushion',
+  `Pit wall callsign ${owner.callsign} · yes, a cat called RAT`,
   'Blue flags ignored · laser pointer spotted',
   'Official partner: the warm bonnet',
 ];
@@ -96,7 +102,7 @@ const words = [
     z-index: 2;
     height: calc(var(--tape-h) * 2 + 8.5rem);
     /* Tuck the band's lower edge (flag pill) into the next section's top padding, so the
-       tapes lead straight into the Driver heading instead of floating over a dead band. */
+       tapes lead straight into the Line-up heading instead of floating over a dead band. */
     margin-bottom: calc(var(--section-pad) * -0.5);
     overflow-x: clip;
     display: grid;

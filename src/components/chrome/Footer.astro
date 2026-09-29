@@ -7,15 +7,26 @@
  * `base` prefixes the in-page anchors (use base="/" on other pages).
  */
 import Emblem from '@/components/ui/Emblem.astro';
-import { team, driver, sinhala } from '@/data/lore';
+import { team, owner, drivers, sinhala } from '@/data/lore';
 
 interface Props {
   base?: string;
 }
 const { base = '' } = Astro.props;
 
+// The site was built by car #13 (lore: "built this entire website instead of doing a single practice lap").
+const builder = drivers.find((d) => d.id === 'dha');
+/** "Bilal Racing · #13 DHA · #17 DEE · Team Principal: Poosa (RAT) · Built by car #13 … · …" */
+const credits = [
+  team.name,
+  ...drivers.map((d) => `#${d.number} ${d.code}`),
+  `Team Principal: ${owner.nicknameLatin} (${owner.callsign})`,
+  builder ? `Built by car #${builder.number} instead of practising, with Astro` : 'Built with Astro',
+  'served from Cloudflare’s edge',
+].join(' · ');
+
 const links = [
-  { id: 'driver', label: 'Driver' },
+  { id: 'driver', label: 'Line-up' },
   { id: 'career', label: 'Career' },
   { id: 'car', label: 'Car' },
   { id: 'crew', label: 'Crew' },
@@ -32,8 +43,8 @@ const letters = ['B', 'I', 'L', 'A', 'L'];
 // ScrollTrigger has measured it.
 const stintNotes: [number, string][] = [
   [0, '· still warming the tyres'],
-  [60, '· longer than his last stint awake'],
-  [180, '· purple sector. He is napping.'],
+  [60, '· longer than the owner’s last stint awake'],
+  [180, '· purple sector. The owner is napping.'],
   [600, '· you are now officially crew'],
 ];
 const year = new Date().getFullYear();
@@ -118,8 +129,7 @@ const year = new Date().getFullYear();
 
   <div class="container f-bottom">
     <p class="f-credits t-mono">
-      © <span data-year>{year}</span> {team.name} · #{driver.number} {driver.code} · Built by the Team Principal with Astro
-      · served from Cloudflare’s edge
+      © <span data-year>{year}</span> {credits}
     </p>
     <p class="f-disclaimer">
       Bilal Racing is a fictional team made by friends for fun. No cats were harmed. Several naps were.

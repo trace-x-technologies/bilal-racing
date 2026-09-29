@@ -6,13 +6,14 @@
  * Calls markReady() as the page is revealed so sections can choreograph entrances.
  */
 import Emblem from '@/components/ui/Emblem.astro';
-import { team } from '@/data/lore';
+import { team, drivers } from '@/data/lore';
 
+// One status line per red light (read by the script from each pod's data-line).
 const status = [
   'Engine · purring',
   'Tyres · kneaded',
-  'Visor · down',
-  'Ears · up',
+  `${drivers.map((d) => `#${d.number}`).join(' · ')} · visors down`,
+  'Pit wall · ears up',
   'Tail · tucked in',
 ];
 // Four torn shards between three claw lines (x% at top → x% at bottom).
@@ -71,8 +72,8 @@ const shards = [
       <div class="gantry-beam"></div>
       <div class="pods">
         {
-          status.map(() => (
-            <div class="pod" data-pod>
+          status.map((line) => (
+            <div class="pod" data-pod data-line={line}>
               <i class="lamp" />
               <i class="lamp" />
             </div>
@@ -82,7 +83,7 @@ const shards = [
     </div>
 
     <div class="loader-readout">
-      <p class="loader-status t-mono" data-status>Grid · waking the driver</p>
+      <p class="loader-status t-mono" data-status>Grid · waking the owner</p>
       <p class="loader-go t-condensed" data-go>
         <span class="go-line">
           {['Lights', 'out'].map((w) => <span class="go-word">{w}</span>)}
@@ -542,7 +543,6 @@ const shards = [
     }
 
     /* ---------- Full sequence (about 2.9 s) ---------- */
-    const lines = ['Engine · purring', 'Tyres · kneaded', 'Visor · down', 'Ears · up', 'Tail · tucked in'];
     const say = (text: string) => {
       if (status) status.textContent = text;
     };
@@ -618,7 +618,7 @@ const shards = [
       tl.call(
         () => {
           pod.classList.add('is-on');
-          say(lines[i] ?? '');
+          say(pod.dataset.line ?? '');
           sound.play('beep');
         },
         undefined,
