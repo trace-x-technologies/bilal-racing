@@ -102,6 +102,33 @@ const badges: Record<string, string> = {
 };
 
 /* ---------- Merch illustrations (viewBox 0 0 200 160) ---------- */
+
+interface HoodieLook {
+  /** Bottom-centre of the hoodie in the 200 × 160 art box. */
+  x: number;
+  y: number;
+  s: number;
+  /** Tilt in degrees. */
+  r: number;
+  num: string;
+  body: string;
+  ear: string;
+  deep: string;
+  pocket: string;
+}
+
+/** One cat-ear driver hoodie (drawn around its hem at 100,136), placed and tilted. */
+const hoodie = (h: HoodieLook) => `
+  <g transform="translate(${h.x} ${h.y}) rotate(${h.r}) scale(${h.s}) translate(-100 -136)">
+    <path d="M74 30 L70 12 L84 22 Z M126 30 L130 12 L116 22 Z" style="fill: ${h.body}; stroke: ${h.ear}" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M100 18 C80 18 70 30 70 44 L40 54 L22 120 L42 124 L52 86 L52 136 H148 V86 L158 124 L178 120 L160 54 L130 44 C130 30 120 18 100 18 Z" style="fill: ${h.body}" stroke="rgb(7 7 11 / 0.55)" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M78 44 C78 30 88 26 100 26 C112 26 122 30 122 44 C114 52 86 52 78 44 Z" fill="${h.deep}"/>
+    <path d="M94 50 V68 M106 50 V68" style="stroke: var(--c-chalk)" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M70 112 H130 L124 132 H76 Z" fill="${h.pocket}"/>
+    <text x="100" y="104" text-anchor="middle" class="bf-cond" font-size="44" style="fill: var(--c-gold)">${h.num}</text>
+    <path d="M52 136 H148" stroke="${h.deep}" stroke-width="5"/>
+  </g>`;
+
 const merchArt: Record<string, string> = {
   cap: `
     <ellipse class="mc__shadow" cx="104" cy="140" rx="74" ry="7"/>
@@ -146,15 +173,10 @@ const merchArt: Record<string, string> = {
       </g>
     </g>`,
   hoodie: `
-    <ellipse class="mc__shadow" cx="100" cy="144" rx="70" ry="7"/>
+    <ellipse class="mc__shadow" cx="100" cy="144" rx="74" ry="7"/>
     <g class="mc__float">
-      <path d="M74 30 L70 12 L84 22 Z M126 30 L130 12 L116 22 Z" style="fill: var(--c-maroon)" stroke="#e0426b" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M100 18 C80 18 70 30 70 44 L40 54 L22 120 L42 124 L52 86 L52 136 H148 V86 L158 124 L178 120 L160 54 L130 44 C130 30 120 18 100 18 Z" style="fill: var(--c-maroon)"/>
-      <path d="M78 44 C78 30 88 26 100 26 C112 26 122 30 122 44 C114 52 86 52 78 44 Z" fill="#5e0c25"/>
-      <path d="M94 50 V68 M106 50 V68" style="stroke: var(--c-chalk)" stroke-width="1.6" stroke-linecap="round"/>
-      <path d="M70 112 H130 L124 132 H76 Z" fill="#7d1030"/>
-      <text x="100" y="104" text-anchor="middle" class="bf-cond" font-size="46" style="fill: var(--c-gold)">9</text>
-      <path d="M52 136 H148" stroke="#5e0c25" stroke-width="5"/>
+      ${hoodie({ x: 67, y: 134, s: 0.66, r: -5, num: '13', body: 'var(--c-maroon)', ear: '#e0426b', deep: '#5e0c25', pocket: '#7d1030' })}
+      ${hoodie({ x: 133, y: 134, s: 0.66, r: 5, num: '17', body: '#11806d', ear: 'var(--c-teal)', deep: '#0a4f44', pocket: '#0e6a5b' })}
     </g>`,
   tee: `
     <ellipse class="mc__shadow" cx="100" cy="144" rx="70" ry="7"/>
@@ -164,11 +186,11 @@ const merchArt: Record<string, string> = {
       <rect x="66" y="46" width="68" height="62" rx="3" fill="#07070b"/>
       <g class="bf-mono" font-size="7.6" style="fill: var(--c-chalk)">
         <rect x="66" y="46" width="68" height="12" style="fill: var(--c-purple)"/>
-        <text x="70" y="55" fill="#fff">1 RAT</text><text x="130" y="55" text-anchor="end" fill="#fff">PIT</text>
-        <text x="70" y="68">2 ZZZ</text><text x="130" y="68" text-anchor="end" opacity="0.7">+9.0</text>
-        <text x="70" y="80">3 NAP</text><text x="130" y="80" text-anchor="end" opacity="0.7">+9.9</text>
-        <text x="70" y="92">4 BOX</text><text x="130" y="92" text-anchor="end" opacity="0.7">+99</text>
-        <text x="70" y="104" opacity="0.6">5 DOG</text><text x="130" y="104" text-anchor="end" style="fill: var(--c-red)">DNF</text>
+        <text x="70" y="55" fill="#fff" font-weight="700">RAT</text><text x="130" y="55" text-anchor="end" fill="#fff" font-size="6">PIT WALL</text>
+        <text x="70" y="68">13 DHA</text><text x="130" y="68" text-anchor="end" opacity="0.7">BOX</text>
+        <text x="70" y="80">17 DEE</text><text x="130" y="80" text-anchor="end" opacity="0.7">BOX</text>
+        <text x="70" y="92" style="fill: var(--c-gold)">RAT</text><text x="130" y="92" text-anchor="end" style="fill: var(--c-gold)">IN BOX</text>
+        <text x="70" y="104" opacity="0.6">DOG</text><text x="130" y="104" text-anchor="end" style="fill: var(--c-red)">DNF</text>
       </g>
     </g>`,
   freshener: `
@@ -317,7 +339,7 @@ const merchArt: Record<string, string> = {
         <div>
           <p class="t-mono shop__kicker" data-reveal="fade">Merchandise · Official · Unavailable</p>
           <h3 class="shop__title t-condensed" data-reveal="up">Paddock <em>Shop</em></h3>
-          <p class="shop__sub" data-reveal="up">Free shipping to any box he can fit in. Returns accepted if he is not in them.</p>
+          <p class="shop__sub" data-reveal="up">Free shipping to any box the owner can fit in. Returns accepted if he is not in it.</p>
         </div>
         <p class="shop__cart" data-reveal="fade">
           <svg viewBox="0 0 24 24" aria-hidden="true"
@@ -608,7 +630,7 @@ const merchArt: Record<string, string> = {
     }
   }
 
-  /* laser pointer: the dot wanders when you hover (his weakness) */
+  /* laser pointer: the dot wanders when you hover (the owner's weakness) */
   .sp :global(.lpl-caret) {
     animation: lpl-caret 1s steps(2, jump-none) infinite paused;
   }

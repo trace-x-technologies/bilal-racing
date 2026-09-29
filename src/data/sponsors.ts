@@ -2,6 +2,9 @@
  * Parody partners and the (permanently sold-out) Paddock Shop.
  * All names are original parodies — no real brands, no real logos. Each
  * sponsor's typographic badge is drawn in SVG by Sponsors.astro, keyed by `id`.
+ *
+ * Line-up: the owner (Poosa, callsign RAT) naps in the stock; the drivers are
+ * #13 and #17; #9 is the team's lucky number. No gendered pronouns for drivers.
  */
 
 export type Accent = 'gold' | 'saffron' | 'teal' | 'purple' | 'red' | 'maroon' | 'chalk';
@@ -79,9 +82,9 @@ export const sponsors: Sponsor[] = [
 export const titleSponsor = {
   label: 'Title sponsor',
   status: 'Still sleeping on it',
-  pitch: 'Your name on the only car that stops for sunbeams. Seen by dozens. Napped on by one.',
+  pitch: 'Your name on cars #13 and #17, and on the owner’s favourite box. Seen by dozens. Napped on by one.',
   cta: 'Apply to sponsor',
-  toast: 'Application received. He’s sleeping on it.',
+  toast: 'Application received. The owner is sleeping on it.',
 } as const;
 
 export interface MerchItem {
@@ -101,42 +104,42 @@ export const merch: MerchItem[] = [
     id: 'cap',
     name: 'Cat-Ear Team Cap',
     price: 4990,
-    blurb: 'Ears pre-installed. Fits any head with two ears or fewer.',
+    blurb: 'Ears pre-installed, lucky #9 on the front. Fits any head with two ears or fewer.',
     tag: 'Bestseller',
     accent: 'gold',
-    art: 'Black team cap with two pointed cat ears and a gold #9 badge',
+    art: 'Black team cap with two pointed cat ears and a gold badge showing the team’s lucky number nine',
   },
   {
     id: 'box',
     name: '“Box Box” Limited Edition Box',
     price: 12500,
-    blurb: 'Genuine cardboard. Ships empty, arrives with a driver in it.',
+    blurb: 'Genuine cardboard. Ships empty, arrives with the team owner in it.',
     tag: 'Limited',
     accent: 'saffron',
     art: 'An open cardboard box stamped BOX BOX, with two cat ears and glowing eyes peeking out',
   },
   {
     id: 'hoodie',
-    name: '#9 Nine Lives Hoodie',
-    price: 9999,
-    blurb: 'Nine lives, one hood. Front pocket sized for exactly one treat.',
-    tag: 'New',
+    name: '#13 & #17 Driver Hoodies',
+    price: 13017,
+    blurb: 'Sold as a pair, so nobody has to say who the number one driver is.',
+    tag: 'Pair',
     accent: 'maroon',
-    art: 'Maroon hoodie with cat-ear hood and a big gold number nine',
+    art: 'Two cat-ear driver hoodies side by side: a maroon one with a gold number 13 and a jungle-green one with a gold number 17',
   },
   {
     id: 'tee',
-    name: '“RAT” Timing-Screen Tee',
+    name: '“RAT” Callsign Tee',
     price: 3900,
-    blurb: 'His timing code is RAT. He is a cat. We do not discuss it.',
+    blurb: 'RAT is the owner’s pit-wall callsign. He is a cat. We do not discuss it.',
     accent: 'purple',
-    art: 'White T-shirt printed with a timing tower showing RAT in first place',
+    art: 'White T-shirt printed with a pit-wall screen headed RAT: cars 13 and 17 are told to box, and RAT is already sitting in the box',
   },
   {
     id: 'freshener',
     name: 'Tuna-Scented Air Freshener',
     price: 990,
-    blurb: 'New-car smell, but make it fish. Driver-approved. Passenger-disputed.',
+    blurb: 'New-car smell, but make it fish. Owner-approved. Both drivers dispute it.',
     tag: 'Smells',
     accent: 'teal',
     art: 'A fish-shaped car air freshener labelled TUNA hanging from a string',
@@ -152,7 +155,7 @@ export const merch: MerchItem[] = [
   },
 ];
 
-export const soldOutToast = 'Sold out. The driver is sleeping in the stock.';
+export const soldOutToast = 'Sold out. The owner is sleeping in the stock.';
 
 /** "LKR 12,500" — grouped the Sri Lankan way (same as en-US for these amounts). */
 export function formatLKR(value: number): string {

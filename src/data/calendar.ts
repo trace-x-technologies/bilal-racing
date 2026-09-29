@@ -1,7 +1,11 @@
 /**
  * 2026/27 Bilal Racing season calendar. Every Grand Prix is fictional; the
- * Balangoda GP is an homage to the (real, owner-approved) 2021 lockdown run
- * in `lore.ts`.
+ * Balangoda GP is an homage to the owner's (real, owner-approved) 2021
+ * lockdown run in `lore.ts`.
+ *
+ * Line-up: the drivers race (#13 Isuru, #17 Yasas); the owner, Poosa, naps on
+ * the pit wall. Jokes about the owner may say "he"; jokes about the drivers use
+ * names or car numbers, never gendered pronouns.
  *
  * Circuit outlines are hand-drawn SVG paths in a 200 × 120 viewBox. The first
  * point of each path is the start/finish line; `decor` is non-racing scenery
@@ -75,14 +79,14 @@ export const races: Race[] = [
     laps: '58',
     lengthKm: 3.9,
     weather: { icon: 'sun', text: 'Sunny with a chance of naps' },
-    joke: 'Home race. Team HQ is on the doorstep and he will still be late to the grid.',
+    joke: 'Home race. HQ is on the doorstep, and the owner will still be late to the pit wall.',
     tag: 'Home race',
     accent: 'gold',
     // A cat head. The "ω" at the bottom is the Whisker Chicane; the infield has eyes.
     path: 'M122 106 L146 106 Q170 106 172 82 L175 56 L168 12 L139 34 Q100 26 61 34 L32 12 L25 56 L28 82 Q30 106 54 106 L86 106 Q93 95 100 106 Q107 95 114 106 Z',
     decor: 'M66 66 Q78 55 90 66 Q78 77 66 66 Z M110 66 Q122 55 134 66 Q122 77 110 66 Z M78 60 V72 M122 60 V72',
     turn1: 'T1 · Whisker Kink',
-    result: 'P9 — stopped at HQ for a snack on lap 2',
+    result: '#13 P4 · #17 P9 — owner left on lap 2 for a snack',
   },
   {
     round: 2,
@@ -95,13 +99,13 @@ export const races: Race[] = [
     laps: '17',
     lengthKm: 2.4,
     weather: { icon: 'wind', text: 'Sea breeze. Ideal for sunbathing on the ramparts' },
-    joke: 'A sprint race. He will sprint for three seconds, then lie down on a warm wall.',
+    joke: 'A sprint race. Both drivers go flat out. The owner sprints for three seconds, then lies down on a warm wall.',
     tag: 'Sprint',
     accent: 'saffron',
     // Star-fort bastions.
     path: 'M52 104 L40 92 L28 72 L44 62 L38 38 L62 42 L72 20 L92 32 L110 16 L124 34 L152 26 L152 50 L174 58 L160 76 L170 98 L146 98 L134 110 L116 100 L90 108 L76 96 Z',
     turn1: 'T1 · Bastion Bed',
-    result: 'DNF — found a warm rampart on lap 3',
+    result: '#17 P2 · #13 P3 — owner found asleep on a warm rampart',
   },
   {
     round: 3,
@@ -114,13 +118,13 @@ export const races: Race[] = [
     laps: '61',
     lengthKm: 3.4,
     weather: { icon: 'moon', text: 'Clear night, full moon. Maximum zoomies' },
-    joke: 'Under the floodlights his pupils go full size. So does his confidence.',
+    joke: 'Under the floodlights the owner’s pupils go full size. So does his confidence on the radio.',
     tag: 'Night race',
     accent: 'purple',
     path: 'M28 70 C26 44 58 36 88 42 C114 47 124 28 152 30 C178 32 184 58 170 74 C156 90 122 80 100 88 C76 97 30 98 28 70 Z',
     decor: 'M150 54 m-7 0 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0',
     turn1: 'T1 · Moonbeam',
-    result: 'P1 in the dark. Stewards blame the pupils',
+    result: '#13 P1 — in sunglasses, at night. Somehow',
   },
   {
     round: 4,
@@ -133,12 +137,12 @@ export const races: Race[] = [
     laps: '50',
     lengthKm: 5.1,
     weather: { icon: 'hot', text: 'Hot, with a 100% chance of traffic on the way in' },
-    joke: 'Brand-new circuit. He has already claimed one corner as his bed.',
+    joke: 'Brand-new circuit. The drivers are learning the lines. The owner has already claimed one corner as his bed.',
     tag: 'Festive round',
     accent: 'teal',
     path: 'M30 94 L30 42 L58 42 L58 20 L150 20 Q170 20 170 40 L170 58 L118 58 L118 72 L170 72 L170 94 Q170 106 158 106 L42 106 Q30 106 30 94 Z',
     turn1: 'T1 · The Reclaimed Cushion',
-    result: 'P9 — stuck in traffic on the way to the grid',
+    result: '#17 P5 · #13 P6 — owner still stuck in traffic',
   },
   {
     round: 5,
@@ -151,13 +155,13 @@ export const races: Race[] = [
     laps: '1 ↑',
     lengthKm: 6.8,
     weather: { icon: 'cold', text: '12 °C and misty. Bring a jumper' },
-    joke: 'Uphill, all the way. He has formally asked to be carried.',
+    joke: 'Uphill, all the way. Yasas calls it training. The owner has formally asked to be carried.',
     tag: 'Hill climb',
     accent: 'teal',
     path: 'M18 108 L72 104 Q92 101 80 92 L40 85 Q22 80 40 72 L112 64 Q132 61 118 52 L60 45 Q42 41 60 33 L148 25 Q168 22 182 10',
     open: true,
     turn1: 'T1 · Jumper Bend',
-    result: 'DNS — refused to leave the heated garage',
+    result: '#17 P1 on the switchbacks — owner never left the heated garage',
   },
   {
     round: 6,
@@ -176,7 +180,7 @@ export const races: Race[] = [
     path: 'M100 70 L22 70 C18 40 50 22 80 34 C100 42 112 18 142 20 C172 22 186 44 180 70 Z',
     decor: nineArches(22, 180, 70, 110),
     turn1: 'T1 · Tea Break',
-    result: 'P9. Obviously.',
+    result: '#13 P4 + #17 P5 = 9. Obviously.',
   },
   {
     round: 7,
@@ -189,14 +193,14 @@ export const races: Race[] = [
     laps: '44',
     lengthKm: 3.3,
     weather: { icon: 'wave', text: 'Low tide, high vibes. Sand in everything' },
-    joke: 'The circuit is shaped like a fish and the run-off is one giant litter box. Best weekend of his life.',
+    joke: 'The circuit is shaped like a fish and the run-off is one giant litter box. Best weekend of the owner’s life.',
     tag: 'Drift',
     accent: 'saffron',
     // A fish, swimming left.
     path: 'M36 60 C58 28 112 24 142 50 L174 26 L166 60 L174 94 L142 70 C112 96 58 92 36 60 Z',
     decor: 'M60 54 m-4 0 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0 M82 42 Q90 60 82 78',
     turn1: 'T1 · The Gills',
-    result: 'DSQ — tried to eat the circuit',
+    result: 'Both cars classified. Owner DSQ — tried to eat the circuit',
   },
   {
     round: 8,
@@ -209,13 +213,13 @@ export const races: Race[] = [
     laps: '21',
     lengthKm: 5.2,
     weather: { icon: 'rain', text: 'Monsoon showers. Police pass required' },
-    joke: 'Homage to the 2021 lockdown run. Every police checkpoint counts as a pit stop.',
+    joke: 'Homage to the owner’s 2021 lockdown run. Every police checkpoint counts as a pit stop.',
     tag: 'Heritage',
     accent: 'maroon',
     path: 'M30 100 L58 100 C80 100 80 80 100 80 C120 80 120 100 142 100 L166 100 Q180 100 179 86 L176 42 Q174 24 158 26 L122 32 C102 36 96 14 76 16 L40 20 Q22 22 22 40 L22 90 Q22 100 30 100 Z',
     decor: 'M172 64 h12 M16 58 h12 M100 17 v12',
     turn1: 'T1 · Checkpoint Charlie',
-    result: 'P1 — only car with a valid police pass',
+    result: '1–2 finish — only cars with a valid police pass',
   },
   {
     round: 9,
@@ -228,12 +232,12 @@ export const races: Race[] = [
     laps: '24 h',
     lengthKm: 13.6,
     weather: { icon: 'hot', text: '35 °C. Mandatory nap every 40 minutes' },
-    joke: 'Twenty-four hours of racing. He has trained by sleeping for twenty-four hours.',
+    joke: 'Twenty-four hours of racing. The drivers split the stints. The owner has trained by sleeping for twenty-four hours.',
     tag: 'Season finale',
     accent: 'red',
     path: 'M70 93 L120 96 Q150 98 168 80 L184 50 Q188 40 176 40 L112 48 Q96 50 90 40 L80 22 Q74 13 65 20 L24 60 Q12 73 22 90 Z',
     turn1: 'T1 · Hour Nine',
-    result: 'Slept 23 h 59 min. Still classified.',
+    result: 'Both cars classified. Owner slept 23 h 59 min',
     endurance: true,
   },
 ];
