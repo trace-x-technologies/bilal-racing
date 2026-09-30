@@ -556,7 +556,7 @@ const paws = [
     <div class="pw-head">
       <h3 class="pw-title t-condensed" data-reveal="up">The pit wall</h3>
       <p class="pw-sub" data-reveal="up">
-        Best view on the circuit, worst snacks in the paddock. {wallNote}
+        Best view on the circuit, best snacks in the paddock (catering sits here on purpose). {wallNote}
       </p>
     </div>
     <ul class="pw-grid" role="list" data-reveal-stagger="90">
@@ -574,7 +574,7 @@ const paws = [
                   <PhotoSlot
                     photo={r.photo}
                     sizes="(min-width: 64rem) 18rem, 9rem"
-                    widths={[160, 320, 480]}
+                    widths={[160, 320, 480, 640]}
                     class="pw-photo"
                   />
                 ) : r.person ? (
@@ -612,7 +612,7 @@ const paws = [
                 <p class="pw-duty">{r.duty}</p>
                 {r.isOwner && r.person?.code && (
                   <p class="pw-req t-mono">
-                    Callsign {r.person.code}. Yes, the cat’s callsign is {r.person.code}. Nobody has told him.
+                    Callsign {r.person.code}. Sits in the box during every stop.
                   </p>
                 )}
                 {!r.person && REQUIREMENTS[r.id] && <p class="pw-req t-mono">{REQUIREMENTS[r.id]}</p>}
@@ -846,6 +846,17 @@ const paws = [
     font-weight: 700;
     white-space: nowrap;
     rotate: 6deg;
+  }
+
+  /* on phones up to ~390px the chip beside the digits runs into the stewards' stamp: stick it
+     over the top-left of the digits instead */
+  @media (max-width: 24.5rem) {
+    .pb-chip {
+      left: 0;
+      top: -1.15rem;
+      margin-left: 0;
+      rotate: -4deg;
+    }
   }
 
   .stamp {
@@ -1499,6 +1510,22 @@ const paws = [
     .formation {
       --tok: clamp(2rem, 14cqi, 4.1rem);
     }
+
+    /* the lollipop helmet sits on the figure note, and the 4-line bubble covers the right-rear
+       gunner: drop the note, shrink the text and lift the bubble into the gap between the
+       gunners (above ~37% it runs into the right-front helmet) */
+    .stage-note {
+      display: none;
+    }
+
+    .radio {
+      top: 38%;
+      max-width: 46%;
+    }
+
+    .radio-text {
+      font-size: 0.6rem;
+    }
   }
 
   .tok-slot {
@@ -1689,6 +1716,16 @@ const paws = [
     letter-spacing: 0.08em;
     line-height: 1.2;
     pointer-events: none;
+  }
+
+  /* the rear jack sits at the bottom of the box: on a phone-sized stage (token at its size
+     floor) a tag below it is clipped by the stage, so hang it above-right instead. The big
+     desktop stage keeps it below, clear of the cat tail under the rear wing. */
+  @container (max-width: 30rem) {
+    .tok-slot[data-y='92'] .tok-code {
+      bottom: auto;
+      top: -12%;
+    }
   }
 
   .tok:hover .tok-code,
@@ -2906,6 +2943,11 @@ const paws = [
   function initCrew(): void {
     const root = document.querySelector<HTMLElement>('#crew');
     if (!root) return;
+    // The crew sheet adds ~740px (desktop) / ~1060px (phone) when opened: every trigger below
+    // #crew (gallery batch, calendar, lights out, footer) must re-measure, reduced motion or not.
+    root
+      .querySelector<HTMLDetailsElement>('details.sheet')
+      ?.addEventListener('toggle', () => requestAnimationFrame(() => ScrollTrigger.refresh()));
     setupPopovers(root);
     setupTilt(root);
     setupInView(root);
