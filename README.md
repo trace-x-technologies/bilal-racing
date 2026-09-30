@@ -14,7 +14,7 @@ synthesised, no audio files), a lights-out reaction game and a pile of easter eg
 ```bash
 npm install
 npm run dev        # http://localhost:4321
-npm run build      # static site → dist/
+npm run build      # static site → dist/ (~1–2 min: 29 photos → AVIF/WebP)
 npm run preview
 npx astro check    # type-check
 ```
@@ -36,29 +36,43 @@ site never carries EXIF either. Entries whose file is missing render a styled pl
 `src/data/crew.ts` lists every role in the pit-stop formation. Set `person` to
 `{ name, nickname, photo }`; leave `null` for a “seat open — apply with snacks” vacancy.
 
-## Deploy (Cloudflare Workers, static assets)
+## Deploy (Cloudflare Workers, static assets) — CLI
 
-The site is fully static; `wrangler.jsonc` serves `dist/` from Cloudflare's edge and binds the
-custom domain `bilal.tracex.tech` (the `tracex.tech` zone must be in the same Cloudflare account —
-Cloudflare then creates the DNS record and certificate automatically).
+The site is fully static: `astro build` writes `dist/` and `wrangler deploy` uploads it as a
+Worker with static assets (`wrangler.jsonc`). It binds the custom domain `bilal.tracex.tech`
+(the `tracex.tech` zone must be active in the **same** Cloudflare account — Cloudflare then
+creates the DNS record and certificate) and also serves on `bilal-racing.<account>.workers.dev`.
 
-**Option A — Git-connected (recommended, auto-deploys on push)**
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository** →
-   pick `trace-x-technologies/bilal-racing` (authorise the Cloudflare GitHub app if asked).
-2. Build command: `npm run build` · Deploy command: `npx wrangler deploy` ·
-   Production branch: `main`.
-3. Save and deploy. Every push to `main` redeploys; other branches get preview URLs.
+Requirements: Node ≥ 22.12 (`nvm use` reads `.nvmrc`) and a Cloudflare account that owns `tracex.tech`.
 
-**Option B — from your machine**
 ```bash
-npx wrangler login
-npm run deploy     # astro build && wrangler deploy
+git switch main && git pull
+npm ci
+npx wrangler login     # once; opens a browser (or export CLOUDFLARE_API_TOKEN)
+npm run cf:whoami      # confirm the account that owns tracex.tech
+npm run deploy:dry     # type-check + build + wrangler --dry-run (publishes nothing)
+npm run preview:cf     # optional: serve dist/ through wrangler on http://localhost:8787
+npm run deploy         # type-check + build + publish
 ```
+
+Verify: `curl -sSI https://bilal.tracex.tech/` → `200` with `x-robots-tag: noindex, nofollow`;
+`/og.png` → `200 image/png`; an unknown path → `404` (the "DNF" page).
+Roll back with `npx wrangler deployments list` and `npx wrangler rollback`.
+
+Using Claude Code locally? The repo ships a `deploy` skill (`.claude/skills/deploy/`) with this
+exact procedure and a project `.claude/settings.json` that pre-approves the safe steps (build,
+check, dry-run, whoami, curl) and always asks before `npm run deploy`, `wrangler deploy` or
+`wrangler rollback`.
+
+Prefer Git-connected auto-deploys instead? Cloudflare dashboard → Workers & Pages → Import a
+repository → `trace-x-technologies/bilal-racing`, build `npm run build`, deploy
+`npx wrangler deploy`, production branch `main`.
 
 ## Privacy
 
-- `noindex` meta, `X-Robots-Tag` header and a disallow-all `robots.txt` keep it out of search engines.
-- Only the facts in `src/data/lore.ts` are about the real Nirod; everything else is fiction.
+- `noindex` meta, an `X-Robots-Tag` header and `robots.txt` (disallow-all except link-preview bots,
+  so shared links still get a card) keep it out of search engines.
+- Only the facts in `src/data/lore.ts` and `src/data/crew.ts` are about real people; everything else is fiction.
   Never add ID numbers, phone numbers, addresses or birth dates.
 
 ## Project map

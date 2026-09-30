@@ -9,7 +9,7 @@
  * scripts are caught, not just broken pixels. Exit code 2 if the page logged errors.
  */
 import { chromium } from 'playwright-core';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const args = Object.fromEntries(
@@ -37,10 +37,23 @@ const SIZES = {
 
 mkdirSync(dirname(out), { recursive: true });
 
-const browser = await chromium.launch({
-  executablePath: process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
-});
+// Browser: $CHROME_PATH, else the cloud sandbox's preinstalled Chromium, else Playwright's own
+// download (run `npx playwright-core install chromium` once on a local machine).
+const SANDBOX_CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const executablePath = process.env.CHROME_PATH ?? (existsSync(SANDBOX_CHROME) ? SANDBOX_CHROME : undefined);
+let browser;
+try {
+  browser = await chromium.launch({
+    executablePath,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+  });
+} catch (err) {
+  console.error(
+    `Could not launch Chromium (${err.message.split('\n')[0]}).\n` +
+      'Set CHROME_PATH to a Chrome/Chromium binary, or run: npx playwright-core install chromium',
+  );
+  process.exit(1);
+}
 
 let hadErrors = false;
 for (const vp of viewports) {

@@ -8,7 +8,11 @@
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash"
   },
-  // Requires the tracex.tech zone to live in the same Cloudflare account.
+  // Custom domain: the tracex.tech zone must be active in the SAME Cloudflare account
+  // you deploy with. Cloudflare then creates the DNS record + certificate itself.
   "routes": [{ "pattern": "bilal.tracex.tech", "custom_domain": true }],
+  // Also serve on <name>.<account>.workers.dev — a fallback URL for checking a deploy
+  // before (or without) the custom domain.
+  "workers_dev": true,
   "observability": { "enabled": true }
 }

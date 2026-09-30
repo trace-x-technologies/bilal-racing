@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ci)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(npm run check)",
+      "Bash(npm run dev)",
+      "Bash(npm run preview)",
+      "Bash(npm run preview:cf)",
+      "Bash(npm run deploy:dry)",
+      "Bash(npm run cf:whoami)",
+      "Bash(npx astro check)",
+      "Bash(npx astro build)",
+      "Bash(npx wrangler --version)",
+      "Bash(npx wrangler whoami)",
+      "Bash(npx wrangler deploy --dry-run *)",
+      "Bash(npx wrangler deployments list)",
+      "Bash(npx wrangler deployments list *)",
+      "Bash(node tools/shoot.mjs *)",
+      "Bash(curl -sSI https://bilal.tracex.tech*)",
+      "Bash(curl -sS -o /dev/null -w * https://bilal.tracex.tech*)"
+    ],
+    "ask": [
+      "Bash(npm run deploy)",
+      "Bash(npx wrangler deploy)",
+      "Bash(npx wrangler rollback)",
+      "Bash(npx wrangler rollback *)",
+      "Bash(npx wrangler delete)",
+      "Bash(npx wrangler delete *)"
+    ]
+  }
+}
