@@ -183,7 +183,7 @@ const rail = [
           <p class="bio" data-reveal="up">
             Born to race. Promoted to nap. {owner.fullName} —{' '}
             <span class="t-si" lang="si">{owner.nickname}</span> to anyone who has met him — hung up the helmet,
-            bought the team and now runs {team.name} from any cardboard box on the pit wall. The <b>#{team.luckyNumber}</b> on the shark fin isn’t a car number: it’s
+            bought the team and now runs {team.name} from whichever box is warmest. The <b>#{team.luckyNumber}</b> on the shark fin isn’t a car number: it’s
             the team’s lucky number, because a cat gets nine lives and he is speed-running them. Back in 2021 he drove
             Malabe → Balangoda mid-lockdown on a police-approved pass, which is still more paperwork than the rest
             of the grid will ever see.
@@ -287,8 +287,7 @@ const rail = [
       </p>
       <p class="dh-title t-condensed" data-reveal="up">Two humans. <em>Zero naps.</em></p>
       <p class="dh-lead" data-reveal="up">
-        {owner.nicknameLatin} hired two humans to do the actual driving. Contract clause 1: the owner gets the warm
-        seat.
+        {owner.nicknameLatin} hired two humans to do the actual driving. He kept the job with the most sitting down.
       </p>
       <p class="dh-hint t-mono t-mute" aria-hidden="true" data-reveal="fade">
         <span class="hint-hover">Hover to tilt · </span>Flip a card for the classified bits
@@ -333,7 +332,7 @@ const rail = [
                         <div class="tcard-photo">
                           <PhotoSlot
                             photo={d.portrait}
-                            sizes="(min-width: 60em) 21rem, 88vw"
+                            sizes="(min-width: 60em) 21rem, (min-width: 42em) 19rem, 88vw"
                             widths={[360, 640, 960]}
                           />
                           <span class="tcard-shade" aria-hidden="true" />
@@ -680,6 +679,8 @@ const rail = [
   .portrait-frame {
     --wipe: 1;
     position: relative;
+    /* Above the lucky-9 outline (z 2): the stroke shows only in the margin, never across the face. */
+    z-index: 3;
     aspect-ratio: 4 / 5;
     overflow: hidden;
     border-radius: var(--radius-m);
@@ -2087,6 +2088,27 @@ const rail = [
     .tcard,
     .tcard-inner {
       transition: none;
+    }
+  }
+
+  /* ================= Landscape phones: fit the viewport height =================
+     Width-driven sizing makes the 4:5 portrait and 5:7 cards taller than a sideways
+     phone; cap them by svh so face, tag and caption share one screen. Must stay after
+     the base .portrait / .tcard-float rules. */
+  @media (orientation: landscape) and (max-height: 30em) {
+    .portrait {
+      width: min(84%, 28rem, calc(82svh * 0.8));
+    }
+
+    /* The base 2rem + 4cqi gap is ~60px on a wide landscape column: tighten it so the
+       caption lands inside the same screen as the frame. */
+    .portrait-cap {
+      margin-top: var(--space-4);
+    }
+
+    .tcard-float {
+      width: min(100%, 22rem, calc(85svh * 0.68));
+      margin-inline: auto;
     }
   }
 </style>
