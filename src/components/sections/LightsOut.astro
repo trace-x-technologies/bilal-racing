@@ -74,7 +74,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
 
   <div class="container">
     <SectionHeading
-      index="07"
+      index="01"
       kicker="Lights Out"
       id="lights-out-title"
       title="Lights out,<br/><em>ears up.</em>"
@@ -565,6 +565,8 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         store.set('lo-best', ms);
       }
       record({ ms, kind: 'ok' });
+      // The live leaderboard (Leaderboard.astro) posts new bests from this.
+      emit('bilal:lap', { ms, pb: isPb });
       const rival = rivalLine(ms);
       setReadout(fmt(ms), tier.label, rival ?? pick(tier.subs), tier.tone);
       if (badgeEl) badgeEl.hidden = !isPb;

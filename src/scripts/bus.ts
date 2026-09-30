@@ -13,6 +13,10 @@ export interface BilalEvents {
   'bilal:egg': { id: string; label: string };
   /** Show a transient toast message. */
   'bilal:toast': { message: string; tone?: 'info' | 'gold' | 'red' };
+  /** A counted Lights Out launch finished (`pb`: new personal best on this device). */
+  'bilal:lap': { ms: number; pb: boolean };
+  /** The server accepted a passcode: this device now holds a paddock pass (or a steward's). */
+  'bilal:pass': { role: 'none' | 'team' | 'admin' };
 }
 
 export function emit<K extends keyof BilalEvents>(name: K, detail?: BilalEvents[K]): void {

@@ -182,20 +182,50 @@ export function initMotion(): void {
     gsap.ticker.lagSmoothing(0);
   }
 
-  // In-page anchor links glide instead of jumping. Focus follows the target
-  // (as native fragment navigation would) so the next Tab starts there.
+  // Links to a section of this page glide instead of jumping, whether written as "#crew"
+  // or "/team/#crew". Focus follows the target (as native fragment navigation would) so
+  // the next Tab starts there. Links to other pages are left to the browser.
+  const pathOf = (pathname: string) => pathname.replace(/\/+$/, '');
   document.addEventListener('click', (event) => {
-    const link = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href^="#"]');
-    if (!link) return;
-    const hash = link.getAttribute('href');
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href*="#"]');
+    if (!link || link.target === '_blank') return;
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || pathOf(url.pathname) !== pathOf(window.location.pathname)) return;
+    const hash = url.hash;
     if (!hash || hash === '#') return;
-    const target = document.querySelector<HTMLElement>(hash);
+    let target: HTMLElement | null = null;
+    try {
+      target = document.querySelector<HTMLElement>(hash);
+    } catch {
+      /* a hash that isn't a valid selector: let the browser deal with it */
+    }
     if (!target) return;
     event.preventDefault();
     scrollToTarget(target);
     focusTarget(target);
     history.replaceState(null, '', hash);
   });
+
+  // Arriving from another page at "/team/#crew": the browser jumps before the pinned
+  // sections above the target have taken their full height. Once everything is
+  // measured, land on the section again.
+  const landOnHash = () => {
+    const hash = window.location.hash;
+    if (hash.length < 2) return;
+    let target: HTMLElement | null = null;
+    try {
+      target = document.querySelector<HTMLElement>(hash);
+    } catch {
+      return;
+    }
+    if (!target) return;
+    ScrollTrigger.refresh();
+    if (lenis) lenis.scrollTo(target, { immediate: true, force: true });
+    else target.scrollIntoView();
+  };
+  if (document.readyState === 'complete') requestAnimationFrame(landOnHash);
+  else window.addEventListener('load', () => requestAnimationFrame(landOnHash), { once: true });
 
   initReveals();
   if (!prefersReducedMotion()) document.addEventListener('focusin', revealOnFocus);

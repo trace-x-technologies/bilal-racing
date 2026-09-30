@@ -1,0 +1,31 @@
+---
+/**
+ * One of the site's five pages (see data/site.ts for the map).
+ */
+import Base from '@/layouts/Base.astro';
+import Loader from '@/components/chrome/Loader.astro';
+import Nav from '@/components/chrome/Nav.astro';
+import Footer from '@/components/chrome/Footer.astro';
+import EasterEggs from '@/components/chrome/EasterEggs.astro';
+import PageHead from '@/components/chrome/PageHead.astro';
+import PassGate from '@/components/chrome/PassGate.astro';
+import { pageById } from '@/data/site';
+
+import Gallery from '@/components/sections/Gallery.astro';
+import FanWall from '@/components/sections/FanWall.astro';
+
+const page = pageById('paddock');
+---
+
+<Base title={`${page.title} · Bilal Racing`} description={page.description}>
+  <Loader />
+  <Nav page="paddock" />
+  <main id="main">
+    <PageHead page="paddock" />
+    <Gallery />
+    <FanWall index="02" />
+  </main>
+  <Footer />
+  <PassGate />
+  <EasterEggs />
+</Base>

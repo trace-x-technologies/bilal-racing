@@ -1,9 +1,11 @@
 ---
 /**
  * Sound toggle for the Nav: equaliser-bar icon (flat when muted), compact
- * "Sound off/on" label, aria-pressed state. Switching on plays a meow.
+ * "Sound off/on" label, aria-pressed state. Sound is on by default (it starts
+ * with the visitor's first tap or key press); switching back on plays a meow.
  * Several instances can exist (desktop + mobile menu) — they stay in sync via
- * the `bilal:sound` event. A one-time hint bubble nudges visitors to opt in.
+ * the `bilal:sound` event. A one-time hint bubble says where the mute button is
+ * (or, for someone who muted earlier, nudges them to switch it back on).
  */
 interface Props {
   class?: string;
@@ -12,13 +14,13 @@ const { class: className } = Astro.props;
 ---
 
 <span class:list={['st', className]}>
-  <button type="button" class="st-btn" aria-pressed="false" data-sound-toggle>
+  <button type="button" class="st-btn" aria-pressed="true" data-sound-toggle>
     <span class="st-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-    <span class="st-label t-mono">Sound<span class="st-state" aria-hidden="true" data-sound-state> off</span></span>
+    <span class="st-label t-mono">Sound<span class="st-state" aria-hidden="true" data-sound-state> on</span></span>
   </button>
   <span class="st-hint" popover="manual" data-sound-hint>
     <span class="st-hint-ears" aria-hidden="true"><i></i><i></i></span>
-    <span class="st-hint-text">Psst — turn on the <b>meow engine</b></span>
+    <span class="st-hint-text" data-sound-hint-text>The <b>meow engine</b> is on. Tap here to mute.</span>
     <button type="button" class="st-hint-close" aria-label="Dismiss sound hint" data-sound-hint-close>
       <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
     </button>
@@ -93,10 +95,12 @@ const { class: className } = Astro.props;
   }
 
   function showHint(): void {
-    if (!supportsPopover || sound.enabled || store.get(HINT_KEY, false)) return;
+    if (!supportsPopover || store.get(HINT_KEY, false)) return;
     const btn = buttons.find(isVisible);
     const bubble = btn?.parentElement?.querySelector<HTMLElement>('[data-sound-hint]');
     if (!btn || !bubble) return;
+    const text = bubble.querySelector<HTMLElement>('[data-sound-hint-text]');
+    if (text && !sound.enabled) text.innerHTML = 'Psst — turn on the <b>meow engine</b>';
     const r = btn.getBoundingClientRect();
     if (r.bottom < 0 || r.top > window.innerHeight) return;
     const navEl = btn.closest<HTMLElement>('[data-nav]');
@@ -145,7 +149,7 @@ const { class: className } = Astro.props;
       });
     });
 
-    if (supportsPopover && !sound.enabled && !store.get(HINT_KEY, false)) {
+    if (supportsPopover && !store.get(HINT_KEY, false)) {
       let queued = false;
       const queue = () => {
         if (queued) return;

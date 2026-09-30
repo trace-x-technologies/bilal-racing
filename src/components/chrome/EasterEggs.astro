@@ -363,7 +363,8 @@ const streaks = Array.from({ length: 22 }, (_, i) => {
     --kraft-in: color-mix(in oklab, var(--kraft) 22%, var(--c-carbon));
     --rubber: color-mix(in oklab, var(--c-graphite) 70%, var(--c-carbon));
     --shadow: color-mix(in oklab, var(--c-carbon) 70%, transparent);
-    --floor: max(1rem, env(safe-area-inset-bottom));
+    /* --tabbar-h: the phone tab bar (chrome/TabBar.astro); 0 on desktop. */
+    --floor: calc(max(1rem, env(safe-area-inset-bottom)) + var(--tabbar-h, 0rem));
 
     position: fixed;
     inset: 0;

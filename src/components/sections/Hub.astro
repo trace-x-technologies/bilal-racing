@@ -1,0 +1,280 @@
+---
+/**
+ * Home · Garage map — four doors off the pit lane, one per page. Each door
+ * shows what is behind it and links straight to the sections inside, so the
+ * site reads as a map instead of one long scroll. The Race door shows who
+ * leads the live Lights Out leaderboard (fetched; silent if the API is away).
+ */
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import { pages } from '@/data/site';
+import { sinhala } from '@/data/lore';
+
+const doors = pages.filter((p) => p.id !== 'home');
+const ACCENT: Record<string, string> = { team: 'gold', car: 'saffron', paddock: 'teal', race: 'red' };
+const CTA: Record<string, string> = {
+  team: 'Meet the team',
+  car: 'Open the garage',
+  paddock: 'Enter the paddock',
+  race: 'Go racing',
+};
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<section class="section hub" id="hub" aria-labelledby="hub-title">
+  <div class="container">
+    <SectionHeading
+      index="01"
+      kicker="Garage map"
+      id="hub-title"
+      title="Pick a <em>sector</em>"
+      si={sinhala.ikmanata.si}
+      lead="Four doors off the pit lane. Tap one and you are there: no long scroll, no getting lost. The owner has napped behind every one of them."
+    />
+
+    <ul class="doors" role="list" data-reveal-stagger="90">
+      {
+        doors.map((p, i) => (
+          <li class="door" data-reveal="up" style={`--accent: var(--c-${ACCENT[p.id] ?? 'gold'})`}>
+            <a class="door-main" href={p.href}>
+              <span class="door-no t-condensed" aria-hidden="true">
+                {pad(i + 2)}
+              </span>
+              <span class="door-kicker t-mono">Sector {pad(i + 2)}</span>
+              <span class="door-title t-condensed">{p.label}</span>
+              <span class="door-sub">{p.sub}</span>
+              {p.id === 'race' && (
+                <span class="door-live t-mono" data-hub-leader hidden>
+                  <span class="live-dot" aria-hidden="true" />
+                  <span data-hub-leader-text />
+                </span>
+              )}
+              <span class="door-cta t-mono">
+                {CTA[p.id] ?? 'Go'}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h13m-5-6 6 6-6 6" />
+                </svg>
+              </span>
+            </a>
+            <ul class="door-secs" role="list" aria-label={`${p.label}: sections`}>
+              {p.sections.map((s) => (
+                <li>
+                  <a class="door-sec t-mono" href={`${p.href}#${s.id}`}>
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<script>
+  const slot = document.querySelector<HTMLElement>('[data-hub-leader]');
+  const text = slot?.querySelector<HTMLElement>('[data-hub-leader-text]');
+  if (slot && text) {
+    fetch('/api/leaderboard', { headers: { accept: 'application/json' } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { rows?: { name: string; ms: number }[] } | null) => {
+        const leader = data?.rows?.[0];
+        if (!leader) return;
+        text.textContent = `Live P1: ${leader.name} · ${(leader.ms / 1000).toFixed(3)} s`;
+        slot.hidden = false;
+      })
+      .catch(() => {
+        /* no API (plain static preview): the door simply has no live line */
+      });
+  }
+</script>
+
+<style>
+  .hub {
+    padding-top: clamp(4rem, 3rem + 6vh, 8rem);
+  }
+
+  .doors {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 40rem) {
+    .doors {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 75em) {
+    .doors {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .door {
+    position: relative;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    border-radius: var(--radius-l);
+    border: 1px solid var(--c-line-strong);
+    background:
+      radial-gradient(110% 70% at 100% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 62%),
+      linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 60%);
+    overflow: clip;
+    transition:
+      border-color var(--dur-med) ease,
+      transform var(--dur-med) var(--ease-out-expo),
+      box-shadow var(--dur-med) ease;
+  }
+
+  .door::before {
+    /* garage-door stripe along the top edge */
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: repeating-linear-gradient(-55deg, var(--accent) 0 10px, transparent 10px 20px);
+    opacity: 0.9;
+  }
+
+  .door:hover,
+  .door:focus-within {
+    border-color: color-mix(in oklab, var(--accent) 65%, transparent);
+    transform: translateY(-4px);
+    box-shadow: 0 1.75rem 3rem -1.75rem color-mix(in oklab, var(--accent) 55%, transparent);
+  }
+
+  .door-main {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: var(--space-2);
+    min-height: 13.5rem;
+    padding: var(--space-5) var(--space-5) var(--space-4);
+    color: var(--c-chalk);
+    text-decoration: none;
+  }
+
+  .door-no {
+    position: absolute;
+    right: 0.6rem;
+    top: 0.1rem;
+    font-size: 6.5rem;
+    font-weight: 900;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in oklab, var(--accent) 40%, transparent);
+    pointer-events: none;
+    transition: transform var(--dur-slow) var(--ease-out-expo);
+  }
+
+  .door:hover .door-no {
+    transform: translateX(-0.4rem) skewX(var(--skew));
+  }
+
+  .door-kicker {
+    color: var(--accent);
+    font-size: 0.62rem;
+  }
+
+  .door-title {
+    font-size: clamp(2.6rem, 2rem + 2.4vw, 3.75rem);
+    font-weight: 850;
+    line-height: 0.88;
+    text-transform: uppercase;
+  }
+
+  .door-sub {
+    max-width: 30ch;
+    color: var(--c-mute);
+    font-size: var(--fs-small);
+    line-height: 1.35;
+  }
+
+  .door-live {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-chalk);
+    font-size: 0.62rem;
+  }
+
+  .live-dot {
+    flex: none;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+  }
+
+  :global(.js-motion) .live-dot {
+    animation: hub-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes hub-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .door-cta {
+    margin-top: var(--space-3);
+    align-self: end;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-chalk);
+    font-size: 0.66rem;
+  }
+
+  .door-cta svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform var(--dur-med) var(--ease-out-expo);
+  }
+
+  .door:hover .door-cta svg {
+    transform: translateX(0.35rem);
+  }
+
+  .door-secs {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-3) var(--space-5) var(--space-4);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    border-top: 1px solid var(--c-line);
+  }
+
+  .door-sec {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: 999px;
+    color: var(--c-chalk);
+    font-size: 0.62rem;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease;
+  }
+
+  .door-sec:hover,
+  .door-sec:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+</style>

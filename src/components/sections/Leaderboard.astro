@@ -1,0 +1,675 @@
+---
+/**
+ * Race · Live leaderboard for the Lights Out reaction test.
+ *
+ * The game (LightsOut.astro) emits `bilal:lap` for every counted launch. Once a
+ * friend has put a name down here (and holds a paddock pass), each new best is
+ * posted to /api/leaderboard by itself. The tower refreshes every 15 s while it
+ * is on screen and the tab is visible, and rows slide to their new position.
+ *
+ * One row per name: the server keeps the best time and counts the launches.
+ * Stewards (admin passcode) get a remove button on every row.
+ */
+import '@/styles/ui.css';
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import { sinhala } from '@/data/lore';
+
+interface Props {
+  index?: string;
+}
+const { index = '02' } = Astro.props;
+---
+
+<section class="section board" id="leaderboard" aria-labelledby="board-title" data-board data-state="loading">
+  <div class="container">
+    <SectionHeading
+      index={index}
+      kicker="Leaderboard"
+      id="board-title"
+      title="Live <em>timing</em>"
+      si={sinhala.machan.si}
+      lead="Every counted Lights Out launch from the whole crew, fastest paws first. Put your name down once; after that every new best goes up by itself."
+    />
+
+    <div class="board-layout">
+      <div class="board-card" data-reveal="up">
+        <div class="board-head">
+          <p class="board-live t-mono">
+            <span class="board-dot" aria-hidden="true"></span>
+            <span data-board-status>Warming up the timing screens</span>
+          </p>
+          <p class="board-cols t-mono" aria-hidden="true"><span>Gap</span><span>Time · s</span></p>
+        </div>
+        <ol class="board-rows" data-board-rows aria-label="Leaderboard, fastest first"></ol>
+        <p class="board-empty" data-board-empty hidden>
+          No times on the board yet. <strong>The first launch takes P1.</strong>
+        </p>
+        <p class="visually-hidden" role="status" aria-live="polite" data-board-live></p>
+      </div>
+
+      <aside class="board-me" aria-labelledby="board-me-title" data-reveal="up">
+        <h3 class="board-me-title t-condensed" id="board-me-title">Your entry</h3>
+        <p class="board-me-state" data-board-me>Put your name on the timing tower. Your best launch goes up with it.</p>
+        <form class="board-form" data-board-form novalidate>
+          <label class="ui-field">
+            <span class="ui-label">Name on the tower</span>
+            <input
+              class="ui-input"
+              type="text"
+              name="name"
+              maxlength="24"
+              autocomplete="nickname"
+              autocapitalize="words"
+              spellcheck="false"
+              enterkeyhint="done"
+              placeholder="Your name or nickname"
+              required
+              data-board-name
+            />
+          </label>
+          <p class="ui-error" role="alert" data-board-error></p>
+          <div class="ui-actions">
+            <button type="submit" class="ui-btn ui-btn--gold" data-board-submit>Put me on the board</button>
+          </div>
+        </form>
+        <a class="ui-btn ui-btn--ghost board-play" href="#lights-out">
+          <span class="board-play-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          Set a time
+        </a>
+        <button type="button" class="board-steward t-mono" data-board-steward>Steward sign-in</button>
+      </aside>
+    </div>
+  </div>
+
+  <template data-board-row>
+    <li class="board-row">
+      <span class="board-pos t-condensed" data-pos></span>
+      <span class="board-bar" aria-hidden="true"></span>
+      <span class="board-who">
+        <span class="board-name" data-name></span>
+        <span class="board-tries t-mono" data-tries></span>
+      </span>
+      <span class="board-gap t-mono" data-gap></span>
+      <span class="board-time t-condensed" data-time></span>
+      <button type="button" class="ui-remove board-remove" data-remove hidden>
+        <span aria-hidden="true">✕</span>
+      </button>
+    </li>
+  </template>
+</section>
+
+<script>
+  import { api, ApiError, ensurePass, getMe, getStatus, openPassGate, postJson, setMe, withPass, type PassRole } from '@/scripts/api';
+  import { emit, on, store } from '@/scripts/bus';
+  import { prefersReducedMotion } from '@/scripts/motion';
+  import { sound } from '@/scripts/audio';
+
+  interface Row {
+    id: number;
+    name: string;
+    ms: number;
+    tries: number;
+    at: number;
+  }
+
+  const POLL_MS = 15_000;
+  const root = document.querySelector<HTMLElement>('[data-board]');
+  const list = root?.querySelector<HTMLOListElement>('[data-board-rows]');
+  const template = root?.querySelector<HTMLTemplateElement>('[data-board-row]');
+
+  if (root && list && template) {
+    const statusEl = root.querySelector<HTMLElement>('[data-board-status]');
+    const emptyEl = root.querySelector<HTMLElement>('[data-board-empty]');
+    const liveEl = root.querySelector<HTMLElement>('[data-board-live]');
+    const meEl = root.querySelector<HTMLElement>('[data-board-me]');
+    const form = root.querySelector<HTMLFormElement>('[data-board-form]');
+    const nameInput = root.querySelector<HTMLInputElement>('[data-board-name]');
+    const errorEl = root.querySelector<HTMLElement>('[data-board-error]');
+    const submitBtn = root.querySelector<HTMLButtonElement>('[data-board-submit]');
+    const stewardBtn = root.querySelector<HTMLButtonElement>('[data-board-steward]');
+
+    const fmt = (ms: number) => (ms / 1000).toFixed(3);
+    const keyOf = (name: string) => name.trim().toLowerCase();
+    const items = new Map<number, HTMLElement>();
+    let rows: Row[] = [];
+    let role: PassRole = 'none';
+    let me = getMe();
+    let failures = 0;
+    let timer = 0;
+    let onScreen = false;
+    let loaded = false;
+
+    /** This device's best counted launch (kept by the game). */
+    const localBest = (): number | null => {
+      const v = store.get<unknown>('lo-best', null);
+      return typeof v === 'number' && Number.isFinite(v) && v >= 100 ? Math.round(v) : null;
+    };
+    /** The best time this device has already sent, so a slower launch is never posted. */
+    const posted = (): number | null => {
+      const v = store.get<unknown>('lb-posted', null);
+      return typeof v === 'number' && Number.isFinite(v) ? v : null;
+    };
+
+    /* ---------------- rendering ---------------- */
+    function render(next: Row[], announce = false): void {
+      const before = new Map([...items].map(([id, el]) => [id, el.getBoundingClientRect().top]));
+      const leader = next[0]?.ms ?? 0;
+      const seen = new Set<number>();
+      const fresh: HTMLElement[] = [];
+
+      next.forEach((row, i) => {
+        seen.add(row.id);
+        let el = items.get(row.id);
+        const old = rows.find((r) => r.id === row.id);
+        if (!el) {
+          el = (template!.content.firstElementChild as HTMLElement).cloneNode(true) as HTMLElement;
+          el.querySelector<HTMLButtonElement>('[data-remove]')?.addEventListener('click', () => remove(row.id));
+          items.set(row.id, el);
+          if (loaded) fresh.push(el);
+        } else if (old && row.ms < old.ms) {
+          fresh.push(el);
+        }
+        const set = (sel: string, text: string) => {
+          const node = el!.querySelector<HTMLElement>(sel);
+          if (node && node.textContent !== text) node.textContent = text;
+        };
+        set('[data-pos]', String(i + 1));
+        set('[data-name]', row.name);
+        set('[data-tries]', `${row.tries} ${row.tries === 1 ? 'launch' : 'launches'}`);
+        set('[data-gap]', i === 0 ? 'Leader' : `+${fmt(row.ms - leader)}`);
+        set('[data-time]', fmt(row.ms));
+        el.dataset.rank = String(Math.min(i + 1, 4));
+        el.toggleAttribute('data-me', Boolean(me) && keyOf(row.name) === keyOf(me));
+        const removeBtn = el.querySelector<HTMLButtonElement>('[data-remove]');
+        if (removeBtn) {
+          removeBtn.hidden = role !== 'admin';
+          removeBtn.setAttribute('aria-label', `Remove ${row.name} from the leaderboard`);
+        }
+        list!.appendChild(el);
+      });
+      for (const [id, el] of items) {
+        if (!seen.has(id)) {
+          el.remove();
+          items.delete(id);
+        }
+      }
+
+      if (!prefersReducedMotion()) {
+        for (const [id, el] of items) {
+          const was = before.get(id);
+          const dy = was == null ? 0 : was - el.getBoundingClientRect().top;
+          if (Math.abs(dy) > 1) {
+            el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], {
+              duration: 700,
+              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            });
+          }
+        }
+        fresh.forEach((el) => {
+          el.classList.remove('is-fresh');
+          void el.offsetWidth;
+          el.classList.add('is-fresh');
+        });
+      }
+
+      if (announce && liveEl && next[0] && (rows[0]?.id !== next[0].id || rows[0]?.ms !== next[0].ms)) {
+        liveEl.textContent = `New leader: ${next[0].name}, ${fmt(next[0].ms)} seconds.`;
+      }
+      rows = next;
+      if (emptyEl) emptyEl.hidden = next.length > 0;
+      renderMe();
+    }
+
+    function renderMe(): void {
+      if (!meEl || !form || !nameInput || !submitBtn) return;
+      const best = localBest();
+      const mine = me ? rows.findIndex((r) => keyOf(r.name) === keyOf(me)) : -1;
+      if (!nameInput.matches(':focus') && !nameInput.value) nameInput.value = me;
+      if (!me) {
+        meEl.textContent = best
+          ? `Your best on this device is ${fmt(best)} s. Put your name down and it goes straight on the tower.`
+          : 'Put your name on the timing tower. Your best launch goes up with it.';
+        submitBtn.textContent = 'Put me on the board';
+      } else if (mine >= 0) {
+        meEl.textContent = `Racing as ${me}: P${mine + 1} with ${fmt(rows[mine]!.ms)} s. Beat it and the tower updates by itself.`;
+        submitBtn.textContent = 'Change name';
+      } else {
+        meEl.textContent = best
+          ? `Racing as ${me}. Your ${fmt(best)} s is ready for the tower.`
+          : `Racing as ${me}. Set a counted time in Lights Out and it goes on the tower.`;
+        submitBtn.textContent = best ? 'Post my time' : 'Change name';
+      }
+    }
+
+    function setStatus(text: string, state: 'live' | 'loading' | 'off'): void {
+      if (statusEl) statusEl.textContent = text;
+      root!.dataset.state = state;
+    }
+
+    /* ---------------- loading + polling ---------------- */
+    async function load(announce = false): Promise<void> {
+      try {
+        const data = await api<{ rows: Row[] }>('leaderboard');
+        failures = 0;
+        render(Array.isArray(data.rows) ? data.rows : [], announce);
+        loaded = true;
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setStatus(`Live · updated ${time}`, 'live');
+      } catch {
+        failures++;
+        setStatus(loaded ? 'Signal lost · retrying' : 'Timing screens are warming up', 'off');
+        if (!loaded && emptyEl) emptyEl.hidden = true;
+      }
+    }
+
+    function schedule(): void {
+      window.clearTimeout(timer);
+      // Off screen, in a background tab, or the API keeps failing: stop asking.
+      if (!onScreen || document.hidden || failures >= 4) return;
+      timer = window.setTimeout(
+        async () => {
+          await load(true);
+          schedule();
+        },
+        POLL_MS * Math.min(4, 1 + failures),
+      );
+    }
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(
+        ([entry]) => {
+          const was = onScreen;
+          onScreen = Boolean(entry?.isIntersecting);
+          if (onScreen && !was) {
+            failures = Math.min(failures, 3);
+            void load(loaded).then(schedule);
+          } else schedule();
+        },
+        { rootMargin: '200px 0px' },
+      ).observe(root);
+    } else {
+      onScreen = true;
+      void load().then(schedule);
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && onScreen) void load(true).then(schedule);
+      else schedule();
+    });
+
+    /* ---------------- posting ---------------- */
+    async function post(ms: number, quiet = false): Promise<boolean> {
+      if (!me) return false;
+      try {
+        const res = await withPass(
+          () => postJson<{ name: string; best: number; rank: number; improved: boolean }>('leaderboard', { name: me, ms }),
+          'The leaderboard is for the crew.',
+        );
+        store.set('lb-posted', res.best);
+        await load();
+        if (!quiet || res.improved) {
+          emit('bilal:toast', {
+            message: res.rank === 1 ? `P1 on the live leaderboard. The owner is purring.` : `On the board: P${res.rank} with ${fmt(res.best)} s.`,
+            tone: 'gold',
+          });
+          if (res.rank === 1) sound.play('revMeow', { volume: 0.7 });
+        }
+        return true;
+      } catch (err) {
+        if (!quiet && errorEl) errorEl.textContent = err instanceof ApiError ? err.message : 'That did not reach the timing tower. Try again.';
+        return false;
+      }
+    }
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!nameInput || !submitBtn || !errorEl) return;
+      const name = nameInput.value.replace(/\s+/g, ' ').trim();
+      errorEl.textContent = '';
+      if (!name) {
+        errorEl.textContent = 'The timing tower needs a name.';
+        nameInput.focus();
+        return;
+      }
+      submitBtn.disabled = true;
+      try {
+        if (!(await ensurePass('The leaderboard is for the crew.'))) return;
+        if (keyOf(name) !== keyOf(me)) store.set('lb-posted', null);
+        me = name;
+        setMe(name);
+        const best = localBest();
+        if (best != null) await post(best);
+        else emit('bilal:toast', { message: `Racing as ${name}. Now set a time.`, tone: 'gold' });
+        render(rows);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    let nudged = false;
+    on('bilal:lap', (detail) => {
+      const ms = detail?.ms;
+      if (typeof ms !== 'number' || ms < 100) return;
+      const sent = posted();
+      if (sent != null && ms >= sent) return;
+      if (me && role !== 'none') {
+        void post(Math.round(ms), true);
+      } else if (!nudged) {
+        // No name (or no pass) yet: say so once, don't interrupt the game with a dialog.
+        nudged = true;
+        emit('bilal:toast', { message: 'That time can go on the live leaderboard. Add your name under the lights.', tone: 'info' });
+        renderMe();
+      }
+    });
+
+    /* ---------------- stewards ---------------- */
+    async function remove(id: number): Promise<void> {
+      const row = rows.find((r) => r.id === id);
+      if (!row || !window.confirm(`Remove ${row.name} from the leaderboard?`)) return;
+      try {
+        await api(`leaderboard/${id}`, { method: 'DELETE' });
+        await load();
+      } catch (err) {
+        emit('bilal:toast', { message: err instanceof ApiError ? err.message : 'Could not remove that row.', tone: 'red' });
+      }
+    }
+
+    function setRole(next: PassRole): void {
+      role = next;
+      if (stewardBtn) stewardBtn.hidden = role === 'admin';
+      render(rows);
+    }
+    stewardBtn?.addEventListener('click', () => void openPassGate('Stewards: type the steward passcode.'));
+    on('bilal:pass', (detail) => setRole(detail?.role ?? 'none'));
+    getStatus()
+      .then((s) => setRole(s.pass))
+      .catch(() => {
+        /* no API: the tower shows its offline line */
+      });
+
+    renderMe();
+  }
+</script>
+
+<style>
+  .board {
+    padding-top: 0;
+  }
+
+  .board-layout {
+    display: grid;
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .board-layout {
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+      gap: var(--space-6);
+    }
+  }
+
+  .board-card,
+  .board-me {
+    border-radius: var(--radius-l);
+    border: 1px solid var(--c-line-strong);
+    background: linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 60%);
+  }
+
+  .board-card {
+    padding: var(--space-4);
+    min-height: 16rem;
+  }
+
+  @media (min-width: 40rem) {
+    .board-card {
+      padding: var(--space-5);
+    }
+  }
+
+  .board-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--c-line);
+  }
+
+  .board-live {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-chalk);
+    font-size: 0.62rem;
+  }
+
+  .board-dot {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--c-faint);
+  }
+
+  .board[data-state='live'] .board-dot {
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+  }
+
+  :global(.js-motion) .board[data-state='live'] .board-dot {
+    animation: board-pulse 1.6s ease-in-out infinite;
+  }
+
+  .board[data-state='off'] .board-live {
+    color: var(--c-mute);
+  }
+
+  @keyframes board-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .board-cols {
+    display: none;
+    gap: var(--space-5);
+    color: var(--c-mute);
+    font-size: 0.58rem;
+  }
+
+  @media (min-width: 30rem) {
+    .board-cols {
+      display: inline-flex;
+    }
+  }
+
+  .board-rows {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .board-row {
+    --tone: var(--c-steel);
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.1rem 4px minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    column-gap: var(--space-3);
+    min-height: 3.25rem;
+    padding: 0.35rem var(--space-3) 0.35rem var(--space-2);
+    border-radius: var(--radius-s);
+    background: color-mix(in oklab, var(--c-carbon) 70%, transparent);
+    border: 1px solid transparent;
+  }
+
+  .board-row[data-rank='1'] {
+    --tone: var(--c-gold);
+    background: color-mix(in oklab, var(--c-gold) 10%, var(--c-carbon));
+  }
+
+  .board-row[data-rank='2'] {
+    --tone: var(--c-chalk);
+  }
+
+  .board-row[data-rank='3'] {
+    --tone: var(--c-saffron);
+  }
+
+  .board-row[data-me] {
+    border-color: color-mix(in oklab, var(--c-teal) 70%, transparent);
+  }
+
+  .board-row[data-me] .board-name::after {
+    content: 'You';
+    margin-left: 0.5rem;
+    padding: 0.15em 0.5em;
+    border-radius: var(--radius-s);
+    background: var(--c-teal);
+    color: var(--c-carbon);
+    font-family: var(--f-mono);
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  .board-row:global(.is-fresh) {
+    animation: board-flash 1.4s var(--ease-out-expo);
+  }
+
+  @keyframes board-flash {
+    from {
+      background: color-mix(in oklab, var(--c-purple) 45%, var(--c-carbon));
+      box-shadow: 0 0 1.5rem -0.25rem var(--c-purple);
+    }
+  }
+
+  .board-pos {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 850;
+    line-height: 1;
+    color: var(--tone);
+  }
+
+  .board-row:not([data-rank='1'], [data-rank='2'], [data-rank='3']) .board-pos {
+    color: var(--c-mute);
+  }
+
+  .board-bar {
+    align-self: stretch;
+    border-radius: 2px;
+    background: var(--tone);
+  }
+
+  .board-who {
+    min-width: 0;
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .board-name {
+    font-weight: 700;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .board-tries {
+    color: var(--c-mute);
+    font-size: 0.54rem;
+  }
+
+  .board-gap {
+    display: none;
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    text-align: right;
+  }
+
+  @media (min-width: 30rem) {
+    .board-gap {
+      display: block;
+    }
+  }
+
+  .board-time {
+    min-width: 4.2rem;
+    text-align: right;
+    font-size: 1.6rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .board-row[data-rank='1'] .board-time {
+    color: var(--c-gold);
+  }
+
+  /* stewards only: sits at the end of the row (an empty track when hidden) */
+  .board-remove {
+    margin-left: calc(var(--space-3) * -0.25);
+  }
+
+  .board-empty {
+    padding: var(--space-5) var(--space-3);
+    color: var(--c-mute);
+    text-align: center;
+  }
+
+  .board-empty strong {
+    color: var(--c-chalk);
+  }
+
+  /* ---- your entry ---- */
+  .board-me {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+  }
+
+  .board-me-title {
+    font-size: var(--fs-h3);
+    text-transform: uppercase;
+  }
+
+  .board-me-state {
+    color: var(--c-mute);
+    line-height: 1.45;
+  }
+
+  .board-form {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .board-play-lights {
+    display: inline-flex;
+    gap: 3px;
+  }
+
+  .board-play-lights i {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: 0 0 6px var(--c-red);
+  }
+
+  .board-steward {
+    justify-self: start;
+    min-height: 2.75rem;
+    color: var(--c-mute);
+    font-size: 0.58rem;
+    text-decoration: underline;
+    text-decoration-color: var(--c-faint);
+    text-underline-offset: 0.3em;
+  }
+
+  .board-steward:hover {
+    color: var(--c-chalk);
+  }
+</style>

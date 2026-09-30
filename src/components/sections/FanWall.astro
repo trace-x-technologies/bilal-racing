@@ -1,0 +1,808 @@
+---
+/**
+ * Paddock · Fan wall — photos the crew uploads themselves.
+ *
+ * - "Pin a photo" opens a dialog: pick a photo, add a caption, send. The photo is
+ *   resized in the browser first (scripts/image.ts: longest edge 2000 px, under
+ *   1.5 MB, metadata dropped), then stored by the API (worker/index.ts → R2 + D1).
+ * - Needs the paddock pass (PassGate). Shows up for everyone straight away;
+ *   stewards get a remove button on every tile.
+ * - The API keeps a budget (worker/limits.ts). When it says uploads are closed
+ *   (daily cap, storage cap, Cloudflare unavailable), the button is disabled and
+ *   the reason is shown; the wall itself keeps working.
+ * - Tiles keep each photo's true aspect ratio (CSS multi-column masonry); a tap
+ *   opens a simple lightbox (arrow keys / swipe / Esc).
+ *
+ * Captions are typed by friends and rendered as text only (never as HTML).
+ */
+import '@/styles/ui.css';
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import Emblem from '@/components/ui/Emblem.astro';
+import { sinhala } from '@/data/lore';
+
+interface Props {
+  index?: string;
+}
+const { index = '02' } = Astro.props;
+---
+
+<section class="section fan" id="fan-wall" aria-labelledby="fan-title" data-fan data-state="loading">
+  <div class="container">
+    <SectionHeading
+      index={index}
+      kicker="Your shots"
+      id="fan-title"
+      title="Fan <em>wall</em>"
+      si={sinhala.machan.si}
+      lead="Got a better photo than the stewards? Pin it up. It lands on the wall for the whole crew right away, shrunk to size on your phone with the location data left behind."
+    />
+
+    <div class="fan-bar" data-reveal="up">
+      <button type="button" class="ui-btn ui-btn--gold fan-add" data-fan-add disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        Pin a photo
+      </button>
+      <p class="fan-status" data-fan-status>Checking the wall…</p>
+      <button type="button" class="fan-steward t-mono" data-fan-steward>Steward sign-in</button>
+    </div>
+
+    <ul class="fan-wall" role="list" data-fan-list></ul>
+
+    <div class="fan-empty" data-fan-empty hidden>
+      <Emblem size="3.5rem" title="" />
+      <p class="fan-empty-title t-condensed">The wall is waiting</p>
+      <p class="fan-empty-sub">No pins yet. The first photo up gets the best spot.</p>
+    </div>
+  </div>
+
+  <template data-fan-tile>
+    <li class="fan-tile">
+      <figure class="fan-card">
+        <span class="fan-pin" aria-hidden="true"></span>
+        <div class="fan-photo">
+          <img alt="" loading="lazy" decoding="async" data-img />
+        </div>
+        <figcaption class="fan-info">
+          <p class="fan-caption" data-caption></p>
+          <p class="fan-meta t-mono"><span data-by></span><span data-when></span></p>
+        </figcaption>
+        <button type="button" class="fan-hit" aria-haspopup="dialog" data-open>
+          <span class="visually-hidden" data-open-label></span>
+        </button>
+        <button type="button" class="ui-remove fan-remove" data-remove hidden>
+          <span aria-hidden="true">✕</span>
+        </button>
+      </figure>
+    </li>
+  </template>
+
+  <!-- ================= Upload dialog ================= -->
+  <dialog class="ui-dialog" aria-labelledby="fan-up-title" data-fan-dialog data-lenis-prevent>
+    <form class="ui-dialog-body" data-fan-form novalidate>
+      <div class="ui-dialog-head">
+        <div>
+          <p class="ui-dialog-kicker">Fan wall · new pin</p>
+          <h3 class="ui-dialog-title" id="fan-up-title">Pin a photo</h3>
+        </div>
+        <button type="button" class="ui-dialog-close" aria-label="Close" data-fan-close>
+          <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"
+            ><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg
+          >
+        </button>
+      </div>
+
+      <label class="ui-drop" data-fan-drop>
+        <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a photo" data-fan-file />
+        <img alt="Preview of your photo" hidden data-fan-preview />
+        <span class="ui-drop-title" data-fan-drop-title>Choose a photo</span>
+        <span class="ui-hint" data-fan-drop-hint>JPEG, PNG or WebP. It is resized here before it is sent.</span>
+      </label>
+
+      <label class="ui-field">
+        <span class="ui-label">Caption <span class="fan-optional">· optional</span></span>
+        <input
+          class="ui-input"
+          type="text"
+          name="caption"
+          maxlength="120"
+          placeholder="Recon lap. Every corner learned by heart."
+          autocomplete="off"
+          data-fan-caption
+        />
+      </label>
+
+      <label class="ui-field">
+        <span class="ui-label">Pinned by <span class="fan-optional">· optional</span></span>
+        <input
+          class="ui-input"
+          type="text"
+          name="by"
+          maxlength="24"
+          placeholder="Your name or nickname"
+          autocomplete="nickname"
+          autocapitalize="words"
+          data-fan-by
+        />
+      </label>
+
+      <p class="ui-hint">
+        Friendly photos only, and no full names of the people in them. Everyone with the link can see the wall.
+      </p>
+      <p class="ui-error" role="alert" data-fan-error></p>
+
+      <div class="ui-actions">
+        <button type="submit" class="ui-btn ui-btn--gold" data-fan-submit disabled>Pin it</button>
+        <button type="button" class="ui-btn ui-btn--ghost" data-fan-close>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ================= Lightbox ================= -->
+  <dialog class="fan-lb" aria-label="Fan wall photo viewer" data-fan-lb data-lenis-prevent>
+    <div class="fan-lb-top">
+      <p class="fan-lb-count t-mono" aria-hidden="true" data-lb-count></p>
+      <button type="button" class="ui-dialog-close" aria-label="Close photo viewer" data-lb-close>
+        <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"
+          ><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg
+        >
+      </button>
+    </div>
+    <figure class="fan-lb-fig">
+      <img alt="" decoding="async" data-lb-img />
+      <figcaption class="fan-lb-cap">
+        <span data-lb-caption></span>
+        <span class="fan-lb-by t-mono" data-lb-by></span>
+      </figcaption>
+    </figure>
+    <button type="button" class="fan-lb-nav fan-lb-prev" aria-label="Previous photo" data-lb-prev>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 L8 12 L15 19"></path></svg>
+    </button>
+    <button type="button" class="fan-lb-nav fan-lb-next" aria-label="Next photo" data-lb-next>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 L16 12 L9 19"></path></svg>
+    </button>
+  </dialog>
+</section>
+
+<script>
+  import { api, ApiError, ensurePass, getMe, getStatus, openPassGate, setMe, withPass, type ApiStatus, type PassRole } from '@/scripts/api';
+  import { emit, on } from '@/scripts/bus';
+  import { ImageError, prepareImage, type PreparedImage } from '@/scripts/image';
+  import { lockScroll } from '@/scripts/motion';
+  import { sound } from '@/scripts/audio';
+
+  interface Photo {
+    id: string;
+    url: string;
+    width: number;
+    height: number;
+    caption: string;
+    by: string;
+    at: number;
+  }
+
+  const root = document.querySelector<HTMLElement>('[data-fan]');
+  const list = root?.querySelector<HTMLUListElement>('[data-fan-list]');
+  const template = root?.querySelector<HTMLTemplateElement>('[data-fan-tile]');
+
+  if (root && list && template) {
+    const q = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel);
+    const addBtn = q<HTMLButtonElement>('[data-fan-add]');
+    const statusEl = q('[data-fan-status]');
+    const emptyEl = q('[data-fan-empty]');
+    const stewardBtn = q<HTMLButtonElement>('[data-fan-steward]');
+    const dialog = q<HTMLDialogElement>('[data-fan-dialog]');
+    const form = q<HTMLFormElement>('[data-fan-form]');
+    const fileInput = q<HTMLInputElement>('[data-fan-file]');
+    const drop = q('[data-fan-drop]');
+    const preview = q<HTMLImageElement>('[data-fan-preview]');
+    const dropTitle = q('[data-fan-drop-title]');
+    const dropHint = q('[data-fan-drop-hint]');
+    const captionInput = q<HTMLInputElement>('[data-fan-caption]');
+    const byInput = q<HTMLInputElement>('[data-fan-by]');
+    const errorEl = q('[data-fan-error]');
+    const submitBtn = q<HTMLButtonElement>('[data-fan-submit]');
+    const lb = q<HTMLDialogElement>('[data-fan-lb]');
+
+    const TILTS = [-1.4, 1.1, -0.6, 1.6, -1.1, 0.7];
+    let photos: Photo[] = [];
+    let status: ApiStatus | null = null;
+    let role: PassRole = 'none';
+    let prepared: PreparedImage | null = null;
+    let previewUrl = '';
+    let returnTo: HTMLElement | null = null;
+
+    const altFor = (p: Photo) => p.caption || (p.by ? `Photo pinned by ${p.by}` : 'Photo from the crew');
+    const whenFor = (at: number) => new Date(at).toLocaleDateString([], { day: 'numeric', month: 'short' });
+    const kb = (bytes: number) => (bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} MB` : `${Math.round(bytes / 1000)} kB`);
+
+    /* ---------------- wall ---------------- */
+    function tile(p: Photo, i: number): HTMLElement {
+      const el = (template!.content.firstElementChild as HTMLElement).cloneNode(true) as HTMLElement;
+      el.dataset.id = p.id;
+      el.style.setProperty('--tilt', `${TILTS[i % TILTS.length]}deg`);
+      el.style.setProperty('--ar', `${p.width} / ${p.height}`);
+      const img = el.querySelector<HTMLImageElement>('[data-img]');
+      if (img) {
+        img.width = p.width;
+        img.height = p.height;
+        img.alt = altFor(p);
+        img.src = p.url;
+      }
+      const caption = el.querySelector<HTMLElement>('[data-caption]');
+      if (caption) {
+        caption.textContent = p.caption;
+        caption.hidden = !p.caption;
+      }
+      const by = el.querySelector<HTMLElement>('[data-by]');
+      if (by) by.textContent = p.by ? `Pinned by ${p.by}` : 'Pinned by the crew';
+      const when = el.querySelector<HTMLElement>('[data-when]');
+      if (when) when.textContent = whenFor(p.at);
+      const label = el.querySelector<HTMLElement>('[data-open-label]');
+      if (label) label.textContent = `Open photo: ${altFor(p)}`;
+      el.querySelector('[data-open]')?.addEventListener('click', (e) => openLightbox(p.id, e.currentTarget as HTMLElement));
+      const removeBtn = el.querySelector<HTMLButtonElement>('[data-remove]');
+      if (removeBtn) {
+        removeBtn.hidden = role !== 'admin';
+        removeBtn.setAttribute('aria-label', `Remove photo: ${altFor(p)}`);
+        removeBtn.addEventListener('click', () => void remove(p));
+      }
+      return el;
+    }
+
+    function render(): void {
+      list!.replaceChildren(...photos.map(tile));
+      if (emptyEl) emptyEl.hidden = photos.length > 0 || root!.dataset.state !== 'ready';
+    }
+
+    function renderBar(): void {
+      if (!addBtn || !statusEl) return;
+      if (!status) {
+        addBtn.disabled = true;
+        statusEl.textContent = 'The fan wall is warming up. Check back in a moment.';
+        return;
+      }
+      addBtn.disabled = !status.uploads.open;
+      const n = photos.length;
+      statusEl.textContent = status.uploads.open
+        ? `${n === 0 ? 'No pins yet' : n === 1 ? '1 photo on the wall' : `${n} photos on the wall`} · up to ${kb(status.limits.photoBytes)} each, resized for you`
+        : (status.uploads.message ?? 'Uploads are closed for now.');
+      root!.toggleAttribute('data-closed', !status.uploads.open);
+      if (stewardBtn) stewardBtn.hidden = role === 'admin';
+    }
+
+    async function refreshStatus(fresh = false): Promise<void> {
+      status = await getStatus(fresh).catch(() => null);
+      role = status?.pass ?? 'none';
+      renderBar();
+    }
+
+    async function load(): Promise<void> {
+      try {
+        const data = await api<{ photos: Photo[] }>('photos');
+        photos = Array.isArray(data.photos) ? data.photos : [];
+        root!.dataset.state = 'ready';
+      } catch {
+        root!.dataset.state = 'off';
+      }
+      render();
+      renderBar();
+    }
+
+    // Wait until the wall is near the viewport: no API calls for visitors who never scroll here.
+    const boot = () => void Promise.all([refreshStatus(), load()]).then(render);
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((e) => e.isIntersecting)) return;
+          io.disconnect();
+          boot();
+        },
+        { rootMargin: '600px 0px' },
+      );
+      io.observe(root);
+    } else boot();
+
+    on('bilal:pass', (detail) => {
+      role = detail?.role ?? 'none';
+      void refreshStatus(true).then(render);
+    });
+    stewardBtn?.addEventListener('click', () => void openPassGate('Stewards: type the steward passcode.'));
+
+    /* ---------------- upload ---------------- */
+    function resetForm(): void {
+      prepared = null;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = '';
+      if (fileInput) fileInput.value = '';
+      if (preview) {
+        preview.hidden = true;
+        preview.removeAttribute('src');
+      }
+      if (dropTitle) dropTitle.textContent = 'Choose a photo';
+      if (dropHint) dropHint.textContent = 'JPEG, PNG or WebP. It is resized here before it is sent.';
+      if (captionInput) captionInput.value = '';
+      if (errorEl) errorEl.textContent = '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Pin it';
+      }
+    }
+
+    async function pick(file: File | undefined): Promise<void> {
+      if (!file || !status || !errorEl || !submitBtn) return;
+      errorEl.textContent = '';
+      submitBtn.disabled = true;
+      if (dropTitle) dropTitle.textContent = 'Resizing…';
+      try {
+        prepared = await prepareImage(file, { maxEdge: status.limits.photoEdge, maxBytes: status.limits.photoBytes });
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(prepared.blob);
+        if (preview) {
+          preview.src = previewUrl;
+          preview.hidden = false;
+        }
+        if (dropTitle) dropTitle.textContent = 'Tap to pick a different photo';
+        if (dropHint) dropHint.textContent = `Ready: ${prepared.width} × ${prepared.height} px, ${kb(prepared.blob.size)}. Location data removed.`;
+        submitBtn.disabled = false;
+      } catch (err) {
+        prepared = null;
+        if (dropTitle) dropTitle.textContent = 'Choose a photo';
+        errorEl.textContent = err instanceof ImageError ? err.message : 'That photo could not be read. Try another one.';
+      }
+    }
+
+    fileInput?.addEventListener('change', () => void pick(fileInput.files?.[0]));
+    if (drop) {
+      drop.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        drop.toggleAttribute('data-over', true);
+      });
+      drop.addEventListener('dragleave', () => drop.removeAttribute('data-over'));
+      drop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        drop.removeAttribute('data-over');
+        void pick(e.dataTransfer?.files?.[0]);
+      });
+    }
+
+    addBtn?.addEventListener('click', async () => {
+      if (!dialog || !status?.uploads.open) return;
+      if (!(await ensurePass('Pinning a photo is for the crew.'))) return;
+      await refreshStatus(true);
+      if (!status?.uploads.open) return;
+      resetForm();
+      if (byInput && !byInput.value) byInput.value = getMe();
+      returnTo = addBtn;
+      lockScroll(true);
+      dialog.showModal();
+    });
+    dialog?.addEventListener('close', () => {
+      lockScroll(false);
+      returnTo?.focus({ preventScroll: true });
+    });
+    dialog?.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+    root.querySelectorAll('[data-fan-close]').forEach((b) => b.addEventListener('click', () => dialog?.close()));
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!prepared || !submitBtn || !errorEl || !dialog) return;
+      const image = prepared;
+      errorEl.textContent = '';
+      submitBtn.disabled = true;
+      submitBtn.dataset.busy = '';
+      submitBtn.textContent = 'Pinning…';
+      try {
+        const send = () => {
+          const body = new FormData();
+          body.set('file', image.blob, image.blob.type === 'image/webp' ? 'photo.webp' : 'photo.jpg');
+          body.set('caption', captionInput?.value ?? '');
+          body.set('by', byInput?.value ?? '');
+          return api<{ photo: Photo }>('photos', { method: 'POST', body });
+        };
+        const { photo } = await withPass(send, 'Pinning a photo is for the crew.');
+        if (byInput?.value.trim() && !getMe()) setMe(byInput.value);
+        photos = [photo, ...photos];
+        root!.dataset.state = 'ready';
+        render();
+        dialog.close();
+        sound.play('meow', { volume: 0.6 });
+        emit('bilal:toast', { message: 'Pinned. The stewards approve. The owner has already sat on it.', tone: 'gold' });
+        list!.firstElementChild?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } catch (err) {
+        errorEl.textContent = err instanceof ApiError ? err.message : 'That photo did not reach the wall. Try again.';
+        submitBtn.disabled = false;
+      } finally {
+        delete submitBtn.dataset.busy;
+        submitBtn.textContent = 'Pin it';
+        // The budget may have closed (or this was the last slot): re-read it.
+        void refreshStatus(true);
+      }
+    });
+
+    /* ---------------- stewards ---------------- */
+    async function remove(p: Photo): Promise<void> {
+      if (!window.confirm('Take this photo off the wall?')) return;
+      try {
+        await api(`photos/${p.id}`, { method: 'DELETE' });
+        photos = photos.filter((x) => x.id !== p.id);
+        render();
+        void refreshStatus(true);
+      } catch (err) {
+        emit('bilal:toast', { message: err instanceof ApiError ? err.message : 'Could not remove that photo.', tone: 'red' });
+      }
+    }
+
+    /* ---------------- lightbox ---------------- */
+    const lbImg = q<HTMLImageElement>('[data-lb-img]');
+    const lbCaption = q('[data-lb-caption]');
+    const lbBy = q('[data-lb-by]');
+    const lbCount = q('[data-lb-count]');
+    let lbIndex = 0;
+    let lbReturn: HTMLElement | null = null;
+
+    function show(i: number): void {
+      if (!photos.length) return;
+      lbIndex = (i + photos.length) % photos.length;
+      const p = photos[lbIndex]!;
+      if (lbImg) {
+        lbImg.src = p.url;
+        lbImg.alt = altFor(p);
+        lbImg.width = p.width;
+        lbImg.height = p.height;
+      }
+      if (lbCaption) lbCaption.textContent = p.caption;
+      if (lbBy) lbBy.textContent = `${p.by ? `Pinned by ${p.by}` : 'Pinned by the crew'} · ${whenFor(p.at)}`;
+      if (lbCount) lbCount.textContent = `${String(lbIndex + 1).padStart(2, '0')} / ${String(photos.length).padStart(2, '0')}`;
+      lb?.toggleAttribute('data-single', photos.length < 2);
+    }
+
+    function openLightbox(id: string, from: HTMLElement): void {
+      if (!lb) return;
+      lbReturn = from;
+      show(Math.max(0, photos.findIndex((p) => p.id === id)));
+      lockScroll(true);
+      lb.showModal();
+    }
+
+    if (lb) {
+      q('[data-lb-close]')?.addEventListener('click', () => lb.close());
+      q('[data-lb-prev]')?.addEventListener('click', () => show(lbIndex - 1));
+      q('[data-lb-next]')?.addEventListener('click', () => show(lbIndex + 1));
+      lb.addEventListener('close', () => {
+        lockScroll(false);
+        lbReturn?.focus({ preventScroll: true });
+      });
+      lb.addEventListener('click', (e) => {
+        if (e.target === lb) lb.close();
+      });
+      lb.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') show(lbIndex - 1);
+        else if (e.key === 'ArrowRight') show(lbIndex + 1);
+      });
+      let startX = 0;
+      lb.addEventListener('pointerdown', (e) => (startX = e.clientX));
+      lb.addEventListener('pointerup', (e) => {
+        const dx = e.clientX - startX;
+        if (e.pointerType !== 'mouse' && Math.abs(dx) > 50) show(lbIndex + (dx < 0 ? 1 : -1));
+      });
+    }
+  }
+</script>
+
+<style>
+  .fan {
+    padding-top: 0;
+  }
+
+  /* ---- toolbar ---- */
+  .fan-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-6);
+    padding: var(--space-4);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-l);
+    background: linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 60%);
+  }
+
+  .fan-add {
+    min-height: 3.25rem;
+    padding-inline: 1.4rem;
+  }
+
+  .fan-status {
+    flex: 1 1 14rem;
+    color: var(--c-mute);
+    font-size: var(--fs-small);
+    line-height: 1.4;
+  }
+
+  .fan[data-closed] .fan-status {
+    color: var(--c-chalk);
+  }
+
+  .fan-steward {
+    min-height: 2.75rem;
+    color: var(--c-mute);
+    font-size: 0.58rem;
+    text-decoration: underline;
+    text-decoration-color: var(--c-faint);
+    text-underline-offset: 0.3em;
+  }
+
+  .fan-steward:hover {
+    color: var(--c-chalk);
+  }
+
+  .fan-optional {
+    color: var(--c-faint);
+  }
+
+  /* ---- masonry wall ---- */
+  .fan-wall {
+    list-style: none;
+    padding: 0;
+    columns: 2;
+    column-gap: var(--space-4);
+  }
+
+  @media (min-width: 40rem) {
+    .fan-wall {
+      columns: 3;
+      column-gap: var(--space-5);
+    }
+  }
+
+  @media (min-width: 75em) {
+    .fan-wall {
+      columns: 4;
+    }
+  }
+
+  .fan-tile {
+    break-inside: avoid;
+    margin-bottom: var(--space-5);
+    padding-top: 0.6rem;
+  }
+
+  .fan-card {
+    position: relative;
+    margin: 0;
+    padding: 0.5rem 0.5rem 0.7rem;
+    border-radius: var(--radius-s);
+    background: var(--c-chalk);
+    color: var(--c-carbon);
+    box-shadow: 0 1.25rem 2.5rem -1.25rem rgb(0 0 0 / 0.9);
+    rotate: var(--tilt, 0deg);
+    transition:
+      rotate var(--dur-med) var(--ease-out-expo),
+      translate var(--dur-med) var(--ease-out-expo),
+      box-shadow var(--dur-med) ease;
+  }
+
+  .fan-card:hover,
+  .fan-card:focus-within {
+    rotate: 0deg;
+    translate: 0 -4px;
+    box-shadow: 0 2rem 3rem -1.25rem rgb(0 0 0 / 0.95);
+  }
+
+  .fan-pin {
+    position: absolute;
+    top: -0.55rem;
+    left: 50%;
+    z-index: 1;
+    width: 1.1rem;
+    height: 1.1rem;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--c-gold), var(--c-saffron) 55%, var(--c-maroon));
+    box-shadow: 0 0.25rem 0.4rem rgb(0 0 0 / 0.5);
+  }
+
+  .fan-photo {
+    aspect-ratio: var(--ar, 4 / 3);
+    overflow: clip;
+    border-radius: 2px;
+    background: var(--c-graphite);
+  }
+
+  .fan-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .fan-info {
+    padding: 0.55rem 0.2rem 0;
+  }
+
+  .fan-caption {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .fan-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.2rem 0.6rem;
+    margin-top: 0.35rem;
+    color: color-mix(in oklab, var(--c-carbon) 72%, var(--c-chalk));
+    font-size: 0.54rem;
+    overflow-wrap: anywhere;
+  }
+
+  .fan-hit {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  .fan-remove {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 2;
+  }
+
+  /* ---- empty / offline ---- */
+  .fan-empty {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-2);
+    padding: var(--space-7) var(--space-4);
+    border: 1.5px dashed var(--c-line-strong);
+    border-radius: var(--radius-l);
+    text-align: center;
+  }
+
+  .fan-empty-title {
+    font-size: var(--fs-h3);
+    font-weight: 850;
+    text-transform: uppercase;
+  }
+
+  .fan-empty-sub {
+    color: var(--c-mute);
+  }
+
+  /* ---- lightbox ---- */
+  .fan-lb {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: var(--space-4) var(--gutter) max(var(--space-5), env(safe-area-inset-bottom));
+    border: 0;
+    background: rgb(7 7 11 / 0.96);
+    color: var(--c-chalk);
+    opacity: 0;
+    transition:
+      opacity var(--dur-med) ease,
+      display var(--dur-med) allow-discrete,
+      overlay var(--dur-med) allow-discrete;
+  }
+
+  .fan-lb[open] {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--space-3);
+    opacity: 1;
+  }
+
+  @starting-style {
+    .fan-lb[open] {
+      opacity: 0;
+    }
+  }
+
+  .fan-lb::backdrop {
+    background: transparent;
+  }
+
+  .fan-lb-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .fan-lb-top .ui-dialog-close {
+    margin: 0;
+  }
+
+  .fan-lb-count {
+    color: var(--c-mute);
+  }
+
+  .fan-lb-fig {
+    min-height: 0;
+    margin: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
+    gap: var(--space-3);
+  }
+
+  .fan-lb-fig img {
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-s);
+    box-shadow: 0 2rem 4rem -1rem rgb(0 0 0 / 0.9);
+  }
+
+  .fan-lb-cap {
+    display: grid;
+    gap: 0.3rem;
+    max-width: 60ch;
+    text-align: center;
+    font-size: var(--fs-lead);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .fan-lb-by {
+    color: var(--c-mute);
+  }
+
+  .fan-lb-nav {
+    position: absolute;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    translate: 0 -50%;
+    border: 1px solid var(--c-line-strong);
+    border-radius: 50%;
+    background: rgb(7 7 11 / 0.7);
+    color: var(--c-chalk);
+  }
+
+  .fan-lb-nav:hover {
+    border-color: var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  .fan-lb-nav svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .fan-lb-prev {
+    left: var(--space-3);
+  }
+
+  .fan-lb-next {
+    right: var(--space-3);
+  }
+
+  .fan-lb[data-single] .fan-lb-nav {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fan-card,
+    .fan-lb {
+      transition: none;
+    }
+  }
+</style>

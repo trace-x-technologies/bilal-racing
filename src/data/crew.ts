@@ -4,10 +4,15 @@
  * "vacancy" card, never an empty hole). Photos are face-cropped 480×480 avatars in
  * src/assets/photos/crew/.
  *
+ * Open seats (the `garage` group) can be claimed on the site: a friend picks the
+ * role, types a name and uploads a face photo. Those claims live in the database
+ * (worker/index.ts reads this file to know which role ids are open). To make a
+ * claim permanent, fill in `person` here and add the photo to the repo.
+ *
  * `slot` places the member in the top-down pit-stop formation (see Crew section):
  * coordinates are % of the formation stage, car pointing up (nose at top).
  */
-export type CrewGroup = 'pitwall' | 'pitcrew';
+export type CrewGroup = 'pitwall' | 'pitcrew' | 'garage';
 
 export interface CrewPerson {
   name: string;
@@ -123,5 +128,62 @@ export const crew: CrewRole[] = [
     duty: 'Guards the tail — the car’s and the owner’s. Both come home safe, every time.',
     slot: { x: 50, y: 92 },
     person: { name: 'Isuru Perera', nickname: 'IsuruT', photo: 'isuru-perera.jpg', code: 'PER' },
+  },
+  // ---------------- Garage (open seats: claimed on the site) ----------------
+  {
+    id: 'tyre-blankets',
+    group: 'garage',
+    role: 'Tyre Blanket Warmer',
+    duty: 'Keeps the Purrelli softs toasty. The owner tests every blanket in person.',
+    person: null,
+  },
+  {
+    id: 'laser',
+    group: 'garage',
+    role: 'Laser Pointer Operator',
+    duty: 'Runs the owner’s reflex training. One red dot, perfect aim.',
+    person: null,
+  },
+  {
+    id: 'tuna',
+    group: 'garage',
+    role: 'Chief Tuna Officer',
+    duty: 'Opens the can on exactly the right lap. The whole garage hears it.',
+    person: null,
+  },
+  {
+    id: 'box-inspector',
+    group: 'garage',
+    role: 'Cardboard Box Inspector',
+    duty: 'Checks every delivery box for comfort before the owner moves in.',
+    person: null,
+  },
+  {
+    id: 'pit-board',
+    group: 'garage',
+    role: 'Pit Board Holder',
+    duty: 'Hangs the board over the wall. It always says P1.',
+    person: null,
+  },
+  {
+    id: 'zoomies',
+    group: 'garage',
+    role: 'Head of Zoomies',
+    duty: 'Leads the warm-up laps of the garage. Morale: maximum.',
+    person: null,
+  },
+  {
+    id: 'telemetry',
+    group: 'garage',
+    role: 'Whisker Telemetry',
+    duty: 'Reads the data and the whiskers. Both say fast.',
+    person: null,
+  },
+  {
+    id: 'fan-zone',
+    group: 'garage',
+    role: 'Fan Zone Marshal',
+    duty: 'Starts the grandstand chant. Loud, proud and right on time.',
+    person: null,
   },
 ];

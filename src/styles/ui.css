@@ -1,0 +1,338 @@
+/*
+ * Shared form + dialog kit for the parts of the site friends write to (paddock
+ * pass, photo upload, crew seats, leaderboard name). Global on purpose: several
+ * components use it, and scripts build some of these elements at runtime, which
+ * component-scoped styles can't reach. Import it from a component's frontmatter:
+ *   import '@/styles/ui.css';
+ */
+
+/* ---------------- buttons ---------------- */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.875rem;
+  padding: 0 1.1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  font-family: var(--f-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-out-back);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.ui-btn svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ui-btn--gold {
+  background: var(--c-gold);
+  color: var(--c-on-gold);
+  box-shadow: 0 10px 30px -14px color-mix(in oklab, var(--c-gold) 80%, transparent);
+}
+
+.ui-btn--gold:hover:not(:disabled) {
+  background: var(--c-chalk);
+}
+
+.ui-btn--ghost {
+  border-color: var(--c-line-strong);
+  color: var(--c-chalk);
+  background: color-mix(in oklab, var(--c-carbon) 50%, transparent);
+}
+
+.ui-btn--ghost:hover:not(:disabled) {
+  border-color: var(--c-gold);
+  color: var(--c-gold);
+}
+
+.ui-btn:disabled {
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--c-line-strong);
+  color: var(--c-mute);
+  box-shadow: none;
+}
+
+.ui-btn[data-busy] {
+  cursor: progress;
+}
+
+/* small round "remove" button stewards see on things they can delete */
+.ui-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid color-mix(in oklab, var(--c-red) 60%, transparent);
+  border-radius: 50%;
+  background: rgb(7 7 11 / 0.82);
+  color: var(--c-chalk);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ui-remove:hover {
+  background: var(--c-red);
+  border-color: var(--c-red);
+}
+
+/* ---------------- fields ---------------- */
+.ui-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.ui-label {
+  font-family: var(--f-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-mute);
+}
+
+.ui-input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-s);
+  background: var(--c-carbon);
+  color: var(--c-chalk);
+  /* 16px+ so iOS doesn't zoom the page when the field gets focus */
+  font-size: max(1rem, 16px);
+  transition: border-color var(--dur-fast) ease;
+}
+
+.ui-input::placeholder {
+  color: var(--c-faint);
+}
+
+.ui-input:hover {
+  border-color: var(--c-mute);
+}
+
+.ui-input:focus-visible {
+  outline: 2px solid var(--c-gold);
+  outline-offset: 1px;
+  border-color: var(--c-gold);
+}
+
+select.ui-input {
+  appearance: none;
+  padding-right: 2.4rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--c-gold) 50%), linear-gradient(135deg, var(--c-gold) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.15rem) 50%,
+    calc(100% - 0.8rem) 50%;
+  background-size:
+    0.35rem 0.35rem,
+    0.35rem 0.35rem;
+  background-repeat: no-repeat;
+}
+
+.ui-hint {
+  color: var(--c-mute);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+
+.ui-error {
+  color: var(--c-chalk);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--c-red);
+  border-radius: var(--radius-s);
+  background: color-mix(in oklab, var(--c-red) 14%, var(--c-carbon));
+}
+
+.ui-error:empty {
+  display: none;
+}
+
+/* the file picker: a big dashed drop zone wrapping a visually hidden <input type="file"> */
+.ui-drop {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  min-height: 8.5rem;
+  padding: var(--space-4);
+  border: 1.5px dashed var(--c-line-strong);
+  border-radius: var(--radius-m);
+  background: var(--c-carbon);
+  color: var(--c-mute);
+  text-align: center;
+  cursor: pointer;
+  overflow: clip;
+  transition:
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease;
+}
+
+.ui-drop:hover,
+.ui-drop:focus-within,
+.ui-drop[data-over] {
+  border-color: var(--c-gold);
+  color: var(--c-chalk);
+}
+
+.ui-drop:focus-within {
+  outline: 2px solid var(--c-gold);
+  outline-offset: 2px;
+}
+
+.ui-drop input[type='file'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ui-drop-title {
+  font-family: var(--f-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-chalk);
+}
+
+.ui-drop img {
+  display: block;
+  max-width: 100%;
+  max-height: 14rem;
+  border-radius: var(--radius-s);
+  object-fit: contain;
+}
+
+/* ---------------- dialog ---------------- */
+.ui-dialog {
+  width: min(100% - 2 * var(--gutter), 30rem);
+  max-height: min(100dvh - 2rem, 46rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-l);
+  background:
+    radial-gradient(90% 50% at 100% 0%, rgb(255 197 46 / 0.1), transparent 65%),
+    linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 60%);
+  color: var(--c-chalk);
+  box-shadow: 0 2.5rem 5rem -1.5rem rgb(0 0 0 / 0.9);
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  transform: translateY(1rem) scale(0.98);
+  transition:
+    opacity var(--dur-med) var(--ease-out-expo),
+    transform var(--dur-med) var(--ease-out-expo),
+    display var(--dur-med) allow-discrete,
+    overlay var(--dur-med) allow-discrete;
+}
+
+.ui-dialog[open] {
+  opacity: 1;
+  transform: none;
+}
+
+@starting-style {
+  .ui-dialog[open] {
+    opacity: 0;
+    transform: translateY(1rem) scale(0.98);
+  }
+}
+
+.ui-dialog::backdrop {
+  background: rgb(7 7 11 / 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.ui-dialog-body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.ui-dialog-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.ui-dialog-kicker {
+  font-family: var(--f-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-gold);
+}
+
+.ui-dialog-title {
+  margin-top: 0.3rem;
+  font-family: var(--f-display);
+  font-stretch: var(--stretch-condensed);
+  font-variation-settings: 'wdth' 62;
+  font-size: clamp(1.9rem, 1.5rem + 2vw, 2.6rem);
+  font-weight: 850;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.ui-dialog-close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.4rem -0.4rem 0 0;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 50%;
+  color: var(--c-chalk);
+}
+
+.ui-dialog-close:hover {
+  border-color: var(--c-gold);
+  color: var(--c-gold);
+}
+
+.ui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.ui-actions > .ui-btn--gold {
+  flex: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-dialog {
+    transition: none;
+  }
+}

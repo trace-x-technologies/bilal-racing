@@ -2,12 +2,24 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bilal-racing",
   "compatibility_date": "2026-09-01",
-  // Pure static site: Astro builds to ./dist, Workers serves it from the edge.
+  // The site is static: Astro builds to ./dist and Workers serves it from the edge for free.
+  // The Worker script (worker/index.ts) only runs for /api/*: leaderboard, photo uploads, crew seats.
+  "main": "worker/index.ts",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/api/*"]
   },
+  // Leaderboard, photo list, crew seats and the upload budget counters.
+  "d1_databases": [{ "binding": "DB", "database_name": "bilal-racing" }],
+  // Uploaded photos and crew faces.
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "bilal-racing-paddock" }],
+  // "false" closes uploads by hand. The two passcodes are secrets, not vars:
+  //   npx wrangler secret put TEAM_PASSCODE     (friends: upload, post times, claim seats)
+  //   npx wrangler secret put ADMIN_PASSCODE    (stewards: remove things)
+  "vars": { "UPLOADS_ENABLED": "true" },
   // Custom domain: the tracex.tech zone must be active in the SAME Cloudflare account
   // you deploy with. Cloudflare then creates the DNS record + certificate itself.
   "routes": [{ "pattern": "bilal.tracex.tech", "custom_domain": true }],

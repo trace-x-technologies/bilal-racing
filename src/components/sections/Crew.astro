@@ -1,7 +1,13 @@
 ---
 /**
- * 04 · The Crew — top-down pit-box formation + scroll-scrubbed pit stop,
- * then the pit-wall cards and an accessible crew sheet.
+ * The Crew — top-down pit-box formation + scroll-scrubbed pit stop, then every
+ * face in the open: pit-wall cards, pit-crew cards, and the garage's open seats.
+ *
+ * Open seats (data/crew.ts, group `garage`, `person: null`) can be claimed on
+ * the page: pick the role, type a name, add a face photo. The photo is cropped
+ * to a 480 px square in the browser (scripts/image.ts) and stored by the API
+ * (worker/index.ts, /api/crew). It needs the paddock pass, shows up for everyone
+ * straight away, and stewards can free a seat again.
  *
  * Line-up: the pit stop is car #13's (lore `drivers`); the cat who owns the team
  * (lore `owner`, callsign RAT) runs the pit wall and calls the car straight back in
@@ -13,6 +19,7 @@
  * finished composition. With motion, a GSAP timeline scrubbed by the tall
  * `.crew-scrolly` wrapper rewinds everything to the empty box and replays it.
  */
+import '@/styles/ui.css';
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import PhotoSlot from '@/components/ui/PhotoSlot.astro';
 import Emblem from '@/components/ui/Emblem.astro';
@@ -20,7 +27,7 @@ import { crew, type CrewRole } from '@/data/crew';
 import { sinhala, owner, drivers } from '@/data/lore';
 import { resolvePhoto, type PhotoEntry } from '@/data/photos';
 
-/** F1-timing-style three-letter role codes (open-seat fallback + crew sheet). CAT = catering, obviously. */
+/** F1-timing-style three-letter role codes (open-seat fallback + card tags). CAT = catering, obviously. */
 const CODES: Record<string, string> = {
   lollipop: 'REL',
   'front-jack': 'FJK',
@@ -34,6 +41,14 @@ const CODES: Record<string, string> = {
   engineer: 'ENG',
   strategist: 'STR',
   catering: 'CAT',
+  'tyre-blankets': 'TBW',
+  laser: 'LPO',
+  tuna: 'TUN',
+  'box-inspector': 'BOX',
+  'pit-board': 'PBH',
+  zoomies: 'ZOO',
+  telemetry: 'TEL',
+  'fan-zone': 'FAN',
 };
 
 const roleCodeFor = (r: CrewRole) =>
@@ -126,6 +141,10 @@ const pitwall = crew
   .filter((r) => r.group === 'pitwall')
   .map((r, i) => ({ ...withCodes(r), i, isOwner: r.id === 'principal' }));
 
+/** Garage roles nobody holds yet: the seats friends can claim on the page. */
+const garage = crew.filter((r) => r.group === 'garage').map((r, i) => ({ ...withCodes(r), i, isOwner: false }));
+const openGarage = garage.filter((r) => !r.person);
+
 const openCrew = pitcrew.filter((r) => !r.person).length;
 const openWall = pitwall.filter((r) => !r.person).length;
 const openSeats = openCrew + openWall;
@@ -141,13 +160,42 @@ const lead = [
   `${word(pitcrew.length)} on the car, ${word(pitwall.length).toLowerCase()} on the pit wall — one of them is the cat who owns the team.`,
   openSeats
     ? `${word(openSeats)} ${openSeats === 1 ? 'seat' : 'seats'} still open — apply with snacks.`
-    : 'Every seat filled (the owner sat in each one first, to check).',
-  `Scroll to run car #${carNo}’s stop; hover, tap or Tab onto anyone for the job description.`,
+    : 'Every seat on the car and the wall is filled (the owner sat in each one first, to check).',
+  `Scroll to run car #${carNo}’s stop. Every face and job is right below it${
+    openGarage.length ? `, and ${word(openGarage.length).toLowerCase()} garage seats are open for you` : ''
+  }.`,
 ].join(' ');
 
 const wallNote = openWall
   ? `${word(openWall)} of ${word(pitwall.length).toLowerCase()} seats open — the stewards have been notified.`
   : `${word(pitwall.length)} seats, one cardboard box. Guess who sits in the box.`;
+
+/** Every face, in the open: three boards of cards. Camera channels count on across them. */
+const boards = [
+  {
+    id: 'pitwall',
+    title: 'The pit wall',
+    sub: `Best view on the circuit, best snacks in the paddock (catering sits here on purpose). ${wallNote}`,
+    items: pitwall.map((r) => ({ ...r, isOwner: r.isOwner })),
+  },
+  {
+    id: 'pitcrew',
+    title: 'The pit crew',
+    sub: `${word(pitcrew.length)} pairs of hands, one world-record stop. The same faces as the formation above, at full size.`,
+    items: pitcrew.map((r) => ({ ...r, isOwner: false })),
+  },
+  {
+    id: 'garage',
+    title: 'Open seats',
+    sub: `${word(garage.length)} jobs in the garage and no interview. Pick a seat, add your face, and you are crew.`,
+    items: garage,
+  },
+]
+  .filter((b) => b.items.length > 0)
+  .map((b, bi, all) => {
+    const offset = all.slice(0, bi).reduce((n, x) => n + x.items.length, 0);
+    return { ...b, items: b.items.map((r, i) => ({ ...r, ch: offset + i + 1 })) };
+  });
 
 /** Pit-stop choreography phases; `at` = timeline time the phase starts. */
 const phases = [
@@ -177,7 +225,7 @@ const paws = [
 <section class="section crew" id="crew" aria-labelledby="crew-title" data-phase="done" data-timer="corrected">
   <div class="container">
     <SectionHeading
-      index="04"
+      index="03"
       kicker="The Crew"
       id="crew-title"
       title="Pit crew <em>formation</em>"
@@ -552,113 +600,194 @@ const paws = [
     </div>
   </div>
 
-  <!-- ================= Pit wall ================= -->
-  <div class="container pitwall">
-    <div class="pw-head">
-      <h3 class="pw-title t-condensed" data-reveal="up">The pit wall</h3>
-      <p class="pw-sub" data-reveal="up">
-        Best view on the circuit, best snacks in the paddock (catering sits here on purpose). {wallNote}
-      </p>
-    </div>
-    <ul class="pw-grid" role="list" data-reveal-stagger="90">
-      {
-        pitwall.map((r) => (
-          <li class="pw-item" data-reveal="up">
-            <article
-              class="pw-card"
-              data-vacant={r.person ? undefined : ''}
-              data-owner={r.isOwner && r.person ? '' : undefined}
-              aria-labelledby={`pw-${r.id}`}
-            >
-              <div class="pw-screen" aria-hidden={r.photo ? undefined : 'true'}>
-                {r.photo ? (
-                  <PhotoSlot
-                    photo={r.photo}
-                    sizes="(min-width: 64rem) 18rem, 9rem"
-                    widths={[160, 320, 480, 640]}
-                    class="pw-photo"
-                  />
-                ) : r.person ? (
-                  <span class="pw-mono">
-                    <span class="pw-mono-name">{r.person.name.split(/\s+/)[0]}</span>
-                    <Emblem size="4rem" title="" class="pw-emblem" />
+  <!-- ================= Every face: pit wall, pit crew, open seats ================= -->
+  {
+    boards.map((b) => (
+      <div class="container pitwall" id={b.id === 'garage' ? 'open-seats' : undefined} data-board={b.id}>
+        <div class="pw-head">
+          <h3 class="pw-title t-condensed" data-reveal="up">
+            {b.title}
+          </h3>
+          <p class="pw-sub" data-reveal="up">
+            {b.sub}
+          </p>
+          {b.id === 'garage' && (
+            <div class="pw-join" data-reveal="up">
+              <button type="button" class="ui-btn ui-btn--gold" data-seat-join disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Join the crew
+              </button>
+              <p class="pw-join-status" data-seat-status>
+                Checking the garage…
+              </p>
+              <button type="button" class="pw-steward t-mono" data-seat-steward>
+                Steward sign-in
+              </button>
+            </div>
+          )}
+        </div>
+        <ul class="pw-grid" role="list" data-reveal-stagger="90">
+          {b.items.map((r) => (
+            <li class="pw-item" data-reveal="up">
+              <article
+                class="pw-card"
+                data-vacant={r.person ? undefined : ''}
+                data-owner={r.isOwner && r.person ? '' : undefined}
+                data-seat={b.id === 'garage' && !r.person ? r.id : undefined}
+                aria-labelledby={`pw-${r.id}`}
+              >
+                <div class="pw-screen" aria-hidden={r.photo ? undefined : 'true'} data-seat-screen>
+                  {r.photo ? (
+                    <PhotoSlot
+                      photo={r.photo}
+                      sizes="(min-width: 64rem) 18rem, 9rem"
+                      widths={[160, 320, 480, 640]}
+                      class="pw-photo"
+                    />
+                  ) : r.person ? (
+                    <span class="pw-mono">
+                      <span class="pw-mono-name">{r.person.name.split(/\s+/)[0]}</span>
+                      <Emblem size="4rem" title="" class="pw-emblem" />
+                    </span>
+                  ) : (
+                    <span class="pw-bars" data-seat-bars>
+                      <span class="pw-nosig t-mono">No signal</span>
+                    </span>
+                  )}
+                  <span class="pw-ch t-mono">CH {pad(r.ch)}</span>
+                  <span class:list={['pw-live t-mono', { on: !!r.person }]} data-seat-live>
+                    {r.person ? 'On air' : 'Vacant'}
                   </span>
-                ) : (
-                  <span class="pw-bars">
-                    <span class="pw-nosig t-mono">No signal</span>
-                  </span>
-                )}
-                <span class="pw-ch t-mono">CH {pad(r.i + 1)}</span>
-                <span class:list={['pw-live t-mono', { on: !!r.person }]}>{r.person ? 'On air' : 'Vacant'}</span>
-                {r.isOwner && r.person && (
-                  <span class="pw-crown t-mono" aria-hidden="true">
-                    Owner
-                  </span>
-                )}
-              </div>
-              <div class="pw-body">
-                <p class="pw-role t-mono">
-                  <span class="pw-code">{r.code}</span> {r.isOwner && r.person ? owner.role : r.role}
-                </p>
-                <h4 class="pw-name t-condensed" id={`pw-${r.id}`}>
-                  {r.person ? r.person.name : 'Seat open'}
-                </h4>
-                {r.nickHtml ? (
-                  <p class="pw-nick">
-                    “<Fragment set:html={r.nickHtml} />”
+                  {r.isOwner && r.person && (
+                    <span class="pw-crown t-mono" aria-hidden="true">
+                      Owner
+                    </span>
+                  )}
+                </div>
+                <div class="pw-body">
+                  <p class="pw-role t-mono">
+                    <span class="pw-code">{r.code}</span> {r.isOwner && r.person ? owner.role : r.role}
                   </p>
-                ) : !r.person ? (
-                  <p class="pw-apply">— apply with snacks</p>
-                ) : null}
-                <p class="pw-duty">{r.duty}</p>
-                {r.isOwner && r.person?.code && (
-                  <p class="pw-req t-mono">
-                    Callsign {r.person.code}. Sits in the box during every stop.
-                  </p>
-                )}
-                {!r.person && REQUIREMENTS[r.id] && <p class="pw-req t-mono">{REQUIREMENTS[r.id]}</p>}
-              </div>
-            </article>
-          </li>
-        ))
-      }
-    </ul>
-
-    <!-- ================= Crew sheet (list fallback) ================= -->
-    <details class="sheet" data-reveal="up">
-      <summary>
-        <span class="sheet-title">Crew sheet</span>
-        <span class="sheet-meta t-mono">List view · {pitcrew.length} pit crew roles</span>
-        <span class="sheet-chev" aria-hidden="true"></span>
-      </summary>
-      <ol class="sheet-list">
-        {
-          pitcrew.map((r) => (
-            <li class="sheet-row">
-              <span class="sheet-face" aria-hidden="true">
-                {r.photo ? (
-                  <PhotoSlot photo={r.photo} sizes="64px" widths={[96, 160]} />
-                ) : (
-                  <span class="sheet-ini">{r.person ? initials(r.person.name) : '?'}</span>
-                )}
-                <span class="sheet-code t-mono">{r.code}</span>
-              </span>
-              <span class="sheet-role">{r.role}</span>
-              <span class:list={['sheet-who', { open: !r.person }]}>
-                {r.person ? r.person.name : 'Seat open — apply with snacks'}
-                {r.nickHtml && (
-                  <span class="sheet-nick">
-                    “<Fragment set:html={r.nickHtml} />”
-                  </span>
-                )}
-              </span>
-              <span class="sheet-duty">{r.duty}</span>
+                  <h4 class="pw-name t-condensed" id={`pw-${r.id}`} data-seat-name>
+                    {r.person ? r.person.name : 'Seat open'}
+                  </h4>
+                  {r.nickHtml ? (
+                    <p class="pw-nick">
+                      “<Fragment set:html={r.nickHtml} />”
+                    </p>
+                  ) : !r.person ? (
+                    <p class="pw-apply" data-seat-apply>
+                      — apply with snacks
+                    </p>
+                  ) : null}
+                  <p class="pw-duty">{r.duty}</p>
+                  {r.isOwner && r.person?.code && (
+                    <p class="pw-req t-mono">Callsign {r.person.code}. Sits in the box during every stop.</p>
+                  )}
+                  {!r.person && REQUIREMENTS[r.id] && <p class="pw-req t-mono">{REQUIREMENTS[r.id]}</p>}
+                  {b.id === 'garage' && !r.person && (
+                    <div class="pw-claim">
+                      <button type="button" class="ui-btn ui-btn--ghost pw-claim-btn" data-seat-claim={r.id} disabled>
+                        Claim this seat
+                      </button>
+                      <button
+                        type="button"
+                        class="ui-remove"
+                        data-seat-remove={r.id}
+                        aria-label={`Free the ${r.role} seat again`}
+                        hidden
+                      >
+                        <span aria-hidden="true">✕</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </article>
             </li>
-          ))
-        }
-      </ol>
-    </details>
-  </div>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+
+  <!-- ================= Join dialog ================= -->
+  {
+    openGarage.length > 0 && (
+      <dialog
+        class="ui-dialog"
+        aria-labelledby="join-title"
+        data-join
+        data-duties={JSON.stringify(Object.fromEntries(openGarage.map((r) => [r.id, r.duty])))}
+        data-lenis-prevent
+      >
+        <form class="ui-dialog-body" data-join-form novalidate>
+          <div class="ui-dialog-head">
+            <div>
+              <p class="ui-dialog-kicker">Garage · open seat</p>
+              <h3 class="ui-dialog-title" id="join-title">
+                Join the crew
+              </h3>
+            </div>
+            <button type="button" class="ui-dialog-close" aria-label="Close" data-join-close>
+              <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+                <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          <label class="ui-field">
+            <span class="ui-label">Your role</span>
+            <select class="ui-input" name="role" required data-join-role>
+              {openGarage.map((r) => (
+                <option value={r.id}>{r.role}</option>
+              ))}
+            </select>
+            <span class="ui-hint" data-join-duty />
+          </label>
+
+          <label class="ui-field">
+            <span class="ui-label">Your name</span>
+            <input
+              class="ui-input"
+              type="text"
+              name="name"
+              maxlength="24"
+              placeholder="Name or nickname"
+              autocomplete="nickname"
+              autocapitalize="words"
+              spellcheck="false"
+              required
+              data-join-name
+            />
+          </label>
+
+          <label class="ui-drop join-drop" data-join-drop>
+            <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" data-join-file />
+            <img alt="Preview of your crew photo" hidden data-join-preview />
+            <span class="ui-drop-title" data-join-drop-title>
+              Add your face
+            </span>
+            <span class="ui-hint" data-join-drop-hint>
+              Any photo of you. It is cropped to a square around the top middle, here on your phone.
+            </span>
+          </label>
+
+          <p class="ui-error" role="alert" data-join-error />
+
+          <div class="ui-actions">
+            <button type="submit" class="ui-btn ui-btn--gold" data-join-submit disabled>
+              Take the seat
+            </button>
+            <button type="button" class="ui-btn ui-btn--ghost" data-join-close>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
 </section>
 
 <style>
@@ -1977,6 +2106,7 @@ const paws = [
   /* ================= Pit wall ================= */
   .pitwall {
     margin-top: var(--space-8);
+    scroll-margin-top: calc(var(--nav-h) + var(--space-4));
   }
 
   .pw-head {
@@ -2379,144 +2509,68 @@ const paws = [
     line-height: 1.5;
   }
 
-  /* ================= Crew sheet ================= */
-  .sheet {
-    margin-top: var(--space-6);
-    border: 1px solid var(--c-line-strong);
-    border-radius: var(--radius-l);
-    background: color-mix(in oklab, var(--c-asphalt) 80%, transparent);
-    overflow: clip;
-  }
-
-  .sheet summary {
+  /* ================= Open seats (garage) ================= */
+  .pw-join {
+    flex: 1 1 100%;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2) var(--space-4);
-    padding: 1rem 1.25rem;
-    cursor: pointer;
-    list-style: none;
+    gap: var(--space-3) var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-l);
+    background: linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 60%);
   }
 
-  .sheet summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .sheet summary:hover .sheet-title {
-    color: var(--c-gold);
-  }
-
-  .sheet-title {
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    transition: color var(--dur-fast);
-  }
-
-  .sheet-meta {
+  .pw-join-status {
+    flex: 1 1 14rem;
     color: var(--c-mute);
+    font-size: var(--fs-small);
+    line-height: 1.4;
   }
 
-  .sheet-chev {
-    margin-left: auto;
-    width: 0.7rem;
-    height: 0.7rem;
-    border-right: 2px solid var(--c-gold);
-    border-bottom: 2px solid var(--c-gold);
-    rotate: 45deg;
-    transition: rotate var(--dur-med) var(--ease-out-expo);
-  }
-
-  .sheet[open] .sheet-chev {
-    rotate: 225deg;
-  }
-
-  .sheet-list {
-    margin: 0;
-    padding: 0 1.25rem 1rem;
-    list-style: none;
-  }
-
-  .sheet-row {
-    display: grid;
-    grid-template-columns: 3rem minmax(0, 1fr);
-    gap: 0.15rem var(--space-3);
-    padding: 0.8rem 0;
-    border-top: 1px solid var(--c-line);
-  }
-
-  .sheet-face {
-    grid-row: span 3;
-    display: grid;
-    justify-items: center;
-    align-content: start;
-    gap: 0.3rem;
-  }
-
-  .sheet-face :global(picture),
-  .sheet-ini {
-    position: relative;
-    display: block;
-    width: 2.75rem;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    overflow: clip;
-    border: 1.5px solid var(--c-gold);
-    background: var(--c-graphite);
-  }
-
-  .sheet-face :global(img) {
-    display: block;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    object-fit: cover;
-  }
-
-  .sheet-ini {
-    display: grid;
-    place-items: center;
-    color: var(--c-gold);
-    font-weight: 800;
-  }
-
-  .sheet-code {
-    color: var(--c-gold);
+  .pw-steward {
+    min-height: 2.75rem;
+    color: var(--c-mute);
     font-size: 0.58rem;
-    letter-spacing: 0.1em;
+    text-decoration: underline;
+    text-decoration-color: var(--c-faint);
+    text-underline-offset: 0.3em;
   }
 
-  .sheet-role {
-    font-weight: 700;
-  }
-
-  .sheet-who {
+  .pw-steward:hover {
     color: var(--c-chalk);
   }
 
-  .sheet-who.open {
-    color: var(--c-teal);
+  .pw-claim {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: 0.6rem;
   }
 
-  .sheet-nick {
-    margin-left: 0.4em;
-    color: var(--c-gold);
+  .pw-claim-btn {
+    flex: 1;
+    min-height: 2.75rem;
+    padding-inline: 0.8rem;
+    font-size: 0.66rem;
   }
 
-  .sheet-duty {
-    color: var(--c-mute);
-    font-size: 0.92rem;
+  /* a seat somebody claimed on the page: the card reads like any other crew card */
+  .pw-card[data-claimed] .pw-claim-btn {
+    display: none;
   }
 
-  @media (min-width: 48rem) {
-    .sheet-row {
-      grid-template-columns: 3.5rem minmax(10rem, 1fr) minmax(10rem, 1fr) 2fr;
-      align-items: center;
-    }
+  .pw-card[data-claimed] .pw-screen {
+    border-color: color-mix(in oklab, var(--c-teal) 50%, transparent);
+  }
 
-    .sheet-face {
-      grid-row: auto;
-    }
+  .join-drop img {
+    width: 9rem;
+    height: 9rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--c-gold);
   }
 
   /* ================= Offscreen pause + reduced motion ================= */
@@ -2551,8 +2605,11 @@ const paws = [
 </style>
 
 <script>
-  import { gsap, ScrollTrigger, getLenis, prefersReducedMotion } from '@/scripts/motion';
+  import { gsap, ScrollTrigger, getLenis, lockScroll, prefersReducedMotion } from '@/scripts/motion';
   import { sound } from '@/scripts/audio';
+  import { api, ApiError, ensurePass, getMe, getStatus, openPassGate, setMe, withPass, type ApiStatus, type PassRole } from '@/scripts/api';
+  import { emit, on } from '@/scripts/bus';
+  import { ImageError, prepareImage, type PreparedImage } from '@/scripts/image';
 
   type PopMode = 'hover' | 'focus' | 'pinned';
 
@@ -2941,15 +2998,279 @@ const paws = [
     });
   }
 
+  /* ---------- Open seats: claim one with a name and a face ---------- */
+  interface Seat {
+    role: string;
+    name: string;
+    photo: string;
+  }
+
+  function setupSeats(root: HTMLElement): void {
+    const cards = new Map(
+      Array.from(root.querySelectorAll<HTMLElement>('[data-seat]')).map((el) => [el.dataset.seat ?? '', el] as const),
+    );
+    const dialog = root.querySelector<HTMLDialogElement>('[data-join]');
+    if (!cards.size || !dialog) return;
+
+    const q = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector<T>(sel);
+    const joinBtn = q<HTMLButtonElement>('[data-seat-join]');
+    const statusEl = q('[data-seat-status]');
+    const stewardBtn = q<HTMLButtonElement>('[data-seat-steward]');
+    const form = q<HTMLFormElement>('[data-join-form]');
+    const roleSelect = q<HTMLSelectElement>('[data-join-role]');
+    const dutyEl = q('[data-join-duty]');
+    const nameInput = q<HTMLInputElement>('[data-join-name]');
+    const fileInput = q<HTMLInputElement>('[data-join-file]');
+    const preview = q<HTMLImageElement>('[data-join-preview]');
+    const dropTitle = q('[data-join-drop-title]');
+    const dropHint = q('[data-join-drop-hint]');
+    const errorEl = q('[data-join-error]');
+    const submitBtn = q<HTMLButtonElement>('[data-join-submit]');
+
+    const duties: Record<string, string> = (() => {
+      try {
+        return JSON.parse(dialog.dataset.duties ?? '{}');
+      } catch {
+        return {};
+      }
+    })();
+
+    let seats = new Map<string, Seat>();
+    let status: ApiStatus | null = null;
+    let role: PassRole = 'none';
+    let face: PreparedImage | null = null;
+    let previewUrl = '';
+    let returnTo: HTMLElement | null = null;
+
+    /* ---- cards ---- */
+    function paint(): void {
+      for (const [id, card] of cards) {
+        const seat = seats.get(id);
+        const screen = card.querySelector<HTMLElement>('[data-seat-screen]');
+        const bars = card.querySelector<HTMLElement>('[data-seat-bars]');
+        const live = card.querySelector<HTMLElement>('[data-seat-live]');
+        const name = card.querySelector<HTMLElement>('[data-seat-name]');
+        const apply = card.querySelector<HTMLElement>('[data-seat-apply]');
+        const claim = card.querySelector<HTMLButtonElement>('[data-seat-claim]');
+        const removeBtn = card.querySelector<HTMLButtonElement>('[data-seat-remove]');
+        let img = screen?.querySelector<HTMLImageElement>('img[data-seat-face]') ?? null;
+
+        card.toggleAttribute('data-claimed', Boolean(seat));
+        card.toggleAttribute('data-vacant', !seat);
+        if (seat && screen) {
+          if (!img) {
+            img = document.createElement('img');
+            img.dataset.seatFace = '';
+            img.width = 480;
+            img.height = 480;
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            screen.prepend(img);
+          }
+          if (img.getAttribute('src') !== seat.photo) img.src = seat.photo;
+          img.alt = `${seat.name}, crew`;
+          screen.removeAttribute('aria-hidden');
+        } else {
+          img?.remove();
+          screen?.setAttribute('aria-hidden', 'true');
+        }
+        if (bars) bars.hidden = Boolean(seat);
+        if (live) {
+          live.textContent = seat ? 'On air' : 'Vacant';
+          live.classList.toggle('on', Boolean(seat));
+        }
+        if (name) name.textContent = seat ? seat.name : 'Seat open';
+        if (apply) apply.textContent = seat ? 'Signed on the spot' : '— apply with snacks';
+        if (claim) claim.disabled = !status?.uploads.open;
+        if (removeBtn) removeBtn.hidden = !(seat && role === 'admin');
+      }
+
+      const open = [...cards.keys()].filter((id) => !seats.has(id));
+      if (joinBtn) joinBtn.disabled = !status?.uploads.open || open.length === 0;
+      if (stewardBtn) stewardBtn.hidden = role === 'admin';
+      if (statusEl) {
+        if (!status) statusEl.textContent = 'The garage door is warming up. Check back in a moment.';
+        else if (!open.length) statusEl.textContent = 'Every garage seat is taken. The owner is looking for more boxes.';
+        else if (!status.uploads.open) {
+          const tomorrow = status.uploads.reason === 'daily' || status.uploads.reason === 'device';
+          statusEl.textContent = tomorrow
+            ? 'The garage has signed enough crew for today. Sign-ups reopen tomorrow.'
+            : 'Sign-ups are parked for a moment. The seats will still be here.';
+        }
+        else statusEl.textContent = `${open.length} of ${cards.size} seats open. Takes a minute: role, name, photo.`;
+      }
+      roleSelect?.querySelectorAll('option').forEach((o) => {
+        o.disabled = seats.has(o.value);
+      });
+    }
+
+    async function load(fresh = false): Promise<void> {
+      const [s, data] = await Promise.all([
+        getStatus(fresh).catch(() => null),
+        api<{ seats: Seat[] }>('crew').catch(() => null),
+      ]);
+      status = s;
+      role = s?.pass ?? 'none';
+      if (data && Array.isArray(data.seats)) seats = new Map(data.seats.map((x) => [x.role, x]));
+      paint();
+    }
+
+    // Only talk to the API once the open seats are close to the viewport.
+    const board = root.querySelector<HTMLElement>('[data-board="garage"]') ?? root;
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((e) => e.isIntersecting)) return;
+          io.disconnect();
+          void load();
+        },
+        { rootMargin: '800px 0px' },
+      );
+      io.observe(board);
+    } else void load();
+
+    on('bilal:pass', () => void load(true));
+    stewardBtn?.addEventListener('click', () => void openPassGate('Stewards: type the steward passcode.'));
+
+    /* ---- dialog ---- */
+    const showDuty = () => {
+      if (dutyEl && roleSelect) dutyEl.textContent = duties[roleSelect.value] ?? '';
+    };
+    const ready = () => {
+      if (submitBtn) submitBtn.disabled = !(face && nameInput?.value.trim() && roleSelect?.value);
+    };
+
+    function resetForm(): void {
+      face = null;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = '';
+      if (fileInput) fileInput.value = '';
+      if (preview) {
+        preview.hidden = true;
+        preview.removeAttribute('src');
+      }
+      if (dropTitle) dropTitle.textContent = 'Add your face';
+      if (dropHint) dropHint.textContent = 'Any photo of you. It is cropped to a square around the top middle, here on your phone.';
+      if (errorEl) errorEl.textContent = '';
+      if (nameInput && !nameInput.value) nameInput.value = getMe();
+      ready();
+    }
+
+    async function openJoin(roleId: string | undefined, from: HTMLElement): Promise<void> {
+      if (!status?.uploads.open) return;
+      if (!(await ensurePass('Crew seats are for the crew.'))) return;
+      await load(true);
+      if (!status?.uploads.open || !roleSelect) return;
+      const pick = roleId && !seats.has(roleId) ? roleId : [...cards.keys()].find((id) => !seats.has(id));
+      if (!pick) return;
+      roleSelect.value = pick;
+      showDuty();
+      resetForm();
+      returnTo = from;
+      lockScroll(true);
+      dialog!.showModal();
+      nameInput?.focus();
+    }
+
+    joinBtn?.addEventListener('click', () => void openJoin(undefined, joinBtn));
+    for (const [id, card] of cards) {
+      const claim = card.querySelector<HTMLButtonElement>('[data-seat-claim]');
+      claim?.addEventListener('click', () => void openJoin(id, claim));
+      card.querySelector('[data-seat-remove]')?.addEventListener('click', async () => {
+        const seat = seats.get(id);
+        if (!seat || !window.confirm(`Free this seat? ${seat.name} leaves the garage.`)) return;
+        try {
+          await api(`crew/${id}`, { method: 'DELETE' });
+          await load(true);
+        } catch (err) {
+          emit('bilal:toast', { message: err instanceof ApiError ? err.message : 'Could not free that seat.', tone: 'red' });
+        }
+      });
+    }
+
+    dialog.addEventListener('close', () => {
+      lockScroll(false);
+      returnTo?.focus({ preventScroll: true });
+    });
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+    root.querySelectorAll('[data-join-close]').forEach((b) => b.addEventListener('click', () => dialog.close()));
+    roleSelect?.addEventListener('change', () => {
+      showDuty();
+      ready();
+    });
+    nameInput?.addEventListener('input', ready);
+
+    fileInput?.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file || !status || !errorEl) return;
+      errorEl.textContent = '';
+      if (dropTitle) dropTitle.textContent = 'Cropping…';
+      try {
+        face = await prepareImage(file, { maxEdge: status.limits.faceEdge, maxBytes: status.limits.faceBytes, square: true });
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(face.blob);
+        if (preview) {
+          preview.src = previewUrl;
+          preview.hidden = false;
+        }
+        if (dropTitle) dropTitle.textContent = 'Tap to pick a different photo';
+        if (dropHint) dropHint.textContent = 'Looking sharp. The owner approves.';
+      } catch (err) {
+        face = null;
+        if (dropTitle) dropTitle.textContent = 'Add your face';
+        errorEl.textContent = err instanceof ImageError ? err.message : 'That photo could not be read. Try another one.';
+      }
+      ready();
+    });
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!face || !roleSelect || !nameInput || !submitBtn || !errorEl) return;
+      const image = face;
+      const name = nameInput.value.replace(/\s+/g, ' ').trim();
+      if (!name) {
+        errorEl.textContent = 'The pass needs a name.';
+        nameInput.focus();
+        return;
+      }
+      errorEl.textContent = '';
+      submitBtn.disabled = true;
+      submitBtn.dataset.busy = '';
+      try {
+        const send = () => {
+          const body = new FormData();
+          body.set('file', image.blob, image.blob.type === 'image/webp' ? 'face.webp' : 'face.jpg');
+          body.set('role', roleSelect.value);
+          body.set('name', name);
+          return api<{ seat: Seat }>('crew', { method: 'POST', body });
+        };
+        const { seat } = await withPass(send, 'Crew seats are for the crew.');
+        if (!getMe()) setMe(name);
+        seats.set(seat.role, seat);
+        paint();
+        dialog.close();
+        sound.play('revMeow', { volume: 0.7 });
+        emit('bilal:toast', { message: `${name} is crew. Contract signed with a paw print.`, tone: 'gold' });
+        cards.get(seat.role)?.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+        void load(true);
+      } catch (err) {
+        errorEl.textContent = err instanceof ApiError ? err.message : 'That did not reach the garage. Try again.';
+        // Somebody else took the seat meanwhile: show what is still open.
+        if (err instanceof ApiError && err.code === 'taken') void load(true);
+      } finally {
+        delete submitBtn.dataset.busy;
+        ready();
+      }
+    });
+  }
+
   function initCrew(): void {
     const root = document.querySelector<HTMLElement>('#crew');
     if (!root) return;
-    // The crew sheet adds ~740px (desktop) / ~1060px (phone) when opened: every trigger below
-    // #crew (gallery batch, calendar, lights out, footer) must re-measure, reduced motion or not.
-    root
-      .querySelector<HTMLDetailsElement>('details.sheet')
-      ?.addEventListener('toggle', () => requestAnimationFrame(() => ScrollTrigger.refresh()));
     setupPopovers(root);
+    setupSeats(root);
     setupTilt(root);
     setupInView(root);
     if (!prefersReducedMotion()) setupPitStop(root);

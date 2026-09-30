@@ -297,3 +297,43 @@ body::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* ================= Page-to-page transitions =================
+ * The site is several real pages. Browsers that support cross-document view
+ * transitions cross-fade the content and slide it a little, while the top bar
+ * and the phone tab bar (they carry their own view-transition-name) stay put.
+ * Everywhere else, pages simply load.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: page-out 180ms ease-in both;
+}
+
+::view-transition-new(root) {
+  animation: page-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

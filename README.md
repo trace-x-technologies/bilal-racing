@@ -9,14 +9,34 @@ Three.js car with an exploded view, GSAP + Lenis scroll choreography, CSS scroll
 animations, View Transitions, the Popover API, a Web Audio “meow engine” (every sound is
 synthesised, no audio files), a lights-out reaction game and a pile of easter eggs.
 
+It is five pages (Home, Team, Car, Paddock, Race) with a top bar on desktop and a tab bar on
+phones. Friends with the team passcode can also write to it:
+
+- **Live leaderboard** for Lights Out (Race page). Put a name down once; new bests post themselves.
+- **Fan wall** (Paddock page). Upload a photo; it is resized in the browser (2000 px, ≤ 1.5 MB,
+  location data removed) and appears for everyone.
+- **Open crew seats** (Team page). Pick a role, type a name, add a face photo.
+
+A steward passcode unlocks remove buttons on all three. A small Cloudflare Worker (`worker/`)
+stores it all in D1 + R2 and enforces a budget (`worker/limits.ts`): when a daily or storage cap
+is reached, uploads close by themselves and the page says so.
+
 ## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:4321
 npm run build      # static site → dist/ (~1–2 min: 29 photos → AVIF/WebP)
-npm run preview
-npx astro check    # type-check
+npm run preview    # pages only, no API
+npm run check      # type-check (site + Worker)
+```
+
+The leaderboard, fan wall and crew seats need the API. Run the whole thing locally with
+`npm run preview:cf` (build + `wrangler dev`, http://localhost:8787, local database and bucket
+under `.wrangler/`). Put two throwaway passcodes in `.dev.vars` first (git-ignored):
+
+```bash
+printf 'TEAM_PASSCODE=%s\nADMIN_PASSCODE=%s\n' local-team local-steward > .dev.vars
 ```
 
 ## Photos
@@ -36,10 +56,23 @@ site never carries EXIF either. Entries whose file is missing render a styled pl
 `src/data/crew.ts` lists every role in the pit-stop formation. Set `person` to
 `{ name, nickname, photo }`; leave `null` for a “seat open — apply with snacks” vacancy.
 
-## Deploy (Cloudflare Workers, static assets) — CLI
+## Deploy (Cloudflare Workers) — CLI
 
-The site is fully static: `astro build` writes `dist/` and `wrangler deploy` uploads it as a
-Worker with static assets (`wrangler.jsonc`). It binds the custom domain `bilal.tracex.tech`
+`astro build` writes the static pages to `dist/`; `wrangler deploy` uploads them together with
+the API Worker (`worker/index.ts`, only invoked for `/api/*`), bound to a D1 database
+(`bilal-racing`) and an R2 bucket (`bilal-racing-paddock`). **Once, before the first deploy of the
+API**, set the two passcodes as secrets. Run these in your own terminal; each one asks for the
+value, so it never lands in shell history or the repo:
+
+```bash
+npx wrangler secret put TEAM_PASSCODE     # friends: post times, upload photos, claim seats
+npx wrangler secret put ADMIN_PASSCODE    # stewards: remove things
+```
+
+Until `TEAM_PASSCODE` exists, every write is refused and the site shows uploads as closed. To
+close uploads by hand later, set `UPLOADS_ENABLED` to `"false"` in `wrangler.jsonc` and deploy.
+
+It binds the custom domain `bilal.tracex.tech`
 (the `tracex.tech` zone must be active in the **same** Cloudflare account — Cloudflare then
 creates the DNS record and certificate) and also serves on `bilal-racing.<account>.workers.dev`.
 

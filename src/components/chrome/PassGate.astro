@@ -1,0 +1,197 @@
+---
+/**
+ * Paddock pass: the one dialog that asks for the shared team passcode. Anything
+ * that writes to the site (photo upload, leaderboard, crew seats) calls
+ * `ensurePass()` from scripts/api.ts, which opens this when the device has no
+ * pass yet. The server swaps the passcode for a cookie, so it is asked once per
+ * device. The steward passcode goes in the same box and unlocks the remove buttons.
+ *
+ * Include it once on every page that has something to write to.
+ */
+import '@/styles/ui.css';
+import Emblem from '@/components/ui/Emblem.astro';
+---
+
+<dialog class="ui-dialog pass" aria-labelledby="pass-title" data-pass-gate data-lenis-prevent>
+  <form class="ui-dialog-body" method="dialog" data-pass-form novalidate>
+    <div class="ui-dialog-head">
+      <div>
+        <p class="ui-dialog-kicker">Paddock pass · crew only</p>
+        <h2 class="ui-dialog-title" id="pass-title">Show your pass</h2>
+      </div>
+      <button type="button" class="ui-dialog-close" aria-label="Close" data-pass-close>
+        <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"
+          ><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg
+        >
+      </button>
+    </div>
+
+    <div class="pass-card" aria-hidden="true">
+      <Emblem size="2.4rem" title="" />
+      <span class="pass-card-text">
+        <span class="pass-card-team t-condensed">Bilal Racing</span>
+        <span class="pass-card-zone t-mono">All areas · even the kitchen</span>
+      </span>
+      <span class="pass-card-holo t-mono">Crew</span>
+    </div>
+
+    <p class="ui-hint" data-pass-why>
+      The gate marshal (a cat) needs the team passcode. It is in the group chat. You only type it once on this device.
+    </p>
+
+    <label class="ui-field">
+      <span class="ui-label">Team passcode</span>
+      <input
+        class="ui-input"
+        type="password"
+        name="code"
+        autocomplete="off"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        enterkeyhint="go"
+        maxlength="100"
+        required
+        data-pass-input
+      />
+    </label>
+
+    <p class="ui-error" role="alert" data-pass-error></p>
+
+    <div class="ui-actions">
+      <button type="submit" class="ui-btn ui-btn--gold" data-pass-submit>Open the gate</button>
+      <button type="button" class="ui-btn ui-btn--ghost" data-pass-close>Not now</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  import { ApiError, postJson, passGranted, registerPassGate, type PassRole } from '@/scripts/api';
+  import { emit } from '@/scripts/bus';
+  import { lockScroll } from '@/scripts/motion';
+  import { sound } from '@/scripts/audio';
+
+  const dialog = document.querySelector<HTMLDialogElement>('[data-pass-gate]');
+  const form = dialog?.querySelector<HTMLFormElement>('[data-pass-form]');
+  const input = dialog?.querySelector<HTMLInputElement>('[data-pass-input]');
+  const errorEl = dialog?.querySelector<HTMLElement>('[data-pass-error]');
+  const whyEl = dialog?.querySelector<HTMLElement>('[data-pass-why]');
+  const submit = dialog?.querySelector<HTMLButtonElement>('[data-pass-submit]');
+
+  if (dialog && form && input && errorEl && submit) {
+    const defaultWhy = whyEl?.textContent ?? '';
+    let granted: PassRole = 'none';
+    let settle: ((role: PassRole) => void) | null = null;
+    let returnTo: HTMLElement | null = null;
+
+    const open = (why?: string): Promise<PassRole> => {
+      // Already open (two features asked at once): both wait for the same answer.
+      if (dialog.open && settle) {
+        const first = settle;
+        return new Promise((resolve) => {
+          settle = (role) => {
+            first(role);
+            resolve(role);
+          };
+        });
+      }
+      granted = 'none';
+      errorEl.textContent = '';
+      input.value = '';
+      if (whyEl) whyEl.textContent = why ? `${why} ${defaultWhy}` : defaultWhy;
+      returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      lockScroll(true);
+      dialog.showModal();
+      input.focus();
+      return new Promise((resolve) => {
+        settle = resolve;
+      });
+    };
+
+    dialog.addEventListener('close', () => {
+      lockScroll(false);
+      returnTo?.focus({ preventScroll: true });
+      settle?.(granted);
+      settle = null;
+    });
+    dialog.querySelectorAll('[data-pass-close]').forEach((b) => b.addEventListener('click', () => dialog.close()));
+    // A click on the dimmed backdrop closes it too.
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = input.value.trim();
+      if (!code) {
+        errorEl.textContent = 'Type the passcode first.';
+        input.focus();
+        return;
+      }
+      submit.disabled = true;
+      submit.dataset.busy = '';
+      errorEl.textContent = '';
+      try {
+        const { pass } = await postJson<{ pass: PassRole }>('pass', { code });
+        granted = pass;
+        passGranted(pass);
+        sound.play('meow', { volume: 0.6 });
+        emit('bilal:toast', {
+          message: pass === 'admin' ? 'Steward pass accepted. The remove buttons are yours.' : 'Pass accepted. Welcome to the paddock, machan.',
+          tone: 'gold',
+        });
+        dialog.close();
+      } catch (err) {
+        errorEl.textContent = err instanceof ApiError ? err.message : 'Something went sideways. Try again.';
+        input.select();
+      } finally {
+        submit.disabled = false;
+        delete submit.dataset.busy;
+      }
+    });
+
+    registerPassGate(open);
+  }
+</script>
+
+<style>
+  .pass-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-m);
+    border: 1px solid color-mix(in oklab, var(--c-gold) 40%, transparent);
+    background:
+      linear-gradient(115deg, rgb(255 255 255 / 0.08), transparent 40%),
+      color-mix(in oklab, var(--c-carbon) 80%, var(--c-maroon));
+  }
+
+  .pass-card-text {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .pass-card-team {
+    font-size: 1.5rem;
+    font-weight: 850;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .pass-card-zone {
+    color: var(--c-mute);
+    font-size: 0.56rem;
+  }
+
+  .pass-card-holo {
+    padding: 0.4em 0.7em;
+    border-radius: var(--radius-s);
+    background: var(--g-livery);
+    color: var(--c-on-gold);
+    font-size: 0.6rem;
+    font-weight: 700;
+    transform: skewX(var(--skew));
+  }
+</style>

@@ -1,37 +1,28 @@
 ---
 /**
- * Fixed top bar: brand (egg hook), section links with a sliding active chip,
- * sound toggle, scroll-progress "lap meter", and a full-screen pit-lane menu
- * (<dialog>) on small screens.
+ * Fixed top bar: brand (egg hook), the five pages with a sliding chip on the
+ * current one, this page's sections (scroll-spied), sound toggle, scroll-progress
+ * "lap meter", and a full-screen pit-lane menu (<dialog>) holding the whole site
+ * map. On phones and tablets the pages live in the bottom TabBar instead.
  *
- * `base` prefixes the in-page anchors, so other pages (404) can link home: base="/".
+ * `page` = the current page id from data/site.ts (leave it out on the 404 page).
  */
 import Emblem from '@/components/ui/Emblem.astro';
 import SoundToggle from './SoundToggle.astro';
-import { drivers, owner } from '@/data/lore';
+import TabBar from './TabBar.astro';
+import { drivers } from '@/data/lore';
+import { pages, type PageId } from '@/data/site';
 
 interface Props {
-  base?: string;
+  page?: PageId;
 }
-const { base = '' } = Astro.props;
+const { page } = Astro.props;
+const current = pages.find((p) => p.id === page);
+/** Sections of the current page, shown next to the page links (a lone section needs no list). */
+const sections = current && current.sections.length > 1 ? current.sections : [];
 
 // Brand chip shows the two race numbers ("#13 · #17"). The cat on the pit wall doesn't race.
 const carNumbers = drivers.map((d) => `#${d.number}`);
-
-const links = [
-  { id: 'driver', label: 'Line-up', sub: `${carNumbers.join(' & ')}. The boss is a cat.` },
-  { id: 'career', label: 'History', sub: 'Nine lives, abridged' },
-  { id: 'car', label: 'Car', sub: 'The BR-09, in pieces' },
-  { id: 'crew', label: 'Crew', sub: 'Pit wall, pit crew, tuna' },
-  { id: 'paddock', label: 'Paddock', sub: 'Photos. Evidence.' },
-  { id: 'calendar', label: 'Calendar', sub: 'Nine rounds. Nine wins.' },
-  { id: 'lights-out', label: 'Lights Out', sub: 'Out-pounce the whole grid' },
-  { id: 'radio', label: 'Radio', sub: `${owner.callsign} has the mic. Plan B: fish.` },
-  // `extra`: the desktop bar only shows these once Saira has loaded (see `nav-fonts`):
-  // in the wider fallback face ten links don't fit. The pit-lane menu always lists all ten.
-  { id: 'sponsors', label: 'Partners', sub: 'Imaginary. Grateful.', extra: true },
-  { id: 'tech', label: 'Tech regs', sub: 'The rulebook', extra: true },
-];
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
@@ -44,7 +35,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 <header class="nav" data-nav data-scrolled="false" data-hidden="false">
   <div class="nav-glass" aria-hidden="true"></div>
   <div class="nav-inner">
-    <a class="brand" href={`${base}#top`} data-egg="emblem" aria-label="Bilal Racing, back to the top">
+    <a class="brand" href="/#top" data-egg="emblem" aria-label="Bilal Racing, home">
       <span class="brand-mark" aria-hidden="true">
         <Emblem size="100%" title="" />
       </span>
@@ -54,16 +45,16 @@ const pad = (n: number) => String(n).padStart(2, '0');
       <span class="brand-code t-mono" aria-hidden="true">{carNumbers.join(' · ')}</span>
     </a>
 
-    <nav class="nav-main" aria-label="Sections">
+    <nav class="nav-main" aria-label="Pages">
       <ul class="nav-links" data-nav-list>
         {
-          links.map((link, i) => (
-            <li class:list={[{ 'nav-item--extra': link.extra }]}>
-              <a class="nav-link" href={`${base}#${link.id}`} data-nav-link={link.id}>
+          pages.map((p, i) => (
+            <li>
+              <a class="nav-link" href={p.href} data-nav-page={p.id} aria-current={p.id === page ? 'page' : undefined}>
                 <span class="nav-idx t-mono" aria-hidden="true">{pad(i + 1)}</span>
                 <span class="nav-roll">
                   <span class="nav-roll-in">
-                    {link.label}<span class="nav-roll-dup" aria-hidden="true">{link.label}</span>
+                    {p.label}<span class="nav-roll-dup" aria-hidden="true">{p.label}</span>
                   </span>
                 </span>
               </a>
@@ -73,6 +64,22 @@ const pad = (n: number) => String(n).padStart(2, '0');
       </ul>
       <span class="nav-chip" data-nav-chip aria-hidden="true"></span>
     </nav>
+
+    {
+      sections.length > 0 && (
+        <nav class="nav-sub" aria-label="On this page">
+          <ul class="nav-sub-links">
+            {sections.map((s) => (
+              <li>
+                <a class="nav-sub-link t-mono" href={`#${s.id}`} data-nav-link={s.id}>
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
 
     <div class="nav-tools">
       <SoundToggle />
@@ -116,28 +123,44 @@ const pad = (n: number) => String(n).padStart(2, '0');
         Back on track <span aria-hidden="true">✕</span>
       </button>
     </div>
-    <nav aria-label="Sections (menu)">
+    <nav aria-label="Site map">
       <ol class="menu-links">
         {
-          links.map((link, i) => (
-            <li style={`--i:${i}`}>
-              <a class="menu-link" href={`${base}#${link.id}`} data-menu-link={link.id}>
+          pages.map((p, i) => (
+            <li class="menu-item" style={`--i:${i}`}>
+              <a class="menu-link" href={p.href} data-menu-link aria-current={p.id === page ? 'page' : undefined}>
                 <span class="menu-idx t-mono" aria-hidden="true">{pad(i + 1)}</span>
-                <span class="menu-label t-condensed">{link.label}</span>
-                <span class="menu-sub t-mono">{link.sub}</span>
+                <span class="menu-label t-condensed">{p.label}</span>
+                <span class="menu-sub t-mono">{p.sub}</span>
               </a>
+              <ul class="menu-secs">
+                {p.sections.map((s) => (
+                  <li>
+                    <a
+                      class="menu-sec t-mono"
+                      href={`${p.href}#${s.id}`}
+                      data-menu-link
+                      data-nav-link={p.id === page ? s.id : undefined}
+                    >
+                      {s.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </li>
           ))
         }
       </ol>
     </nav>
     <p class="menu-foot">
-      <span>Pick a section,</span>
+      <span>Pick a sector,</span>
       <span class="t-si" lang="si">ඉක්මනට</span>
       <span class="t-mute">(quickly!)</span>
     </p>
   </div>
 </dialog>
+
+<TabBar page={page} />
 
 <style>
   /* ============ Skip link ============ */
@@ -209,6 +232,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
     height: var(--nav-h);
     z-index: var(--z-nav);
     transition: transform var(--dur-med) var(--ease-out-expo);
+    /* Stays put while the page underneath cross-fades to the next one. */
+    view-transition-name: nav;
   }
 
   .nav[data-hidden='true']:not(:focus-within) {
@@ -355,14 +380,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
     gap: 0.125rem;
   }
 
-  /*
-   * 09-10 join the bar once Saira is ready (Nav script adds html.nav-fonts). The fallback
-   * face is ~17% wider: ten links would overflow, eight fit.
-   */
-  :global(html:not(.nav-fonts)) .nav-item--extra {
-    display: none;
-  }
-
   .nav-link {
     position: relative;
     z-index: 1;
@@ -381,11 +398,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
     transition: color var(--dur-fast) ease;
   }
 
-  /* 1200-1359px: all ten links still fit on one row with a little less air. */
+  /* 1200-1359px: pages + this page's sections share one row with a little less air. */
   @media (min-width: 75em) and (max-width: 84.99em) {
     .nav-link {
-      padding-inline: 0.4rem;
-      font-size: 0.9rem;
+      padding-inline: 0.5rem;
+      font-size: 0.92rem;
     }
   }
 
@@ -463,6 +480,52 @@ const pad = (n: number) => String(n).padStart(2, '0');
     transition: opacity var(--dur-fast) ease;
   }
 
+  /* ============ This page's sections (desktop; phones get them in the TabBar) ============ */
+  .nav-sub {
+    display: none;
+    min-width: 0;
+    margin-right: var(--space-4);
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--c-line-strong);
+  }
+
+  .nav-sub-links {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .nav-sub-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: var(--c-mute);
+    font-size: 0.64rem;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease,
+      background-color var(--dur-fast) ease;
+  }
+
+  .nav-sub-link:hover,
+  .nav-sub-link:focus-visible {
+    color: var(--c-chalk);
+    border-color: var(--c-line-strong);
+  }
+
+  .nav-sub-link[aria-current] {
+    color: var(--c-on-gold);
+    background: var(--c-gold);
+    border-color: var(--c-gold);
+  }
+
   /* ============ Tools ============ */
   .nav-tools {
     margin-left: auto;
@@ -537,8 +600,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
       display: block;
     }
 
-    .burger {
-      display: none;
+    .nav-sub {
+      display: block;
     }
 
     .nav-tools {
@@ -655,7 +718,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     padding: 0;
     align-self: center;
     display: grid;
-    gap: clamp(0.1rem, 0.6vh, 0.6rem);
+    gap: clamp(0.9rem, 2.4vh, 1.75rem);
     counter-reset: none;
   }
 
@@ -678,7 +741,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   }
 
   .menu-label {
-    font-size: clamp(2.3rem, 1.2rem + 6.2vw, 4.75rem);
+    font-size: clamp(2.1rem, 1.2rem + 5vw, 4rem);
     font-weight: 850;
     text-transform: uppercase;
     line-height: 0.88;
@@ -698,6 +761,41 @@ const pad = (n: number) => String(n).padStart(2, '0');
     color: var(--c-gold);
   }
 
+  /* each page's sections, as a row of chips under its name */
+  .menu-secs {
+    list-style: none;
+    padding: 0 0 0 calc(2.2rem + var(--space-3));
+    margin-top: 0.45rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .menu-sec {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: 999px;
+    color: var(--c-chalk);
+    font-size: 0.64rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .menu-sec:hover,
+  .menu-sec:focus-visible {
+    border-color: var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  .menu-sec[aria-current] {
+    background: var(--c-gold);
+    border-color: var(--c-gold);
+    color: var(--c-on-gold);
+  }
+
   .menu-link[aria-current] .menu-sub::after {
     content: ' · you are here';
     color: var(--c-gold);
@@ -709,21 +807,21 @@ const pad = (n: number) => String(n).padStart(2, '0');
     transform: translateX(0.4rem) skewX(var(--skew));
   }
 
-  .menu-links li {
+  .menu-item {
     transition:
       opacity 500ms var(--ease-out-expo),
       transform 700ms var(--ease-out-expo);
     transition-delay: calc(120ms + var(--i) * 45ms);
   }
 
-  .menu:not([open]) .menu-links li {
+  .menu:not([open]) .menu-item {
     opacity: 0;
     transform: translateY(1.5rem);
     transition-delay: 0ms;
   }
 
   @starting-style {
-    .menu[open] .menu-links li {
+    .menu[open] .menu-item {
       opacity: 0;
       transform: translate3d(-0.5rem, 2.5rem, 0) skewX(-6deg);
     }
@@ -768,6 +866,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   /* ---------- Glass on scroll, hide on scroll-down / show on scroll-up ---------- */
   const progress = document.querySelector<HTMLElement>('[data-progress]');
   const cssProgress = CSS.supports?.('animation-timeline: scroll()') ?? false;
+  const wideBar = window.matchMedia('(min-width: 75em)');
   let lastY = window.scrollY;
   let ticking = false;
   let menuOpen = false;
@@ -779,7 +878,9 @@ const pad = (n: number) => String(n).padStart(2, '0');
       const threshold = Math.min(window.innerHeight * 0.35, 280);
       nav.dataset.scrolled = String(y > 24);
       const delta = y - lastY;
-      if (menuOpen || y < threshold) {
+      // The desktop bar carries the page and section links: it stays put. On smaller
+      // screens those live in the bottom TabBar, so the top bar may duck out of the way.
+      if (menuOpen || y < threshold || wideBar.matches) {
         nav.dataset.hidden = 'false';
       } else if (delta > 6) {
         nav.dataset.hidden = 'true';
@@ -806,41 +907,55 @@ const pad = (n: number) => String(n).padStart(2, '0');
   );
   updateBar();
 
-  /* ---------- Active section chip ---------- */
+  /* ---------- Chip on the current page ---------- */
   const list = document.querySelector<HTMLElement>('[data-nav-list]');
   const chip = document.querySelector<HTMLElement>('[data-nav-chip]');
-  const navLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-nav-link]'));
-  const sections = navLinks
-    .map((a) => document.getElementById(a.dataset.navLink ?? ''))
-    .filter((el): el is HTMLElement => Boolean(el));
-  const visible = new Set<string>();
-  let activeId = '';
+  const pageLink = document.querySelector<HTMLAnchorElement>('[data-nav-page][aria-current]');
 
-  function placeChip(animate = true): void {
+  function placeChip(): void {
     if (!chip || !list) return;
-    const link = navLinks.find((a) => a.dataset.navLink === activeId);
-    if (!link || link.offsetParent === null) {
+    if (!pageLink || pageLink.offsetParent === null) {
       chip.classList.remove('is-on');
       return;
     }
-    chip.classList.toggle('no-anim', !animate || !chip.classList.contains('is-on'));
-    chip.style.setProperty('--x', `${link.offsetLeft}px`);
-    chip.style.setProperty('--w', `${link.offsetWidth}px`);
+    chip.classList.add('no-anim');
+    chip.style.setProperty('--x', `${pageLink.offsetLeft}px`);
+    chip.style.setProperty('--w', `${pageLink.offsetWidth}px`);
     chip.classList.add('is-on');
   }
+
+  placeChip();
+  let resizeRaf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(placeChip);
+  });
+  // The display face is narrower than its fallback: re-measure once it lands.
+  document.fonts?.ready.then(placeChip);
+
+  /* ---------- Scroll spy: which section of this page is on screen ---------- */
+  // Every list of this page's sections (top bar, TabBar, page header, menu) carries data-nav-link.
+  const navLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-nav-link]'));
+  const sections = [...new Set(navLinks.map((a) => a.dataset.navLink ?? ''))]
+    .map((id) => document.getElementById(id))
+    .filter((el): el is HTMLElement => Boolean(el))
+    .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+  const visible = new Set<string>();
+  let activeId = '';
 
   function setActive(id: string): void {
     if (id === activeId) return;
     activeId = id;
     for (const a of navLinks) {
-      if (a.dataset.navLink === id) a.setAttribute('aria-current', 'location');
-      else a.removeAttribute('aria-current');
+      if (a.dataset.navLink === id) {
+        a.setAttribute('aria-current', 'location');
+        // Keep the active chip in view inside a sideways-scrolling strip (TabBar on phones).
+        const strip = a.closest<HTMLElement>('[data-nav-strip]');
+        if (strip && strip.scrollWidth > strip.clientWidth) {
+          strip.scrollTo({ left: a.offsetLeft - (strip.clientWidth - a.offsetWidth) / 2, behavior: 'smooth' });
+        }
+      } else a.removeAttribute('aria-current');
     }
-    document.querySelectorAll<HTMLAnchorElement>('[data-menu-link]').forEach((a) => {
-      if (a.dataset.menuLink === id) a.setAttribute('aria-current', 'location');
-      else a.removeAttribute('aria-current');
-    });
-    placeChip(true);
   }
 
   if (sections.length && 'IntersectionObserver' in window) {
@@ -859,32 +974,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
       { rootMargin: '-38% 0px -60% 0px', threshold: 0 },
     );
     sections.forEach((s) => io.observe(s));
-
-    let resizeRaf = 0;
-    window.addEventListener('resize', () => {
-      cancelAnimationFrame(resizeRaf);
-      resizeRaf = requestAnimationFrame(() => placeChip(false));
-    });
-    document.fonts?.ready.then(() => placeChip(false));
-  }
-
-  /* ---------- 09-10 join the desktop bar once the display face is in ---------- */
-  const SAIRA = '600 1em "Saira Variable"';
-  const fontsReady = () => {
-    document.documentElement.classList.add('nav-fonts');
-    requestAnimationFrame(() => placeChip(false));
-  };
-  const fonts = document.fonts;
-  if (!fonts || fonts.check(SAIRA)) {
-    fontsReady();
-  } else {
-    // A blocked or failed webfont leaves the bar at eight links (the menu and footer have all ten).
-    fonts
-      .load(SAIRA)
-      .then((faces) => {
-        if (faces.length && faces.every((f) => f.status === 'loaded')) fontsReady();
-      })
-      .catch(() => {});
   }
 
   /* ---------- Keyboard users: move focus with the scroll ---------- */
@@ -899,10 +988,19 @@ const pad = (n: number) => String(n).padStart(2, '0');
     focusHash((e.currentTarget as HTMLAnchorElement).getAttribute('href'));
   });
 
+  /** The #hash of a link that points at this very page, else null. */
+  function localHash(a: HTMLAnchorElement): string | null {
+    const url = new URL(a.href, window.location.href);
+    const here = window.location.pathname.replace(/\/+$/, '');
+    return url.origin === window.location.origin && url.pathname.replace(/\/+$/, '') === here && url.hash.length > 1
+      ? url.hash
+      : null;
+  }
+
   navLinks.forEach((a) =>
     a.addEventListener('click', (e) => {
       // detail === 0 → activated from the keyboard, not a pointer.
-      if (e.detail === 0) focusHash(a.getAttribute('href'));
+      if (e.detail === 0) focusHash(localHash(a));
     }),
   );
 
@@ -942,15 +1040,10 @@ const pad = (n: number) => String(n).padStart(2, '0');
         closingForLink = true;
         menu.close();
         lockScroll(false);
-        const href = a.getAttribute('href') ?? '';
-        if (href.startsWith('#')) requestAnimationFrame(() => focusHash(href));
+        const hash = localHash(a);
+        if (hash) requestAnimationFrame(() => focusHash(hash));
       });
     });
 
-    // Switching to desktop width with the menu open: close it.
-    const wide = window.matchMedia('(min-width: 75em)');
-    wide.addEventListener('change', (e) => {
-      if (e.matches && menu.open) menu.close();
-    });
   }
 </script>

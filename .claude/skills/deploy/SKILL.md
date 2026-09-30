@@ -5,9 +5,25 @@ description: Build and deploy the Bilal Racing site to Cloudflare Workers (stati
 
 # Deploy Bilal Racing to Cloudflare (Wrangler CLI)
 
-The site is fully static: `astro build` writes `dist/`, and `wrangler deploy` uploads it as a
-Worker with static assets (config: `wrangler.jsonc`). There is no server code and no secrets
-in the repo. Production = the `main` branch.
+The pages are static: `astro build` writes `dist/`, and `wrangler deploy` uploads it as Workers
+static assets (config: `wrangler.jsonc`). The same deploy ships a small API Worker
+(`worker/index.ts`, invoked only for `/api/*`) bound to a D1 database (`DB` → `bilal-racing`) and
+an R2 bucket (`PHOTOS` → `bilal-racing-paddock`): live leaderboard, fan-wall uploads, crew seats.
+No secrets live in the repo. Production = the `main` branch.
+
+### Backend, first time only
+
+1. **Database and bucket.** `wrangler.jsonc` names them without ids. Check they exist
+   (`npx wrangler d1 list`, `npx wrangler r2 bucket list`); if not, create them (this changes the
+   Cloudflare account: confirm with the user first):
+   `npx wrangler d1 create bilal-racing` and `npx wrangler r2 bucket create bilal-racing-paddock`.
+   Put the printed `database_id` into the `d1_databases` entry (not a secret; commit it). The
+   Worker creates its own tables on first request: there is no migration step.
+2. **Passcodes.** The human sets both secrets in their own terminal; wrangler prompts for the
+   value. Never ask for the values, never put them in a command, a file or a message:
+   `npx wrangler secret put TEAM_PASSCODE` and `npx wrangler secret put ADMIN_PASSCODE`.
+   Check they exist by name only: `npx wrangler secret list`.
+   Without `TEAM_PASSCODE` every write is refused and `/api/status` reports `"configured": false`.
 
 ## 0. Preconditions (check, don't assume)
 
@@ -43,11 +59,12 @@ npx wrangler whoami
 ## 2. Validate without publishing
 
 ```bash
-npm run deploy:dry   # astro check → astro build → wrangler deploy --dry-run
+npm run deploy:dry   # astro check + Worker tsc → astro build → wrangler deploy --dry-run
 ```
 
-Expect `0 errors` from `astro check`, `[build] Complete!`, and
-`✨ Read ~390 files from the assets directory …/dist` with `--dry-run: exiting now.`
+Expect `0 errors` from `astro check`, a silent `tsc`, `[build] Complete!`,
+`✨ Read ~460 files from the assets directory …/dist`, a bindings table listing `env.DB`,
+`env.PHOTOS`, `env.ASSETS` and `env.UPLOADS_ENABLED`, then `--dry-run: exiting now.`
 Optional local look at the real Workers asset behaviour (404 page, `_headers`).
 `preview:cf` is a long-running server: start it in the background (Bash `run_in_background`),
 poll it, then stop it.
@@ -91,7 +108,7 @@ Common failures:
 - *"…or register a workers.dev subdomain here: https://dash.cloudflare.com/…/workers/onboarding"*
   → the account has no `workers.dev` subdomain yet (`workers_dev: true`). The human opens that
   link once to pick one, then redeploy.
-- Asset limits: max 20,000 files and 25 MiB per file — the build is ~390 files, largest < 1 MB.
+- Asset limits: max 20,000 files and 25 MiB per file — the build is ~460 files, largest < 1 MB.
 
 ## 4. Verify live
 
@@ -101,7 +118,15 @@ curl -sSI https://bilal.tracex.tech/ | head -n 20          # 200, content-type t
 curl -sSI https://bilal.tracex.tech/og.png | head -n 5     # 200 image/png (link previews)
 curl -sS -o /dev/null -w "%{http_code}\n" https://bilal.tracex.tech/definitely-missing   # 404
 curl -sS https://bilal.tracex.tech/robots.txt
+curl -sS -o /dev/null -w "%{http_code}\n" https://bilal.tracex.tech/team/    # 200 (also /car/ /paddock/ /race/)
+curl -sS https://bilal.tracex.tech/api/status        # {"pass":"none","configured":true,"uploads":{"open":true,…
+curl -sS https://bilal.tracex.tech/api/leaderboard   # {"rows":[…]}
 ```
+
+`"configured": false` → the `TEAM_PASSCODE` secret is missing. `"uploads":{"open":false,"reason":…}`
+→ `off` (the `UPLOADS_ENABLED` var), `full` / `daily` / `device` (the budget in `worker/limits.ts`),
+or `service` (D1 is refusing queries, e.g. the account's daily quota). A 503 from every `/api/*`
+route usually means the D1 or R2 binding is missing.
 
 Optionally screenshot it: `node tools/shoot.mjs --url https://bilal.tracex.tech/ --out /tmp/live/home`
 (needs `npx playwright-core install chromium` once, or `CHROME_PATH`). The page must log no
@@ -123,6 +148,8 @@ npx wrangler rollback <version-id> --message "Roll back: <reason>"
   dirty tree.
 - Don't change `wrangler.jsonc` routes, the Worker `name`, or DNS without asking.
 - Privacy: the site is intentionally `noindex` (meta tag, `X-Robots-Tag` in `public/_headers`,
-  `robots.txt`). Keep it that way.
+  `robots.txt`; the API sets the header itself). Keep it that way.
+- Never delete the D1 database or the R2 bucket, and never bulk-delete their contents, without
+  the user asking for exactly that: they hold what friends uploaded.
 - After a deploy that changes the preview image, WhatsApp may cache the old one; share the link
   with a query string (e.g. `?v=2`) to refresh it.

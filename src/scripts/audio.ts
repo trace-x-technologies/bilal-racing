@@ -2,7 +2,8 @@
  * "Meow engine" sound system. Engine, UI and radio-squelch sounds are synthesised
  * with the Web Audio API; the cat itself (meow, purr, hiss) is real recordings,
  * fetched only once sound is on, with the old synth voices as the fallback.
- * Muted by default; the visitor opts in via the nav toggle.
+ * On by default; the nav toggle mutes it (the choice is remembered). Browsers only
+ * let audio start after the first tap or key press, so nothing plays before that.
  *
  * Public API (stable — other sections call this):
  *   import { sound } from '@/scripts/audio';
@@ -141,7 +142,9 @@ class SoundSystem {
 
   constructor() {
     if (typeof window === 'undefined') return;
-    this._enabled = store.get<unknown>('sound', false) === true;
+    // On unless the visitor switched it off. Browsers still hold audio back until the first
+    // tap or key press (autoplay policy): the `unlock` listeners below start it then.
+    this._enabled = store.get<unknown>('sound', true) !== false;
 
     // Unlock / resume on any gesture while enabled (autoplay policy).
     const unlock = () => {

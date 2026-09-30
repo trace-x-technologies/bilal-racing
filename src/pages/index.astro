@@ -1,40 +1,27 @@
 ---
+/**
+ * Home: the hero, then the garage map (one door per page) and the partners.
+ */
 import Base from '@/layouts/Base.astro';
 import Loader from '@/components/chrome/Loader.astro';
 import Nav from '@/components/chrome/Nav.astro';
-import Ticker from '@/components/chrome/Ticker.astro';
 import Footer from '@/components/chrome/Footer.astro';
 import EasterEggs from '@/components/chrome/EasterEggs.astro';
 
 import Hero from '@/components/sections/Hero.astro';
-import Driver from '@/components/sections/Driver.astro';
-import Career from '@/components/sections/Career.astro';
-import CarExploded from '@/components/sections/CarExploded.astro';
-import Crew from '@/components/sections/Crew.astro';
-import Gallery from '@/components/sections/Gallery.astro';
-import Calendar from '@/components/sections/Calendar.astro';
-import LightsOut from '@/components/sections/LightsOut.astro';
-import Radio from '@/components/sections/Radio.astro';
+import Hub from '@/components/sections/Hub.astro';
 import Sponsors from '@/components/sections/Sponsors.astro';
-import TechRegs from '@/components/sections/TechRegs.astro';
+import Ticker from '@/components/chrome/Ticker.astro';
 ---
 
 <Base>
   <Loader />
-  <Nav />
+  <Nav page="home" />
   <main id="main">
     <Hero />
     <Ticker />
-    <Driver />
-    <Career />
-    <CarExploded />
-    <Crew />
-    <Gallery />
-    <Calendar />
-    <LightsOut />
-    <Radio />
+    <Hub />
     <Sponsors />
-    <TechRegs />
   </main>
   <Footer />
   <EasterEggs />

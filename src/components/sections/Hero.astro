@@ -12,6 +12,7 @@
 import { Image } from 'astro:assets';
 import { team, owner, drivers, sinhala } from '@/data/lore';
 import { crew } from '@/data/crew';
+import { hrefFor } from '@/data/site';
 import { resolvePhoto } from '@/data/photos';
 import { carPosterSVG } from '@/scripts/three/poster';
 
@@ -170,18 +171,18 @@ const siMeaning = ((m: string) => {
         }
       </ul>
       <div class="hero-ctas" data-intro-item>
-        <a class="cta cta--gold" href="#driver">
+        <a class="cta cta--gold" href={hrefFor('driver')}>
           <span>Meet the line-up</span>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6"></path></svg>
         </a>
-        <a class="cta cta--ghost" href="#lights-out">
+        <a class="cta cta--ghost" href={hrefFor('lights-out')}>
           <span>Try Lights Out</span>
           <span class="cta-lights" aria-hidden="true"><i></i><i></i><i></i></span>
         </a>
       </div>
     </div>
 
-    <a class="hero-scroll t-mono" href="#driver" data-intro-item>
+    <a class="hero-scroll t-mono" href="#hub" data-intro-item>
       <span class="scroll-rail" aria-hidden="true"><span></span></span>
       <span>Scroll to leave the garage</span>
     </a>

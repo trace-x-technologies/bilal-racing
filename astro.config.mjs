@@ -34,11 +34,12 @@ const modulePreload = {
           }
         }
       };
+      // Pages live at the root (index.html, 404.html) and one folder down (team/index.html, …).
       /** @type {string[]} */
-      const names = await readdir(dir);
+      const names = await readdir(dir, { recursive: true });
       for (const name of names) {
         if (!name.endsWith('.html')) continue;
-        const page = new URL(name, dir);
+        const page = new URL(name.split(/[\\/]/).map(encodeURIComponent).join('/'), dir);
         /** @type {string} */
         let html = await readFile(page, 'utf8');
         const entries = [...html.matchAll(/<script type="module" src="\/_astro\/([^"]+\.js)"/g)].map((m) => m[1]);

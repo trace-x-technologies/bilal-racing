@@ -1,18 +1,12 @@
 ---
 /**
- * Chequered-flag footer: brand block, section links, "Box, box ↑" back-to-top,
- * Sinhala sign-off, a giant BILAL wordmark whose letters rise in on scroll
- * (and stretch toward the pointer), credits and the legal-ish disclaimer.
- *
- * `base` prefixes the in-page anchors (use base="/" on other pages).
+ * Chequered-flag footer: brand block, the whole site map, "Box, box ↑"
+ * back-to-top, Sinhala sign-off, a giant BILAL wordmark whose letters rise in on
+ * scroll (and stretch toward the pointer), credits and the legal-ish disclaimer.
  */
 import Emblem from '@/components/ui/Emblem.astro';
 import { team, owner, drivers, sinhala } from '@/data/lore';
-
-interface Props {
-  base?: string;
-}
-const { base = '' } = Astro.props;
+import { pages } from '@/data/site';
 
 // The site came out of car #13's garage (the DHA bio and stat carry the "instead of practising" joke).
 const builder = drivers.find((d) => d.id === 'dha');
@@ -29,18 +23,10 @@ const credits = [
   'served from Cloudflare’s edge',
 ];
 
-const links = [
-  { id: 'driver', label: 'Line-up' },
-  { id: 'career', label: 'History' },
-  { id: 'car', label: 'Car' },
-  { id: 'crew', label: 'Crew' },
-  { id: 'paddock', label: 'Paddock' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'lights-out', label: 'Lights Out' },
-  { id: 'radio', label: 'Radio' },
-  { id: 'sponsors', label: 'Partners' },
-  { id: 'tech', label: 'Tech regs' },
-];
+/** Every section on every page (the Home hub is a map itself, so it is left out). */
+const links = pages.flatMap((p) =>
+  p.sections.filter((s) => s.id !== 'hub').map((s) => ({ id: s.id, label: s.label, href: `${p.href}#${s.id}` })),
+);
 const letters = ['B', 'I', 'L', 'A', 'L'];
 // Stint notes by seconds spent in the footer. All four are stacked in one grid cell, so the
 // note is always sized for the longest: a later, longer line can't grow the footer after
@@ -88,7 +74,7 @@ const year = new Date().getFullYear();
         {
           links.map((l, i) => (
             <li>
-              <a href={`${base}#${l.id}`}>
+              <a href={l.href}>
                 <span class="f-idx t-mono" aria-hidden="true">
                   {String(i + 1).padStart(2, '0')}
                 </span>
