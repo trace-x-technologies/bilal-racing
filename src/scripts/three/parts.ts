@@ -72,7 +72,7 @@ export const PART_INFO: readonly PartInfo[] = [
     id: 'cockpit',
     label: 'Nap-Pod Cockpit',
     real: 'Helmet, seat & steering wheel',
-    joke: 'Owner-approved seat; the drivers only borrow it. Cat-ear helmet, gold visor, and a NAP button on the wheel. Most-used button: NAP.',
+    joke: 'Owner-approved seat; the drivers only borrow it, and must wear his cat-ear helmet cover. NAP button on the wheel. Most-used button: NAP.',
     explode: [0, 0.95, 0.15],
     anchor: [-0.06, 0.93, 0.1],
   },
