@@ -63,7 +63,7 @@ const articles: Article[] = [
     no: '6.1',
     title: 'Team radio',
     tech: 'Popover API',
-    rule: 'Pop-ups shall be native, dismissable with Esc, and shall never try to sell you anything. A compliant example: <button type="button" class="doc__pop" popovertarget="stewards-decision">read the stewards’ decision</button>.',
+    rule: 'Pop-ups shall be native, dismissible with Esc, and shall never try to sell you anything. A compliant example: <button type="button" class="doc__pop" popovertarget="stewards-decision">read the stewards’ decision</button>.',
     check: 'popover',
   },
   {
@@ -111,7 +111,7 @@ const foodMs = Math.round(foodSeconds * 1000);
 const emailDays = Number(/(\d+) business days/.exec(food?.note ?? '')?.[1] ?? 9);
 
 const cars = drivers.map((d) => `#${d.number} ${d.code}`).join(' & ');
-// lore: car #13's driver built this website instead of doing a single practice lap.
+// lore: car #13's driver built this website, so the stewards' unmerged pull request is on #13.
 const buildDriver = drivers.find((d) => d.id === 'dha');
 ---
 
@@ -267,7 +267,7 @@ const buildDriver = drivers.find((d) => d.id === 'dha');
                 <span data-stamp-l2>scrutineering</span>
               </span>
             </div>
-            <div class="doc__sign" aria-label="Signed by the three stewards, all asleep">
+            <div class="doc__sign" role="img" aria-label="Signed by the three stewards: two asleep, one a dog">
               {
                 ['Steward I (asleep)', 'Steward II (asleep)', 'Steward III (a dog, somehow)'].map((s, i) => (
                   <figure class="doc__sig" aria-hidden="true">
@@ -303,7 +303,7 @@ const buildDriver = drivers.find((d) => d.id === 'dha');
         <dt class="t-mono">Fact</dt>
         <dd>
           Both cars found to possess two ears and one tail.{
-            buildDriver && ` Car #${buildDriver.number} also possesses this website, built instead of a single practice lap.`
+            buildDriver && ` Car #${buildDriver.number} also found to contain one unmerged pull request.`
           }
         </dd>
       </div>
