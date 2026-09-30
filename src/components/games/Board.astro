@@ -1,0 +1,468 @@
+---
+/**
+ * The arcade's timing tower: the championship (F1 points from every game,
+ * Lights Out included) or one game's own table.
+ *
+ * Data comes from scripts/games/board.ts: the shared tower from the API when it
+ * answers, this device's own scores when it doesn't. While the tower is on
+ * screen and the tab is visible it re-reads the shared tables every 20 s.
+ * Stewards (admin passcode) get a remove button on every row of a game table.
+ */
+import '@/styles/ui.css';
+import { GAME_LABELS, POINTS, SCORE_GAMES, type ScoreGame } from '@/data/games';
+
+/** Short tab labels; the full names are in the lobby. */
+const SHORT: Record<ScoreGame, string> = { lights: 'Lights', box: 'Box', pit: 'Pit', laser: 'Laser', tuna: 'Tuna' };
+---
+
+<aside class="tower" id="tower" aria-labelledby="tower-title" data-tower data-state="loading">
+  <div class="tw-head">
+    <h2 class="tw-title t-condensed" id="tower-title">Timing tower</h2>
+    <span class="t-mono t-mute" data-tw-unit>Points</span>
+  </div>
+  <p class="tw-status t-mono">
+    <span class="tw-dot" aria-hidden="true"></span>
+    <span data-tw-status>Warming up the timing screens</span>
+  </p>
+
+  <div class="tw-tabs" role="group" aria-label="Show the table for">
+    <button class="tw-tab t-mono" type="button" data-tw-tab="all" aria-pressed="true">Championship</button>
+    {
+      SCORE_GAMES.map((id) => (
+        <button class="tw-tab t-mono" type="button" data-tw-tab={id} aria-pressed="false" aria-label={GAME_LABELS[id]}>
+          {SHORT[id]}
+        </button>
+      ))
+    }
+  </div>
+
+  <ol class="tw-rows" data-tw-rows></ol>
+  <p class="tw-empty" data-tw-empty hidden></p>
+
+  <div class="tw-foot">
+    <p class="tw-note t-mono">Points per game · {POINTS.join(' · ')}</p>
+    <button class="tw-quiet t-mono" type="button" data-tw-clear hidden>Clear this device</button>
+    <button class="tw-quiet t-mono" type="button" data-tw-steward hidden>Steward sign-in</button>
+  </div>
+  <p class="visually-hidden" role="status" aria-live="polite" data-tw-live></p>
+
+  <template data-tw-row>
+    <li class="tw-row">
+      <span class="tw-pos" data-pos></span>
+      <span class="tw-name">
+        <span data-name></span>
+        <span class="tw-sub" data-sub></span>
+      </span>
+      <span class="tw-val" data-val></span>
+      <button type="button" class="ui-remove tw-remove" data-remove hidden>
+        <span aria-hidden="true">✕</span>
+      </button>
+    </li>
+  </template>
+</aside>
+
+<script>
+  import { SCORE_RULES, isScoreGame, type ScoreGame } from '@/data/games';
+  import { ApiError, openPassGate } from '@/scripts/api';
+  import { emit } from '@/scripts/bus';
+  import {
+    LABELS,
+    TOWER_GAMES,
+    boardRows,
+    clearDevice,
+    formatScore,
+    getName,
+    isShared,
+    onBoardChange,
+    passRole,
+    refreshBoards,
+    removeRow,
+    standings,
+  } from '@/scripts/games/board';
+
+  const SHORT: Record<ScoreGame, string> = { lights: 'Lights', box: 'Box', pit: 'Pit', laser: 'Laser', tuna: 'Tuna' };
+  const POLL_MS = 20_000;
+
+  const init = () => {
+    const root = document.querySelector<HTMLElement>('[data-tower]');
+    const list = root?.querySelector<HTMLElement>('[data-tw-rows]');
+    const template = root?.querySelector<HTMLTemplateElement>('[data-tw-row]');
+    if (!root || !list || !template) return;
+    const emptyEl = root.querySelector<HTMLElement>('[data-tw-empty]');
+    const unitEl = root.querySelector<HTMLElement>('[data-tw-unit]');
+    const statusEl = root.querySelector<HTMLElement>('[data-tw-status]');
+    const clearBtn = root.querySelector<HTMLButtonElement>('[data-tw-clear]');
+    const stewardBtn = root.querySelector<HTMLButtonElement>('[data-tw-steward]');
+    const liveEl = root.querySelector<HTMLElement>('[data-tw-live]');
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tw-tab]')];
+
+    let view: ScoreGame | 'all' = 'all';
+    let armed = 0;
+    let loaded = false;
+    let stamp = '';
+    let failures = 0;
+    let timer = 0;
+    let onScreen = false;
+
+    /** One row: position, name + a small note, value. Names are visitor text: textContent only. */
+    const row = (pos: number, name: string, note: string, value: string, me: boolean, id?: number) => {
+      const li = (template.content.firstElementChild as HTMLElement).cloneNode(true) as HTMLElement;
+      const set = (sel: string, text: string) => {
+        const node = li.querySelector<HTMLElement>(sel);
+        if (node) node.textContent = text;
+      };
+      set('[data-pos]', `P${pos}`);
+      set('[data-name]', name);
+      set('[data-sub]', note);
+      set('[data-val]', value);
+      li.toggleAttribute('data-me', me);
+      li.toggleAttribute('data-lead', pos === 1);
+      const removeBtn = li.querySelector<HTMLButtonElement>('[data-remove]');
+      if (removeBtn && id != null && passRole() === 'admin') {
+        removeBtn.hidden = false;
+        removeBtn.setAttribute('aria-label', `Remove ${name} from the ${view === 'all' ? '' : LABELS[view]} table`);
+        removeBtn.addEventListener('click', () => void remove(id, name));
+      }
+      return li;
+    };
+
+    /** How far behind the leader a row is: "+0.213 s" for a time, "3 behind" for a count. */
+    const gap = (game: ScoreGame, value: number, lead: number) => {
+      if (value === lead) return 'Level with the leader';
+      return SCORE_RULES[game].dir === 'low' ? `+${((value - lead) / 1000).toFixed(3)} s` : `${lead - value} behind`;
+    };
+
+    const render = () => {
+      const mine = getName().toLowerCase();
+      const rows: HTMLElement[] = [];
+      if (view === 'all') {
+        standings().forEach((s, i) => {
+          const places = TOWER_GAMES.filter((g) => s.places[g]).map((g) => `${SHORT[g]} P${s.places[g]}`);
+          rows.push(row(i + 1, s.name, places.join(' · '), `${s.points} pts`, s.name.toLowerCase() === mine));
+        });
+      } else {
+        const game = view;
+        const table = boardRows(game);
+        const lead = table[0]?.value ?? 0;
+        table.forEach((r, i) => {
+          const note = i === 0 ? 'Leader' : gap(game, r.value, lead);
+          rows.push(row(i + 1, r.name, note, formatScore(game, r.value), r.name.toLowerCase() === mine, r.id));
+        });
+      }
+      list.replaceChildren(...rows);
+
+      if (emptyEl) {
+        emptyEl.hidden = rows.length > 0 || !loaded;
+        emptyEl.textContent =
+          view === 'all'
+            ? 'No scores yet. Set the first one and lead the championship.'
+            : view === 'lights' && !isShared()
+              ? 'Lights Out times show here once the shared tower is on air.'
+              : `Nobody on the ${LABELS[view]} table yet. P1 is yours for the taking.`;
+      }
+      if (unitEl) unitEl.textContent = view === 'all' ? 'Points' : SCORE_RULES[view].dir === 'low' ? 'Fastest first' : 'Most first';
+      if (statusEl) {
+        statusEl.textContent = !loaded
+          ? 'Warming up the timing screens'
+          : isShared()
+            ? `Live · the whole crew${stamp ? ` · updated ${stamp}` : ''}`
+            : 'This device only · pass the phone and take turns';
+      }
+      root.dataset.state = !loaded ? 'loading' : isShared() ? 'live' : 'device';
+      if (clearBtn && !armed) clearBtn.hidden = !loaded || isShared() || view !== 'all' || rows.length === 0;
+      if (stewardBtn) stewardBtn.hidden = !isShared() || passRole() === 'admin';
+    };
+
+    const show = (next: ScoreGame | 'all') => {
+      view = next;
+      tabs.forEach((t) => t.setAttribute('aria-pressed', String(t.dataset.twTab === next)));
+      render();
+    };
+
+    tabs.forEach((tab) =>
+      tab.addEventListener('click', () => {
+        const id = tab.dataset.twTab;
+        show(isScoreGame(id) ? id : 'all');
+      }),
+    );
+
+    /* ---------------- loading + polling ---------------- */
+    const load = async () => {
+      const ok = await refreshBoards();
+      loaded = true;
+      if (ok) {
+        failures = 0;
+        stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } else failures += 1;
+      render();
+    };
+
+    const schedule = () => {
+      window.clearTimeout(timer);
+      // Off screen, in a background tab, or the API keeps failing: stop asking.
+      if (!onScreen || document.hidden || failures >= 4) return;
+      timer = window.setTimeout(
+        async () => {
+          await load();
+          schedule();
+        },
+        POLL_MS * Math.min(4, 1 + failures),
+      );
+    };
+
+    new IntersectionObserver(
+      ([entry]) => {
+        const was = onScreen;
+        onScreen = Boolean(entry?.isIntersecting);
+        if (onScreen && !was) {
+          failures = Math.min(failures, 3);
+          void load().then(schedule);
+        } else schedule();
+      },
+      { rootMargin: '200px 0px' },
+    ).observe(root);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && onScreen) void load().then(schedule);
+      else schedule();
+    });
+
+    /* ---------------- stewards ---------------- */
+    const remove = async (id: number, name: string) => {
+      if (!window.confirm(`Remove ${name} from this table?`)) return;
+      try {
+        await removeRow(id);
+        if (liveEl) liveEl.textContent = `${name} removed.`;
+      } catch (err) {
+        emit('bilal:toast', { message: err instanceof ApiError ? err.message : 'Could not remove that row.', tone: 'red' });
+      }
+    };
+    stewardBtn?.addEventListener('click', () => void openPassGate('Stewards: type the steward passcode.'));
+
+    /* ---------------- this device ---------------- */
+    // Two taps to wipe: the first one arms the button for a few seconds.
+    const disarm = () => {
+      window.clearTimeout(armed);
+      armed = 0;
+      if (!clearBtn) return;
+      clearBtn.textContent = 'Clear this device';
+      delete clearBtn.dataset.armed;
+    };
+    clearBtn?.addEventListener('click', () => {
+      if (!armed) {
+        clearBtn.textContent = 'Tap again to clear';
+        clearBtn.dataset.armed = '';
+        armed = window.setTimeout(disarm, 4000);
+        return;
+      }
+      disarm();
+      clearDevice();
+      if (liveEl) liveEl.textContent = 'Scores on this device cleared.';
+    });
+
+    // A fresh score shows on its own table, unless the championship is up.
+    onBoardChange((game) => {
+      if (game && view !== 'all' && view !== game) show(game);
+      else render();
+    });
+    render();
+  };
+
+  init();
+</script>
+
+<style>
+  .tower {
+    display: grid;
+    align-content: start;
+    gap: var(--space-4);
+    min-width: 0;
+    padding: clamp(1rem, 0.7rem + 1vw, 1.5rem);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-l);
+    background:
+      linear-gradient(160deg, rgb(255 255 255 / 0.04), transparent 45%),
+      var(--c-asphalt);
+  }
+
+  .tw-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .tw-title {
+    font-size: var(--fs-h3);
+    font-weight: 850;
+    text-transform: uppercase;
+  }
+
+  .tw-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: calc(var(--space-2) * -1);
+    color: var(--c-mute);
+    font-size: 0.62rem;
+  }
+
+  .tw-dot {
+    flex: none;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--c-faint);
+  }
+
+  .tower[data-state='live'] .tw-dot {
+    background: var(--c-teal);
+    box-shadow: 0 0 0.5rem var(--c-teal);
+  }
+
+  .tower[data-state='device'] .tw-dot {
+    background: var(--c-gold);
+  }
+
+  .tw-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .tw-tab {
+    min-height: 2.75rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-s);
+    color: var(--c-mute);
+    font-size: 0.68rem;
+    font-weight: 600;
+    transition:
+      border-color var(--dur-fast) ease,
+      color var(--dur-fast) ease,
+      background-color var(--dur-fast) ease;
+  }
+
+  .tw-tab:hover {
+    color: var(--c-chalk);
+    border-color: var(--c-mute);
+  }
+
+  .tw-tab[aria-pressed='true'] {
+    border-color: var(--c-gold);
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+  }
+
+  .tw-rows {
+    display: grid;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tw-rows:empty {
+    display: none;
+  }
+
+  .tw-row {
+    display: grid;
+    grid-template-columns: 2.4rem minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 3rem;
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--c-line);
+  }
+
+  .tw-row:last-child {
+    border-bottom: 0;
+  }
+
+  .tw-row[data-me] {
+    border-radius: var(--radius-s);
+    background: color-mix(in oklab, var(--c-gold) 10%, transparent);
+  }
+
+  .tw-pos {
+    font-family: var(--f-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--c-mute);
+  }
+
+  .tw-row[data-lead] .tw-pos {
+    color: var(--c-gold);
+  }
+
+  .tw-name {
+    display: grid;
+    min-width: 0;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .tw-sub {
+    font-family: var(--f-mono);
+    font-size: 0.62rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-mute);
+  }
+
+  .tw-val {
+    font-family: var(--f-display);
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.5rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .tw-row[data-lead] .tw-val {
+    color: var(--c-purple);
+  }
+
+  .tw-empty {
+    padding: var(--space-5) var(--space-2);
+    border: 1px dashed var(--c-line-strong);
+    border-radius: var(--radius-m);
+    color: var(--c-mute);
+    text-align: center;
+  }
+
+  .tw-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .tw-note {
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    line-height: 1.8;
+  }
+
+  .tw-quiet {
+    min-height: 2.75rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-s);
+    color: var(--c-mute);
+    font-size: 0.66rem;
+  }
+
+  .tw-quiet:hover {
+    border-color: var(--c-mute);
+    color: var(--c-chalk);
+  }
+
+  .tw-quiet[data-armed] {
+    border-color: var(--c-red);
+    color: var(--c-chalk);
+  }
+</style>

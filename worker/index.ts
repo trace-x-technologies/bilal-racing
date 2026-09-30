@@ -3,7 +3,7 @@
  * static assets); this Worker only runs for /api/* (see `run_worker_first` in
  * wrangler.jsonc) and gives friends three things to write to:
  *
- *   - the Lights Out leaderboard   (D1 table `scores`)
+ *   - the leaderboard              (D1 table `game_scores`: Lights Out + the four arcade games)
  *   - the paddock photo wall       (R2 bucket + D1 table `photos`)
  *   - the open crew seats          (R2 bucket + D1 table `seats`)
  *
@@ -13,8 +13,9 @@
  * limits.ts, so the site closes uploads itself long before Cloudflare would.
  */
 import { crew } from '../src/data/crew';
+import { SCORE_GAMES, SCORE_RULES, isScoreGame, type ScoreGame } from '../src/data/games';
 import { sniffImage, type ImageInfo } from './image';
-import { LIMITS, SCORE_MAX_MS, SCORE_MIN_MS } from './limits';
+import { LIMITS } from './limits';
 
 interface Env {
   ASSETS: Fetcher;
@@ -153,16 +154,19 @@ function requireSameOrigin(request: Request, url: URL): void {
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS counters (k TEXT PRIMARY KEY, v INTEGER NOT NULL) WITHOUT ROWID`,
-  `CREATE TABLE IF NOT EXISTS scores (
+  // One row per player per game: `value` is ms for a timed game, a count for the others.
+  `CREATE TABLE IF NOT EXISTS game_scores (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
+     game TEXT NOT NULL,
      name TEXT NOT NULL,
-     name_key TEXT NOT NULL UNIQUE,
-     ms INTEGER NOT NULL,
+     name_key TEXT NOT NULL,
+     value INTEGER NOT NULL,
      tries INTEGER NOT NULL DEFAULT 1,
      created_at INTEGER NOT NULL,
-     updated_at INTEGER NOT NULL
+     updated_at INTEGER NOT NULL,
+     UNIQUE (game, name_key)
    )`,
-  `CREATE INDEX IF NOT EXISTS scores_ms ON scores (ms, updated_at)`,
+  `CREATE INDEX IF NOT EXISTS game_scores_rank ON game_scores (game, value, updated_at)`,
   `CREATE TABLE IF NOT EXISTS photos (
      id TEXT PRIMARY KEY,
      key TEXT NOT NULL,
@@ -183,13 +187,33 @@ const SCHEMA = [
    ) WITHOUT ROWID`,
 ];
 
+/**
+ * The first API release kept Lights Out alone in a table called `scores`. If it is
+ * still there, move its rows into `game_scores` and drop it, in one transaction.
+ * After that this is a single read per isolate. A failure (another isolate got
+ * there first) is ignored: the next isolate simply finds nothing left to move.
+ */
+async function carryOverLightsOut(env: Env): Promise<void> {
+  const legacy = await env.DB.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'scores'`).first();
+  if (!legacy) return;
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT OR IGNORE INTO game_scores (game, name, name_key, value, tries, created_at, updated_at)
+       SELECT 'lights', name, name_key, ms, tries, created_at, updated_at FROM scores`,
+    ),
+    env.DB.prepare('DROP TABLE scores'),
+  ]).catch((err) => console.error('carry-over of old Lights Out scores skipped', err));
+}
+
 /** Once per isolate: create the tables if this is a fresh database (no migration step to forget). */
 let schemaReady: Promise<unknown> | null = null;
 function ensureSchema(env: Env): Promise<unknown> {
-  schemaReady ??= env.DB.batch(SCHEMA.map((sql) => env.DB.prepare(sql))).catch((err) => {
-    schemaReady = null;
-    throw err;
-  });
+  schemaReady ??= env.DB.batch(SCHEMA.map((sql) => env.DB.prepare(sql)))
+    .then(() => carryOverLightsOut(env))
+    .catch((err) => {
+      schemaReady = null;
+      throw err;
+    });
   return schemaReady;
 }
 
@@ -324,55 +348,74 @@ function deletePass(): Response {
 interface ScoreRow {
   id: number;
   name: string;
-  ms: number;
+  value: number;
   tries: number;
   updated_at: number;
 }
 
-async function getLeaderboard(env: Env): Promise<Response> {
-  const { results } = await env.DB.prepare(
-    'SELECT id, name, ms, tries, updated_at FROM scores ORDER BY ms ASC, updated_at ASC LIMIT ?1',
-  )
-    .bind(LIMITS.boardRows)
-    .all<ScoreRow>();
-  return json({ rows: results.map((r) => ({ id: r.id, name: r.name, ms: r.ms, tries: r.tries, at: r.updated_at })) });
+const scoreOut = (r: ScoreRow) => ({ id: r.id, name: r.name, value: r.value, tries: r.tries, at: r.updated_at });
+
+/** One game's table, best first: fastest for a timed game, biggest for a counted one. */
+const boardQuery = (env: Env, game: ScoreGame) =>
+  env.DB.prepare(
+    `SELECT id, name, value, tries, updated_at FROM game_scores WHERE game = ?1
+     ORDER BY value ${SCORE_RULES[game].dir === 'low' ? 'ASC' : 'DESC'}, updated_at ASC LIMIT ?2`,
+  ).bind(game, LIMITS.boardRows);
+
+/** `?game=box` → that table. `?game=all` → every table in one go (the arcade's championship). No game → Lights Out. */
+async function getLeaderboard(env: Env, url: URL): Promise<Response> {
+  const game = url.searchParams.get('game') ?? 'lights';
+  if (game === 'all') {
+    const tables = await env.DB.batch<ScoreRow>(SCORE_GAMES.map((g) => boardQuery(env, g)));
+    return json({ boards: Object.fromEntries(SCORE_GAMES.map((g, i) => [g, (tables[i]?.results ?? []).map(scoreOut)])) });
+  }
+  if (!isScoreGame(game)) throw new HttpError(400, 'game', 'No such game on the timing tower.');
+  const { results } = await boardQuery(env, game).all<ScoreRow>();
+  return json({ game, rows: results.map(scoreOut) });
 }
 
 async function postScore(request: Request, env: Env): Promise<Response> {
-  const body = (await request.json().catch(() => null)) as { name?: unknown; ms?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { game?: unknown; name?: unknown; value?: unknown } | null;
+  const game = body?.game ?? 'lights';
+  if (!isScoreGame(game)) throw new HttpError(400, 'game', 'No such game on the timing tower.');
+  const rule = SCORE_RULES[game];
   const name = cleanText(body?.name, LIMITS.nameLen);
-  const ms = typeof body?.ms === 'number' ? Math.round(body.ms) : NaN;
+  const value = typeof body?.value === 'number' ? Math.round(body.value) : NaN;
   if (!name) throw new HttpError(400, 'name', 'The timing tower needs a name.');
-  if (!Number.isFinite(ms) || ms < SCORE_MIN_MS || ms > SCORE_MAX_MS) throw new HttpError(422, 'time', 'That time cannot go on the board.');
+  if (!Number.isFinite(value) || value < rule.min || value > rule.max) throw new HttpError(422, 'score', 'That score cannot go on the board.');
 
   const device = await deviceOf(request, env);
   const day = today();
   const keys = [`d:${day}:lb`, `d:${day}:lb:${device}`];
   const c = await readCounters(env, keys);
   if ((c[keys[0]!] ?? 0) >= LIMITS.scoresPerDay || (c[keys[1]!] ?? 0) >= LIMITS.scoresPerDevicePerDay) {
-    throw new HttpError(429, 'daily', 'The timing tower is full for today. Your time still counts on this device.');
+    throw new HttpError(429, 'daily', 'The timing tower is full for today. Your score still counts on this device.');
   }
 
+  // Timed games keep the smallest value, counted games the biggest.
+  const [beats, keep] = rule.dir === 'low' ? ['<', 'MIN'] : ['>', 'MAX'];
   const now = Date.now();
-  const [upsert] = await env.DB.batch<{ ms: number }>([
+  const [upsert] = await env.DB.batch<{ value: number }>([
     env.DB.prepare(
-      `INSERT INTO scores (name, name_key, ms, tries, created_at, updated_at) VALUES (?1, ?2, ?3, 1, ?4, ?4)
-       ON CONFLICT(name_key) DO UPDATE SET
+      `INSERT INTO game_scores (game, name, name_key, value, tries, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, 1, ?5, ?5)
+       ON CONFLICT(game, name_key) DO UPDATE SET
          tries = tries + 1,
-         updated_at = CASE WHEN excluded.ms < ms THEN excluded.updated_at ELSE updated_at END,
-         ms = MIN(ms, excluded.ms)
-       RETURNING ms`,
-    ).bind(name, name.toLowerCase(), ms, now),
+         updated_at = CASE WHEN excluded.value ${beats} value THEN excluded.updated_at ELSE updated_at END,
+         value = ${keep}(value, excluded.value)
+       RETURNING value`,
+    ).bind(game, name, name.toLowerCase(), value, now),
     bump(env, keys[0]!),
     bump(env, keys[1]!),
   ]);
-  const best = upsert?.results[0]?.ms ?? ms;
-  const ahead = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE ms < ?1').bind(best).first<{ n: number }>();
-  return json({ name, best, improved: best === ms, rank: (ahead?.n ?? 0) + 1 });
+  const best = upsert?.results[0]?.value ?? value;
+  const ahead = await env.DB.prepare(`SELECT COUNT(*) AS n FROM game_scores WHERE game = ?1 AND value ${beats} ?2`)
+    .bind(game, best)
+    .first<{ n: number }>();
+  return json({ game, name, best, improved: best === value, rank: (ahead?.n ?? 0) + 1 });
 }
 
 async function deleteScore(env: Env, id: string): Promise<Response> {
-  await env.DB.prepare('DELETE FROM scores WHERE id = ?1').bind(Number(id)).run();
+  await env.DB.prepare('DELETE FROM game_scores WHERE id = ?1').bind(Number(id)).run();
   return json({ ok: true });
 }
 
@@ -569,7 +612,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   await ensureSchema(env);
   if (resource === 'status' && method === 'GET') return getStatus(request, env);
   if (resource === 'pass' && method === 'POST') return postPass(request, env, url);
-  if (resource === 'leaderboard' && method === 'GET') return getLeaderboard(env);
+  if (resource === 'leaderboard' && method === 'GET') return getLeaderboard(env, url);
   if (resource === 'photos' && method === 'GET') return getPhotos(env);
   if (resource === 'crew' && method === 'GET') return getSeats(env);
 

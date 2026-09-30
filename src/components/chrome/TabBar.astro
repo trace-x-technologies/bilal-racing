@@ -4,7 +4,7 @@
  * same links). Two rows, both in thumb reach:
  *   - the sections of the current page, as a sideways-scrolling strip of chips
  *     (scroll-spied by the Nav script through `data-nav-link`), and
- *   - the five pages, as tabs with a pictogram.
+ *   - the six pages, as tabs with a pictogram.
  * Rendered by Nav, so every page that has a Nav has it.
  */
 import { pages, type PageId, type PageIcon } from '@/data/site';
@@ -28,6 +28,8 @@ const ICONS: Record<PageIcon, string> = {
   camera: '<path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.2" r="3.4"/>',
   // start lights
   lights: '<rect x="2.5" y="8" width="19" height="8" rx="2"/><circle cx="7" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="17" cy="12" r="1.6"/><path d="M12 3v5"/>',
+  // game pad
+  gamepad: '<rect x="2.5" y="7" width="19" height="10.5" rx="5.25"/><path d="M7.5 10.2v4M5.5 12.2h4"/><path d="M15.2 13.6h.01M18 10.9h.01"/>',
 };
 ---
 
@@ -167,7 +169,7 @@ const ICONS: Record<PageIcon, string> = {
     color: var(--c-on-gold);
   }
 
-  /* ---- the five pages ---- */
+  /* ---- the six pages ---- */
   .tb-list {
     list-style: none;
     height: var(--tb-tabs-h);
@@ -175,7 +177,7 @@ const ICONS: Record<PageIcon, string> = {
     padding: 0 max(var(--space-2), env(safe-area-inset-left));
     max-width: 34rem;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .tb-tab {

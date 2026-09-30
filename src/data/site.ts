@@ -1,13 +1,13 @@
 /**
- * Site map. The site is five pages; each page holds a few sections. Nav, the
+ * Site map. The site is six pages; each page holds a few sections. Nav, the
  * phone tab bar, the pit-lane menu, the home hub and the footer all read this,
  * so a section only has to be listed once. `hrefFor('crew')` → "/team/#crew".
  */
 import { drivers, owner } from './lore';
 
-export type PageId = 'home' | 'team' | 'car' | 'paddock' | 'race';
+export type PageId = 'home' | 'team' | 'car' | 'paddock' | 'race' | 'play';
 /** Tab-bar pictogram (drawn in chrome/TabBar.astro). */
-export type PageIcon = 'flag' | 'helmet' | 'car' | 'camera' | 'lights';
+export type PageIcon = 'flag' | 'helmet' | 'car' | 'camera' | 'lights' | 'gamepad';
 
 export interface SiteSection {
   /** The section's element id on its page. */
@@ -99,6 +99,20 @@ export const pages: SitePage[] = [
       { id: 'leaderboard', label: 'Leaderboard', sub: 'Live. Fastest paws first.' },
       { id: 'calendar', label: 'Calendar', sub: 'Nine rounds. Nine wins.' },
       { id: 'radio', label: 'Radio', sub: `${owner.callsign} has the mic. Plan B: fish.` },
+    ],
+  },
+  {
+    id: 'play',
+    href: '/play/',
+    label: 'Play',
+    icon: 'gamepad',
+    title: 'The arcade',
+    sub: 'Four quick games, one timing tower, bragging rights for all nine lives.',
+    description:
+      'The Bilal Racing arcade: stack the boxes, change four wheels, catch the laser dot, collect the tuna. One live timing tower, one championship.',
+    sections: [
+      { id: 'games', label: 'Games', sub: 'Four ways to out-pounce the crew' },
+      { id: 'tower', label: 'Timing tower', sub: 'The championship, live' },
     ],
   },
 ];

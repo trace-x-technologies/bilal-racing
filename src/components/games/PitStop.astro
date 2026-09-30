@@ -1,0 +1,226 @@
+---
+/**
+ * Pit Stop Paws — four wheel nuts, one paw (logic: scripts/games/pit.ts).
+ * The car is drawn nose-up in a 100 × 160 box; the four nuts are real buttons
+ * placed on its wheels, so they work with touch, mouse, Tab + Enter and 1–4.
+ */
+import Cabinet from './Cabinet.astro';
+import { drivers, team } from '@/data/lore';
+
+/** Wheel centres in the car's 100 × 160 drawing, as percentages. */
+const WHEELS = [
+  { label: 'Front left wheel', x: 9, y: 21 },
+  { label: 'Front right wheel', x: 91, y: 21 },
+  { label: 'Rear left wheel', x: 9, y: 78 },
+  { label: 'Rear right wheel', x: 91, y: 78 },
+];
+const numbers = drivers.map((d) => d.number);
+---
+
+<Cabinet
+  id="pit"
+  kicker="Game 02 · four taps"
+  scoreLabel="Stop time"
+  auxLabel="Wheels"
+  pitch="The car is in the box. Four wheel nuts, one paw. Hit each nut the moment it lights up."
+  how={[
+    'Wait for the car to stop. A wheel nut lights up.',
+    'Tap the lit nut. The next one lights straight away.',
+    'Four nuts and the car is released. Fastest stop wins.',
+  ]}
+  keys="1 2 3 4"
+>
+  <div class="pt" data-pt data-phase="idle" data-numbers={numbers.join(',')}>
+    <div class="pt-rig">
+      <svg class="pt-car" viewBox="0 0 100 160" aria-hidden="true">
+        <rect class="pt-bay" x="1" y="1" width="98" height="158" rx="6"></rect>
+        <path class="pt-axle" d="M9 33.6h82M9 124.8h82"></path>
+        <rect class="pt-wing" x="20" y="8" width="60" height="7" rx="2"></rect>
+        <path class="pt-body" d="M45 14h10l5 34c8 3 12 9 12 18v34c0 7-4 12-9 14l-2 18H39l-2-18c-5-2-9-7-9-14V66c0-9 4-15 12-18z"
+        ></path>
+        <ellipse class="pt-cockpit" cx="50" cy="70" rx="6" ry="11"></ellipse>
+        <path class="pt-stripe" d="M50 16v40"></path>
+        <text class="pt-num" x="50" y="106" text-anchor="middle" data-pt-num>{numbers[0]}</text>
+        <text class="pt-fin" x="50" y="124" text-anchor="middle">{team.luckyNumber}</text>
+        <rect class="pt-wing" x="24" y="140" width="52" height="9" rx="2"></rect>
+      </svg>
+      {
+        WHEELS.map((w, i) => (
+          <button
+            class="pt-nut"
+            type="button"
+            data-pt-nut={i}
+            data-state="idle"
+            aria-label={w.label}
+            style={`--x:${w.x}%;--y:${w.y}%`}
+            disabled
+          >
+            <span class="pt-hex" aria-hidden="true" />
+            <kbd class="pt-key" aria-hidden="true">
+              {i + 1}
+            </kbd>
+          </button>
+        ))
+      }
+    </div>
+    <p class="pt-call t-mono" data-pt-call aria-hidden="true">Box, box</p>
+  </div>
+</Cabinet>
+
+<style>
+  .pt {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    container-type: size;
+  }
+
+  .pt-rig {
+    position: relative;
+    /* As tall as the stage allows (84% of it), never wider than it: the wheels stick out a little. */
+    width: min(66cqw, 52.5cqh, 18.75rem);
+    aspect-ratio: 100 / 160;
+  }
+
+  :global(.js-motion) .pt[data-phase='in'] .pt-rig {
+    animation: pt-arrive 650ms var(--ease-out-expo) both;
+  }
+
+  @keyframes pt-arrive {
+    from {
+      transform: translate3d(0, -115%, 0);
+    }
+  }
+
+  .pt-car {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .pt-bay {
+    fill: none;
+    stroke: var(--c-line-strong);
+    stroke-width: 1;
+    stroke-dasharray: 5 4;
+  }
+
+  .pt-axle {
+    stroke: var(--c-steel);
+    stroke-width: 3;
+  }
+
+  .pt-wing {
+    fill: var(--c-maroon);
+  }
+
+  .pt-body {
+    fill: var(--c-graphite);
+    stroke: var(--c-gold);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+  }
+
+  .pt-cockpit {
+    fill: var(--c-carbon);
+  }
+
+  .pt-stripe {
+    stroke: var(--c-gold);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .pt-num,
+  .pt-fin {
+    fill: var(--c-gold);
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-size: 15px;
+  }
+
+  .pt-fin {
+    fill: var(--c-mute);
+    font-size: 9px;
+  }
+
+  /* ---------------- the four nuts ---------------- */
+  .pt-nut {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: 34%;
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    display: grid;
+    place-items: center;
+    border: 4px solid var(--c-steel);
+    border-radius: 50%;
+    background: var(--c-carbon);
+    touch-action: none;
+    transition:
+      border-color var(--dur-fast) ease,
+      box-shadow var(--dur-fast) ease,
+      transform var(--dur-fast) var(--ease-out-back);
+  }
+
+  .pt-nut:disabled {
+    cursor: default;
+  }
+
+  .pt-hex {
+    width: 46%;
+    aspect-ratio: 1;
+    background: var(--c-steel);
+    clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
+    transition: background-color var(--dur-fast) ease;
+  }
+
+  .pt-key {
+    position: absolute;
+    inset: auto auto 8% 50%;
+    translate: -50% 0;
+    font-family: var(--f-mono);
+    font-size: 0.6rem;
+    color: var(--c-mute);
+  }
+
+  @media (hover: none) {
+    .pt-key {
+      display: none;
+    }
+  }
+
+  .pt-nut[data-state='lit'] {
+    border-color: var(--c-saffron);
+    box-shadow:
+      0 0 0 0.35rem color-mix(in oklab, var(--c-saffron) 28%, transparent),
+      0 0 2rem color-mix(in oklab, var(--c-saffron) 60%, transparent);
+    transform: scale(1.08);
+  }
+
+  .pt-nut[data-state='lit'] .pt-hex {
+    background: var(--c-saffron);
+  }
+
+  .pt-nut[data-state='done'] {
+    border-color: var(--c-teal);
+  }
+
+  .pt-nut[data-state='done'] .pt-hex {
+    background: var(--c-teal);
+  }
+
+  .pt-call {
+    position: absolute;
+    inset: var(--space-3) auto auto var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .pt[data-phase='go'] .pt-call {
+    color: var(--c-saffron);
+  }
+</style>

@@ -1,6 +1,6 @@
 ---
 /**
- * Home · Garage map — four doors off the pit lane, one per page. Each door
+ * Home · Garage map — five doors off the pit lane, one per page. Each door
  * shows what is behind it and links straight to the sections inside, so the
  * site reads as a map instead of one long scroll. The Race door shows who
  * leads the live Lights Out leaderboard (fetched; silent if the API is away).
@@ -10,12 +10,13 @@ import { pages } from '@/data/site';
 import { sinhala } from '@/data/lore';
 
 const doors = pages.filter((p) => p.id !== 'home');
-const ACCENT: Record<string, string> = { team: 'gold', car: 'saffron', paddock: 'teal', race: 'red' };
+const ACCENT: Record<string, string> = { team: 'gold', car: 'saffron', paddock: 'teal', race: 'red', play: 'purple' };
 const CTA: Record<string, string> = {
   team: 'Meet the team',
   car: 'Open the garage',
   paddock: 'Enter the paddock',
   race: 'Go racing',
+  play: 'Play a game',
 };
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
@@ -28,7 +29,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       id="hub-title"
       title="Pick a <em>sector</em>"
       si={sinhala.ikmanata.si}
-      lead="Four doors off the pit lane. Tap one and you are there: no long scroll, no getting lost. The owner has napped behind every one of them."
+      lead="Five doors off the pit lane. Tap one and you are there: no long scroll, no getting lost. The owner has napped behind every one of them."
     />
 
     <ul class="doors" role="list" data-reveal-stagger="90">
@@ -75,12 +76,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
   const slot = document.querySelector<HTMLElement>('[data-hub-leader]');
   const text = slot?.querySelector<HTMLElement>('[data-hub-leader-text]');
   if (slot && text) {
-    fetch('/api/leaderboard', { headers: { accept: 'application/json' } })
+    fetch('/api/leaderboard?game=lights', { headers: { accept: 'application/json' } })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { rows?: { name: string; ms: number }[] } | null) => {
+      .then((data: { rows?: { name: string; value: number }[] } | null) => {
         const leader = data?.rows?.[0];
         if (!leader) return;
-        text.textContent = `Live P1: ${leader.name} · ${(leader.ms / 1000).toFixed(3)} s`;
+        text.textContent = `Live P1: ${leader.name} · ${(leader.value / 1000).toFixed(3)} s`;
         slot.hidden = false;
       })
       .catch(() => {
@@ -106,11 +107,26 @@ const pad = (n: number) => String(n).padStart(2, '0');
     .doors {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    /* An odd door out at the end takes the whole row. */
+    .door:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
   }
 
+  /* Five doors on a wide screen: three in the first row, two wider ones in the second. */
   @media (min-width: 75em) {
     .doors {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .door {
+      grid-column: span 2;
+    }
+
+    .door:nth-child(n + 4),
+    .door:last-child:nth-child(odd) {
+      grid-column: span 3;
     }
   }
 

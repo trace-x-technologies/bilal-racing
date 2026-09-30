@@ -9,10 +9,13 @@ Three.js car with an exploded view, GSAP + Lenis scroll choreography, CSS scroll
 animations, View Transitions, the Popover API, a Web Audio “meow engine” (every sound is
 synthesised, no audio files), a lights-out reaction game and a pile of easter eggs.
 
-It is five pages (Home, Team, Car, Paddock, Race) with a top bar on desktop and a tab bar on
+It is six pages (Home, Team, Car, Paddock, Race, Play) with a top bar on desktop and a tab bar on
 phones. Friends with the team passcode can also write to it:
 
 - **Live leaderboard** for Lights Out (Race page). Put a name down once; new bests post themselves.
+- **Arcade** (Play page): four quick games (Box, Box, Box · Pit Stop Paws · Laser Pounce · Tuna
+  Run) on one timing tower, plus a championship across all five games. Without the API it keeps
+  scores on the device, so friends can pass one phone round.
 - **Fan wall** (Paddock page). Upload a photo; it is resized in the browser (2000 px, ≤ 1.5 MB,
   location data removed) and appears for everyone.
 - **Open crew seats** (Team page). Pick a role, type a name, add a face photo.

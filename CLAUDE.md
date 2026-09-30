@@ -39,7 +39,7 @@ Pronouns: the owner is referred to as "he"; for everyone else avoid gendered pro
 
 ## Layout
 ```
-src/pages/{index,team,car,paddock,race}.astro   the five pages; each composes its sections (owner: orchestrator — don't edit)
+src/pages/{index,team,car,paddock,race,play}.astro   the six pages; each composes its sections (owner: orchestrator — don't edit)
 src/data/site.ts                 the site map: pages → sections, hrefFor('crew') → "/team/#crew". Nav, TabBar, menu, hub, footer read it
 src/layouts/Base.astro           <head>, fonts, global CSS, boots motion (don't edit)
 src/styles/tokens.css            design tokens (don't edit — define local vars in your component)
@@ -53,12 +53,15 @@ src/scripts/image.ts             prepareImage(): resize / square-crop / re-encod
 src/assets/audio/                cat/ = meow/purr/hiss recordings (SOURCES.md); radio/ = spoken team-radio clips
 src/data/lore.ts                 team, owner, ownerStats, drivers[], timeline, radioMessages, approved Sinhala
 src/data/crew.ts                 crew roles + formation slots (person: null = open seat, claimable on the site)
+src/data/games.ts                score rules per game (valid range, fastest or biggest first), labels, F1 points. Read by the pages AND the Worker
 src/data/photos.ts               ownerPortrait, driverPortraits, gallery (15 real photos), resolvePhoto()
 src/components/ui/               Emblem, SectionHeading, PhotoSlot (shared, don't edit)
 src/components/chrome/           Loader, Nav (+ TabBar, the phone tab bar), PageHead (each page's <h1>), PassGate (passcode dialog), SoundToggle, Ticker, Footer, EasterEggs
 src/components/sections/         one file per section (Hub = home map, Leaderboard, FanWall = uploads)
+src/components/games/            the arcade (Play page): Cabinet = shared shell, one file per game, Board = timing tower
+src/scripts/games/               cabinet.ts runs a round; board.ts = scores (device + shared tower); one file per game, lazy-loaded
 src/scripts/three/               Three.js car model + scenes
-worker/index.ts                  the API: /api/status, pass, leaderboard, photos, crew, media (D1 + R2)
+worker/index.ts                  the API: /api/status, pass, leaderboard (?game=lights|box|pit|laser|tuna|all), photos, crew, media (D1 + R2)
 worker/limits.ts                 upload + score budget (sizes, daily caps, storage cap)
 worker/image.ts                  sniff an upload's real type/size; refuse files that still carry EXIF/XMP
 ```
@@ -67,7 +70,8 @@ worker/image.ts                  sniff an upload's real type/size; refuse files 
 - **Stay in your lane**: only edit the files your task assigns. If you need something from a shared
   module that doesn't exist, implement it locally in your own files.
 - Pages, not one scroll: Home (hero, hub, partners), Team (line-up, history, crew), Car (BR-09,
-  tech regs), Paddock (photos, fan wall), Race (Lights Out, leaderboard, calendar, radio). A new
+  tech regs), Paddock (photos, fan wall), Race (Lights Out, leaderboard, calendar, radio), Play
+  (arcade games, timing tower). A new
   section goes into `src/data/site.ts` and one page file; link to it with `hrefFor(id)`, never a
   bare `#id` from another page. Pages are real documents (no client router): scripts run once per
   page load, and `@view-transition` animates the change.

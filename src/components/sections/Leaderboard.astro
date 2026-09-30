@@ -104,10 +104,11 @@ const { index = '02' } = Astro.props;
   import { prefersReducedMotion } from '@/scripts/motion';
   import { sound } from '@/scripts/audio';
 
+  /** One row of GET /api/leaderboard?game=lights; `value` is the reaction time in ms. */
   interface Row {
     id: number;
     name: string;
-    ms: number;
+    value: number;
     tries: number;
     at: number;
   }
@@ -153,7 +154,7 @@ const { index = '02' } = Astro.props;
     /* ---------------- rendering ---------------- */
     function render(next: Row[], announce = false): void {
       const before = new Map([...items].map(([id, el]) => [id, el.getBoundingClientRect().top]));
-      const leader = next[0]?.ms ?? 0;
+      const leader = next[0]?.value ?? 0;
       const seen = new Set<number>();
       const fresh: HTMLElement[] = [];
 
@@ -166,7 +167,7 @@ const { index = '02' } = Astro.props;
           el.querySelector<HTMLButtonElement>('[data-remove]')?.addEventListener('click', () => remove(row.id));
           items.set(row.id, el);
           if (loaded) fresh.push(el);
-        } else if (old && row.ms < old.ms) {
+        } else if (old && row.value < old.value) {
           fresh.push(el);
         }
         const set = (sel: string, text: string) => {
@@ -176,8 +177,8 @@ const { index = '02' } = Astro.props;
         set('[data-pos]', String(i + 1));
         set('[data-name]', row.name);
         set('[data-tries]', `${row.tries} ${row.tries === 1 ? 'launch' : 'launches'}`);
-        set('[data-gap]', i === 0 ? 'Leader' : `+${fmt(row.ms - leader)}`);
-        set('[data-time]', fmt(row.ms));
+        set('[data-gap]', i === 0 ? 'Leader' : `+${fmt(row.value - leader)}`);
+        set('[data-time]', fmt(row.value));
         el.dataset.rank = String(Math.min(i + 1, 4));
         el.toggleAttribute('data-me', Boolean(me) && keyOf(row.name) === keyOf(me));
         const removeBtn = el.querySelector<HTMLButtonElement>('[data-remove]');
@@ -212,8 +213,8 @@ const { index = '02' } = Astro.props;
         });
       }
 
-      if (announce && liveEl && next[0] && (rows[0]?.id !== next[0].id || rows[0]?.ms !== next[0].ms)) {
-        liveEl.textContent = `New leader: ${next[0].name}, ${fmt(next[0].ms)} seconds.`;
+      if (announce && liveEl && next[0] && (rows[0]?.id !== next[0].id || rows[0]?.value !== next[0].value)) {
+        liveEl.textContent = `New leader: ${next[0].name}, ${fmt(next[0].value)} seconds.`;
       }
       rows = next;
       if (emptyEl) emptyEl.hidden = next.length > 0;
@@ -231,7 +232,7 @@ const { index = '02' } = Astro.props;
           : 'Put your name on the timing tower. Your best launch goes up with it.';
         submitBtn.textContent = 'Put me on the board';
       } else if (mine >= 0) {
-        meEl.textContent = `Racing as ${me}: P${mine + 1} with ${fmt(rows[mine]!.ms)} s. Beat it and the tower updates by itself.`;
+        meEl.textContent = `Racing as ${me}: P${mine + 1} with ${fmt(rows[mine]!.value)} s. Beat it and the tower updates by itself.`;
         submitBtn.textContent = 'Change name';
       } else {
         meEl.textContent = best
@@ -249,7 +250,7 @@ const { index = '02' } = Astro.props;
     /* ---------------- loading + polling ---------------- */
     async function load(announce = false): Promise<void> {
       try {
-        const data = await api<{ rows: Row[] }>('leaderboard');
+        const data = await api<{ rows: Row[] }>('leaderboard?game=lights');
         failures = 0;
         render(Array.isArray(data.rows) ? data.rows : [], announce);
         loaded = true;
@@ -301,7 +302,7 @@ const { index = '02' } = Astro.props;
       if (!me) return false;
       try {
         const res = await withPass(
-          () => postJson<{ name: string; best: number; rank: number; improved: boolean }>('leaderboard', { name: me, ms }),
+          () => postJson<{ name: string; best: number; rank: number; improved: boolean }>('leaderboard', { game: 'lights', name: me, value: ms }),
           'The leaderboard is for the crew.',
         );
         store.set('lb-posted', res.best);

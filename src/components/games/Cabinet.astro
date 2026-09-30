@@ -1,0 +1,338 @@
+---
+/**
+ * One arcade cabinet: title, HUD (score · a second readout · your best), the
+ * stage with its start / result overlay, and the how-to lines. The game's own
+ * markup goes in the slot; scripts/games/cabinet.ts runs the round.
+ * A cabinet is a tab panel: the lobby in pages/play.astro shows one at a time.
+ */
+import { GAME_LABELS, type ScoreGame } from '@/data/games';
+
+interface Props {
+  id: Exclude<ScoreGame, 'lights'>;
+  /** Mono line above the title. */
+  kicker: string;
+  /** HUD labels. */
+  scoreLabel: string;
+  auxLabel: string;
+  /** One sentence on the start overlay. */
+  pitch: string;
+  /** How to play, one short line each. */
+  how: string[];
+  /** Keyboard hint, e.g. "Space". */
+  keys: string;
+}
+const { id, kicker, scoreLabel, auxLabel, pitch, how, keys } = Astro.props;
+const label = GAME_LABELS[id];
+---
+
+<article class="cab" id={id} data-cab={id} data-state="idle" role="tabpanel" aria-labelledby={`tab-${id}`} hidden>
+  <header class="cab-head">
+    <div class="cab-id">
+      <p class="cab-kicker t-mono">{kicker}</p>
+      <h3 class="cab-title t-condensed">{label}</h3>
+    </div>
+    <dl class="cab-hud">
+      <div class="cab-stat cab-stat--score">
+        <dt class="t-mono">{scoreLabel}</dt>
+        <dd data-cab-score>0</dd>
+      </div>
+      <div class="cab-stat">
+        <dt class="t-mono">{auxLabel}</dt>
+        <dd data-cab-aux>—</dd>
+      </div>
+      <div class="cab-stat cab-stat--best">
+        <dt class="t-mono">Your best</dt>
+        <dd data-cab-best data-empty>—</dd>
+      </div>
+    </dl>
+  </header>
+
+  <div class="cab-stage" data-cab-stage role="group" tabindex="-1" aria-label={`${label} play area`}>
+    <slot />
+    <div class="cab-overlay" data-cab-overlay>
+      <p class="cab-badge t-mono" data-cab-badge hidden>New best</p>
+      <p class="cab-verdict t-condensed" data-cab-verdict>{label}</p>
+      <p class="cab-sub" data-cab-sub>{pitch}</p>
+      <div class="cab-actions">
+        <button class="cab-go" type="button" data-cab-go>
+          <span class="cab-go-dot" aria-hidden="true"></span>
+          <span data-cab-go-label>Start</span>
+          <kbd class="cab-kbd" aria-hidden="true">Space</kbd>
+        </button>
+        <button class="cab-share t-mono" type="button" data-cab-share hidden>Share result</button>
+      </div>
+    </div>
+  </div>
+  <p class="visually-hidden" role="status" aria-live="polite" data-cab-live></p>
+
+  <div class="cab-foot">
+    <ul class="cab-how">
+      {how.map((line) => <li>{line}</li>)}
+    </ul>
+    <p class="cab-keys t-mono">Keys · {keys} · Esc stops</p>
+  </div>
+</article>
+
+<style>
+  .cab {
+    display: grid;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .cab-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+  }
+
+  .cab-kicker {
+    color: var(--c-gold);
+  }
+
+  .cab-title {
+    margin-top: var(--space-1);
+    font-size: var(--fs-h3);
+    font-weight: 850;
+    text-transform: uppercase;
+  }
+
+  .cab-hud {
+    display: flex;
+    gap: var(--space-5);
+    margin: 0;
+  }
+
+  .cab-stat {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 3.5rem;
+  }
+
+  .cab-stat dt {
+    font-size: 0.62rem;
+    color: var(--c-mute);
+    white-space: nowrap;
+  }
+
+  .cab-stat dd {
+    margin: 0;
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.6rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .cab-stat--score dd {
+    color: var(--c-gold);
+  }
+
+  .cab-stat--best dd {
+    color: var(--c-purple);
+  }
+
+  .cab-stat dd[data-empty] {
+    color: var(--c-faint);
+  }
+
+  /* ---------------- stage ---------------- */
+  .cab-stage {
+    position: relative;
+    /* The whole cabinet (title, HUD, stage) fits between the top bar and the phone tab bar. */
+    height: clamp(20rem, calc(100svh - var(--nav-h) - var(--tabbar-h, 0rem) - 11.5rem), 34rem);
+    overflow: hidden;
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-l);
+    background:
+      radial-gradient(90% 70% at 50% 0%, rgb(255 197 46 / 0.07), transparent 70%),
+      var(--c-asphalt);
+    isolation: isolate;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .cab-stage:focus {
+    outline: none;
+  }
+
+  .cab-stage:focus-visible {
+    outline: 2px solid var(--c-gold);
+    outline-offset: 3px;
+  }
+
+  /* A round owns every touch on the stage: no page scroll, no double-tap zoom. */
+  .cab[data-state='playing'] .cab-stage {
+    touch-action: none;
+    cursor: pointer;
+  }
+
+  .cab-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    text-align: center;
+    background: color-mix(in oklab, var(--c-carbon) 78%, transparent);
+    transition: opacity var(--dur-med) ease;
+  }
+
+  /* Hidden only once the fade-out is over; coming back it is visible (and focusable) at once. */
+  .cab[data-state='playing'] .cab-overlay {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity var(--dur-med) ease,
+      visibility 0s linear var(--dur-med);
+  }
+
+  .cab-badge {
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-s);
+    background: var(--c-purple);
+    color: var(--c-carbon);
+    font-weight: 700;
+  }
+
+  .cab-verdict {
+    font-family: var(--f-display);
+    font-size: clamp(2.5rem, 1.6rem + 5vw, 4.5rem);
+    font-weight: 850;
+    line-height: 0.9;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cab[data-state='done'] .cab-verdict {
+    color: var(--c-gold);
+  }
+
+  .cab-sub {
+    max-width: 34ch;
+    color: var(--c-chalk);
+    line-height: 1.4;
+  }
+
+  .cab-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+  }
+
+  .cab-go {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 3.25rem;
+    padding: 0 var(--space-5);
+    border-radius: var(--radius-s);
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-stretch: var(--stretch-wide);
+    font-variation-settings: 'wdth' 118;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transform: skewX(var(--skew));
+    box-shadow:
+      0 0.75rem 1.75rem -0.5rem rgb(255 197 46 / 0.5),
+      inset 0 -3px 0 rgb(0 0 0 / 0.18);
+    transition: transform var(--dur-fast) var(--ease-out-back);
+  }
+
+  .cab-go:hover {
+    transform: skewX(var(--skew)) translateY(-2px);
+  }
+
+  .cab-go:active {
+    transform: skewX(var(--skew)) scale(0.97);
+  }
+
+  .cab-go-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .cab-kbd {
+    padding: 0.1rem 0.4rem;
+    border: 1px solid color-mix(in oklab, var(--c-on-gold) 45%, transparent);
+    border-radius: var(--radius-s);
+    font-family: var(--f-mono);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+
+  /* No keyboard on a phone: the hint is noise there. */
+  @media (hover: none) {
+    .cab-kbd,
+    .cab-keys {
+      display: none;
+    }
+  }
+
+  .cab-share {
+    min-height: 2.75rem;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-s);
+    color: var(--c-chalk);
+    font-weight: 600;
+    transition:
+      border-color var(--dur-fast) ease,
+      color var(--dur-fast) ease;
+  }
+
+  .cab-share:hover {
+    border-color: var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  /* ---------------- how to play ---------------- */
+  .cab-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+  }
+
+  .cab-how {
+    display: grid;
+    gap: var(--space-1);
+    padding: 0;
+    list-style: none;
+    color: var(--c-mute);
+    font-size: var(--fs-small);
+    line-height: 1.4;
+  }
+
+  .cab-how li {
+    padding-left: 1.1rem;
+    background: linear-gradient(var(--c-gold), var(--c-gold)) 0 0.6em / 0.45rem 2px no-repeat;
+  }
+
+  .cab-keys {
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
+</style>

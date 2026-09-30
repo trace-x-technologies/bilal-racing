@@ -12,5 +12,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["./**/*.ts", "../src/data/crew.ts"]
+  "include": ["./**/*.ts", "../src/data/crew.ts", "../src/data/games.ts"]
 }

@@ -8,7 +8,8 @@ description: Build and deploy the Bilal Racing site to Cloudflare Workers (stati
 The pages are static: `astro build` writes `dist/`, and `wrangler deploy` uploads it as Workers
 static assets (config: `wrangler.jsonc`). The same deploy ships a small API Worker
 (`worker/index.ts`, invoked only for `/api/*`) bound to a D1 database (`DB` → `bilal-racing`) and
-an R2 bucket (`PHOTOS` → `bilal-racing-paddock`): live leaderboard, fan-wall uploads, crew seats.
+an R2 bucket (`PHOTOS` → `bilal-racing-paddock`): live leaderboard (Lights Out + arcade), fan-wall
+uploads, crew seats.
 No secrets live in the repo. Production = the `main` branch.
 
 ### Backend, first time only
@@ -120,7 +121,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://bilal.tracex.tech/definitely-m
 curl -sS https://bilal.tracex.tech/robots.txt
 curl -sS -o /dev/null -w "%{http_code}\n" https://bilal.tracex.tech/team/    # 200 (also /car/ /paddock/ /race/)
 curl -sS https://bilal.tracex.tech/api/status        # {"pass":"none","configured":true,"uploads":{"open":true,…
-curl -sS https://bilal.tracex.tech/api/leaderboard   # {"rows":[…]}
+curl -sS "https://bilal.tracex.tech/api/leaderboard?game=all"   # {"boards":{"lights":[…],"box":[…],…}}
 ```
 
 `"configured": false` → the `TEAM_PASSCODE` secret is missing. `"uploads":{"open":false,"reason":…}`

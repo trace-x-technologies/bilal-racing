@@ -19,18 +19,14 @@ export const LIMITS = {
   /** Uploads per day: whole site / one device. */
   uploadsPerDay: 120,
   uploadsPerDevicePerDay: 20,
-  /** Race times per day: whole site / one device. */
+  /** Scores posted per day, every game together: whole site / one device. (Valid ranges: src/data/games.ts.) */
   scoresPerDay: 3000,
   scoresPerDevicePerDay: 300,
   /** Wrong passcodes per device per day. */
   passTriesPerDay: 20,
-  /** Rows shown on the leaderboard. */
+  /** Rows shown on each game's table. */
   boardRows: 25,
   /** Text lengths. */
   nameLen: 24,
   captionLen: 120,
 } as const;
-
-/** Lights Out: under 100 ms is anticipation (the game doesn't count it), over 6 s is no launch. */
-export const SCORE_MIN_MS = 100;
-export const SCORE_MAX_MS = 6000;

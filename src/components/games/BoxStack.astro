@@ -1,0 +1,134 @@
+---
+/**
+ * Box, Box, Box — the one-tap stacker (logic: scripts/games/box.ts).
+ * The boxes are a fixed pool of elements the script re-uses as the tower grows,
+ * so they are rendered here and pick up this component's scoped styles.
+ */
+import Cabinet from './Cabinet.astro';
+
+const POOL = 18;
+---
+
+<Cabinet
+  id="box"
+  kicker="Game 01 · one tap"
+  scoreLabel="Boxes"
+  auxLabel="Gold box in"
+  pitch="“Box, box” means something else to a cat. Stack them as high as you can."
+  how={[
+    'Tap to drop the sliding box onto the tower.',
+    'Anything hanging over the edge is sliced off.',
+    'Every ninth box is gold and brings back the full width.',
+  ]}
+  keys="Space"
+>
+  <div class="bx" aria-hidden="true">
+    <div class="bx-world" data-bx-world>
+      <div class="bx-ground"></div>
+      {
+        Array.from({ length: POOL }, () => (
+          <span class="bx-box" data-bx-box hidden>
+            <i class="bx-tape" />
+          </span>
+        ))
+      }
+      <span class="bx-box bx-chip" data-bx-chip hidden></span>
+      <span class="bx-cat" data-bx-cat hidden>
+        <svg viewBox="0 0 76 40">
+          <path class="bx-cat-body" d="M10 40c-5-14 4-25 20-26l3-11 8 8c3-1 7-1 10 0l8-8 3 12c7 5 9 15 6 25z"></path>
+          <path class="bx-cat-tail" d="M12 38c-7 1-10-4-8-9"></path>
+          <circle class="bx-cat-eye" cx="40" cy="22" r="2.2"></circle>
+          <circle class="bx-cat-eye" cx="54" cy="22" r="2.2"></circle>
+        </svg>
+      </span>
+    </div>
+  </div>
+</Cabinet>
+
+<style>
+  .bx {
+    --bx-ground: 0.9rem;
+    --bx-card: color-mix(in oklab, var(--c-gold) 58%, var(--c-steel));
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .bx-world {
+    position: absolute;
+    inset: 0;
+    transition: transform var(--dur-med) var(--ease-out-expo);
+  }
+
+  .bx-ground {
+    position: absolute;
+    inset: auto 0 0;
+    height: var(--bx-ground);
+    border-top: 2px solid var(--c-gold);
+    background: var(--c-graphite);
+  }
+
+  .bx-box {
+    position: absolute;
+    left: 0;
+    bottom: var(--bx-ground);
+    height: var(--bx-h, 2rem);
+    border-radius: 3px;
+    background: var(--bx-card);
+    box-shadow:
+      inset 0 0 0 1px rgb(0 0 0 / 0.3),
+      inset 0 -4px 0 rgb(0 0 0 / 0.2);
+    will-change: transform;
+  }
+
+  .bx-tape {
+    position: absolute;
+    inset: 0 auto 0 50%;
+    width: min(16%, 1.4rem);
+    translate: -50% 0;
+    background: color-mix(in oklab, var(--c-chalk) 50%, transparent);
+  }
+
+  .bx-box[data-gold] {
+    background: var(--c-gold);
+    box-shadow:
+      var(--glow-gold),
+      inset 0 0 0 1px rgb(0 0 0 / 0.3),
+      inset 0 -4px 0 rgb(0 0 0 / 0.2);
+  }
+
+  .bx-chip {
+    pointer-events: none;
+  }
+
+  .bx-cat {
+    position: absolute;
+    left: 0;
+    bottom: var(--bx-ground);
+    width: calc(var(--bx-h, 2rem) * 1.9);
+  }
+
+  .bx-cat svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .bx-cat-body {
+    fill: var(--c-carbon);
+    stroke: var(--c-gold);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+
+  .bx-cat-tail {
+    fill: none;
+    stroke: var(--c-gold);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .bx-cat-eye {
+    fill: var(--c-gold);
+  }
+</style>

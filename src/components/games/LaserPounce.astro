@@ -1,0 +1,130 @@
+---
+/**
+ * Laser Pounce — catch the red dot nine times (logic: scripts/games/laser.ts).
+ * The floor is a 3 × 3 grid so the keyboard can play too: 1–9 pounce on a cell.
+ * Each catch leaves a paw print, so the nine prints are the score tally.
+ */
+import Cabinet from './Cabinet.astro';
+
+const cells = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+---
+
+<Cabinet
+  id="laser"
+  kicker="Game 03 · nine pounces"
+  scoreLabel="Time"
+  auxLabel="Pounces"
+  pitch="The owner’s favourite training tool. Catch the red dot nine times, as fast as you can."
+  how={[
+    'Tap the red dot. It darts somewhere else.',
+    'Wait too long and it moves on without you.',
+    'Nine catches stop the clock. Fastest nine wins.',
+  ]}
+  keys="1 to 9"
+>
+  <div class="lz" aria-hidden="true">
+    <div class="lz-grid">
+      {
+        cells.map((n) => (
+          <span class="lz-cell">
+            <kbd class="lz-key">{n}</kbd>
+          </span>
+        ))
+      }
+    </div>
+    {
+      cells.map(() => (
+        <span class="lz-paw" data-lz-paw hidden>
+          <svg viewBox="0 0 32 32">
+            <ellipse cx="16" cy="21" rx="7.5" ry="6" />
+            <circle cx="6.5" cy="12.5" r="3.2" />
+            <circle cx="12.5" cy="7" r="3.2" />
+            <circle cx="19.5" cy="7" r="3.2" />
+            <circle cx="25.5" cy="12.5" r="3.2" />
+          </svg>
+        </span>
+      ))
+    }
+    <span class="lz-dot" data-lz-dot hidden></span>
+  </div>
+</Cabinet>
+
+<style>
+  .lz {
+    --lz-dot: 1.6rem;
+    --lz-paw: 2.75rem;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* Same 8% margin as MARGIN in scripts/games/laser.ts. */
+  .lz-grid {
+    position: absolute;
+    inset: 8%;
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  }
+
+  .lz-cell {
+    position: relative;
+    border: 1px dashed var(--c-line);
+  }
+
+  .lz-key {
+    position: absolute;
+    inset: 0.35rem auto auto 0.45rem;
+    font-family: var(--f-mono);
+    font-size: 0.62rem;
+    color: var(--c-faint);
+  }
+
+  @media (hover: none) {
+    .lz-key {
+      display: none;
+    }
+  }
+
+  .lz-dot,
+  .lz-paw {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .lz-dot {
+    width: var(--lz-dot);
+    height: var(--lz-dot);
+    margin: calc(var(--lz-dot) / -2) 0 0 calc(var(--lz-dot) / -2);
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--c-chalk) 0 18%, var(--c-red) 45%);
+    box-shadow: var(--glow-red);
+    transition: transform 90ms ease-out;
+  }
+
+  .lz-paw {
+    width: var(--lz-paw);
+    height: var(--lz-paw);
+    margin: calc(var(--lz-paw) / -2) 0 0 calc(var(--lz-paw) / -2);
+    fill: var(--c-gold);
+    opacity: 0.85;
+  }
+
+  .lz-paw svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  :global(.js-motion) .lz-paw svg {
+    animation: lz-stamp var(--dur-med) var(--ease-out-back) both;
+  }
+
+  @keyframes lz-stamp {
+    from {
+      transform: scale(1.8);
+      opacity: 0;
+    }
+  }
+</style>

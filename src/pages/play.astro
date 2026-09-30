@@ -1,0 +1,445 @@
+---
+/**
+ * One of the site's six pages (see data/site.ts for the map): the arcade.
+ * Four quick games and one timing tower.
+ *
+ * The lobby is a tab list; each game is a cabinet (tab panel) and only the
+ * picked one is shown. A game's code is fetched the first time its cabinet
+ * opens, so the page itself stays light. "/play/#pit" opens straight on a game.
+ */
+import '@/styles/ui.css';
+import Base from '@/layouts/Base.astro';
+import Loader from '@/components/chrome/Loader.astro';
+import Nav from '@/components/chrome/Nav.astro';
+import Footer from '@/components/chrome/Footer.astro';
+import EasterEggs from '@/components/chrome/EasterEggs.astro';
+import PageHead from '@/components/chrome/PageHead.astro';
+import PassGate from '@/components/chrome/PassGate.astro';
+import { pageById } from '@/data/site';
+import { GAME_LABELS, type ScoreGame } from '@/data/games';
+
+import BoxStack from '@/components/games/BoxStack.astro';
+import PitStop from '@/components/games/PitStop.astro';
+import LaserPounce from '@/components/games/LaserPounce.astro';
+import TunaRun from '@/components/games/TunaRun.astro';
+import Board from '@/components/games/Board.astro';
+
+const page = pageById('play');
+
+/** Lobby cards: a 24 × 24 line pictogram and one line about the game. */
+const lobby: { id: Exclude<ScoreGame, 'lights'>; sub: string; icon: string }[] = [
+  {
+    id: 'box',
+    sub: 'Tap to drop. Highest tower wins.',
+    icon: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+  },
+  {
+    id: 'pit',
+    sub: 'Four wheel nuts. Fastest stop wins.',
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7l4.3 2.5v5L12 17l-4.3-2.5v-5z"/>',
+  },
+  {
+    id: 'laser',
+    sub: 'Catch the red dot nine times.',
+    icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+  },
+  {
+    id: 'tuna',
+    sub: 'Three lanes. Grab every can.',
+    icon: '<path d="M3 12c3-5 9-6 13-3l4-3v12l-4-3c-4 3-10 2-13-3z"/><path d="M8 11v.5"/>',
+  },
+];
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<Base title={`${page.title} · Bilal Racing`} description={page.description}>
+  <Loader />
+  <Nav page="play" />
+  <main id="main">
+    <PageHead page="play" />
+
+    <section class="section ar" id="games" aria-labelledby="games-title">
+      <div class="container">
+        <h2 class="visually-hidden" id="games-title">Games</h2>
+        <noscript><p class="ar-noscript">The arcade runs on JavaScript. Switch it on and the games appear here.</p></noscript>
+
+        <form class="ar-name" data-ar-name novalidate>
+          <label class="ui-label" for="ar-name-input">Racing as</label>
+          <div class="ar-name-row">
+            <input
+              class="ui-input"
+              id="ar-name-input"
+              name="name"
+              type="text"
+              maxlength="24"
+              autocomplete="nickname"
+              autocapitalize="words"
+              spellcheck="false"
+              enterkeyhint="done"
+              placeholder="Your name or nickname"
+              aria-describedby="ar-name-note"
+            />
+            <button class="ui-btn ui-btn--gold" type="submit" data-ar-name-save>Save</button>
+          </div>
+          <p class="ui-hint" id="ar-name-note" role="status" data-ar-name-note>
+            Put your name down and every new best goes on the timing tower by itself.
+          </p>
+        </form>
+
+        <div class="ar-lobby" role="tablist" aria-label="Pick a game" data-ar-lobby>
+          {
+            lobby.map((g, i) => (
+              <button
+                class="ar-card"
+                type="button"
+                role="tab"
+                id={`tab-${g.id}`}
+                aria-controls={g.id}
+                aria-selected={i === 0 ? 'true' : 'false'}
+                tabindex={i === 0 ? 0 : -1}
+                data-ar-tab={g.id}
+              >
+                <span class="ar-card-top">
+                  <span class="ar-card-i t-mono" aria-hidden="true">
+                    {pad(i + 1)}
+                  </span>
+                  <svg
+                    class="ar-card-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    set:html={g.icon}
+                  />
+                </span>
+                <span class="ar-card-name t-condensed">{GAME_LABELS[g.id]}</span>
+                <span class="ar-card-sub">{g.sub}</span>
+                <span class="ar-card-best t-mono">
+                  Best <span data-ar-best={g.id}>—</span>
+                </span>
+              </button>
+            ))
+          }
+        </div>
+
+        <div class="ar-floor">
+          <div class="ar-cabs">
+            <BoxStack />
+            <PitStop />
+            <LaserPounce />
+            <TunaRun />
+          </div>
+          <Board />
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer />
+  <PassGate />
+  <EasterEggs />
+</Base>
+
+<script>
+  import { scrollToTarget } from '@/scripts/motion';
+  import { mountCabinet, type CabinetHandle, type GameFactory } from '@/scripts/games/cabinet';
+  import {
+    GAME_IDS,
+    GUEST,
+    bestOf,
+    formatScore,
+    getName,
+    hasName,
+    isGameId,
+    joinTower,
+    onBoardChange,
+    setName,
+    syncIfJoined,
+    type GameId,
+  } from '@/scripts/games/board';
+
+  /** Each game is its own chunk, fetched when its cabinet first opens. */
+  const LOADERS: Record<GameId, () => Promise<{ default: GameFactory }>> = {
+    box: () => import('@/scripts/games/box'),
+    pit: () => import('@/scripts/games/pit'),
+    laser: () => import('@/scripts/games/laser'),
+    tuna: () => import('@/scripts/games/tuna'),
+  };
+
+  const init = () => {
+    const lobby = document.querySelector<HTMLElement>('[data-ar-lobby]');
+    if (!lobby) return;
+    const tabs = [...lobby.querySelectorAll<HTMLButtonElement>('[data-ar-tab]')];
+    const panel = (id: GameId) => document.querySelector<HTMLElement>(`[data-cab="${id}"]`);
+    const mounted = new Map<GameId, Promise<CabinetHandle | null>>();
+    let current: GameId | null = null;
+
+    const mount = async (id: GameId): Promise<CabinetHandle | null> => {
+      const root = panel(id);
+      if (!root) return null;
+      try {
+        return mountCabinet(root, (await LOADERS[id]()).default);
+      } catch {
+        // Let the next visit to this tab try again.
+        mounted.delete(id);
+        const sub = root.querySelector<HTMLElement>('[data-cab-sub]');
+        if (sub) sub.textContent = 'The game did not load. Check your connection, then pick it again.';
+        return null;
+      }
+    };
+
+    const select = (id: GameId, focus = false) => {
+      if (id !== current) {
+        if (current) void mounted.get(current)?.then((cab) => cab?.leave());
+        current = id;
+        for (const tab of tabs) {
+          const on = tab.dataset.arTab === id;
+          tab.setAttribute('aria-selected', String(on));
+          tab.tabIndex = on ? 0 : -1;
+          if (on && focus) tab.focus();
+        }
+        for (const other of GAME_IDS) {
+          const root = panel(other);
+          if (root) root.hidden = other !== id;
+        }
+      }
+      if (!mounted.has(id)) mounted.set(id, mount(id));
+    };
+
+    /** On a phone the lobby fills the screen: after a pick, bring the whole stage into view. */
+    const bringIntoView = (id: GameId) => {
+      const root = panel(id);
+      const stage = root?.querySelector<HTMLElement>('[data-cab-stage]');
+      if (!root || !stage) return;
+      const tabbar = document.querySelector<HTMLElement>('[data-tabbar]');
+      const floor = tabbar && tabbar.offsetHeight ? tabbar.getBoundingClientRect().top : window.innerHeight;
+      if (stage.getBoundingClientRect().bottom <= floor) return;
+      const nav = document.querySelector<HTMLElement>('[data-nav]');
+      scrollToTarget(root, -((nav?.offsetHeight ?? 64) + 12));
+    };
+
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => {
+        const id = tab.dataset.arTab;
+        if (!isGameId(id)) return;
+        select(id);
+        history.replaceState(null, '', `#${id}`);
+        bringIntoView(id);
+      });
+      // Arrow keys walk the tab list, as a tab list should.
+      tab.addEventListener('keydown', (event) => {
+        const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+        const to = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : step == null ? -1 : (i + step + tabs.length) % tabs.length;
+        const id = tabs[to]?.dataset.arTab;
+        if (!isGameId(id)) return;
+        event.preventDefault();
+        select(id, true);
+        history.replaceState(null, '', `#${id}`);
+      });
+    });
+
+    // "/play/#pit" opens on that game, on arrival and when the hash changes later.
+    const fromHash = () => {
+      const id = window.location.hash.slice(1);
+      return isGameId(id) ? id : null;
+    };
+    select(fromHash() ?? 'box');
+    window.addEventListener('hashchange', () => {
+      const id = fromHash();
+      if (id) select(id);
+    });
+
+    /* ---------------- "Best" on the lobby cards ---------------- */
+    const refreshBests = () => {
+      for (const id of GAME_IDS) {
+        const el = lobby.querySelector<HTMLElement>(`[data-ar-best="${id}"]`);
+        if (!el) continue;
+        const best = bestOf(id);
+        el.textContent = best == null ? '—' : formatScore(id, best);
+      }
+    };
+    onBoardChange(refreshBests);
+    refreshBests();
+
+    /* ---------------- "Racing as" ---------------- */
+    const form = document.querySelector<HTMLFormElement>('[data-ar-name]');
+    const input = form?.querySelector<HTMLInputElement>('input');
+    const saveBtn = form?.querySelector<HTMLButtonElement>('[data-ar-name-save]');
+    const note = form?.querySelector<HTMLElement>('[data-ar-name-note]');
+    if (form && input && saveBtn) {
+      if (hasName()) input.value = getName();
+      const say = (text: string) => {
+        if (note) note.textContent = text;
+      };
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (saveBtn.disabled) return;
+        const name = setName(input.value);
+        input.value = name === GUEST ? '' : name;
+        input.blur();
+        if (name === GUEST) {
+          say('No name yet: scores stay on this device, filed under Guest.');
+          return;
+        }
+        // Saving a name is the moment to join the shared tower (it may ask for the team passcode).
+        saveBtn.disabled = true;
+        say(`Racing as ${name}.`);
+        try {
+          const joined = await joinTower();
+          say(
+            joined === 'shared'
+              ? `Racing as ${name}. Every new best goes on the timing tower by itself.`
+              : joined === 'declined'
+                ? `Racing as ${name}, on this device only. Save again to join the timing tower.`
+                : `Racing as ${name}. Scores are kept on this device for now.`,
+          );
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    // A returning player with a pass: send any best the tower hasn't seen yet.
+    void syncIfJoined();
+  };
+
+  init();
+</script>
+
+<style>
+  /* ---------------- "Racing as" (form kit: styles/ui.css) ---------------- */
+  .ar-name {
+    display: grid;
+    gap: 0.4rem;
+    max-width: 32rem;
+    margin-bottom: var(--space-5);
+  }
+
+  .ar-name-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .ar-name-row :global(.ui-input) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ---------------- lobby ---------------- */
+  .ar-noscript {
+    margin-bottom: var(--space-4);
+    color: var(--c-mute);
+  }
+
+
+  .ar-lobby {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  @media (min-width: 52rem) {
+    .ar-lobby {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+  }
+
+  .ar-card {
+    display: grid;
+    align-content: start;
+    gap: 0.3rem;
+    min-width: 0;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-m);
+    background: color-mix(in oklab, var(--c-asphalt) 80%, transparent);
+    text-align: left;
+    transition:
+      border-color var(--dur-fast) ease,
+      background-color var(--dur-fast) ease,
+      transform var(--dur-med) var(--ease-out-expo);
+  }
+
+  .ar-card:hover {
+    border-color: var(--c-mute);
+    transform: translateY(-2px);
+  }
+
+  .ar-card[aria-selected='true'] {
+    border-color: var(--c-gold);
+    background: color-mix(in oklab, var(--c-gold) 10%, var(--c-asphalt));
+  }
+
+  .ar-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--c-mute);
+  }
+
+  .ar-card[aria-selected='true'] .ar-card-top {
+    color: var(--c-gold);
+  }
+
+  .ar-card-i {
+    font-size: 0.6rem;
+  }
+
+  .ar-card-icon {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  .ar-card-name {
+    font-family: var(--f-display);
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .ar-card-sub {
+    color: var(--c-mute);
+    font-size: 0.8rem;
+    line-height: 1.25;
+  }
+
+  .ar-card-best {
+    margin-top: 0.2rem;
+    color: var(--c-mute);
+    font-size: 0.62rem;
+  }
+
+  .ar-card-best span {
+    color: var(--c-purple);
+  }
+
+  /* On a narrow phone the one-liner would push the stage off the first screen. */
+  @media (max-width: 30rem) {
+    .ar-card-sub {
+      display: none;
+    }
+  }
+
+  /* ---------------- cabinet + tower ---------------- */
+  .ar-floor {
+    display: grid;
+    gap: var(--space-6);
+    margin-top: var(--space-5);
+  }
+
+  @media (min-width: 64rem) {
+    .ar-floor {
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      align-items: start;
+      gap: var(--space-6);
+    }
+  }
+
+  .ar-cabs {
+    min-width: 0;
+  }
+</style>

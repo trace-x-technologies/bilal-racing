@@ -3,8 +3,8 @@
  * crew seats. Reading is open; writing needs the shared team passcode, which
  * the PassGate dialog swaps for a cookie.
  *
- *   const { rows } = await api<{ rows: Row[] }>('leaderboard');
- *   if (await ensurePass()) await postJson('leaderboard', { name, ms });
+ *   const { rows } = await api<{ rows: Row[] }>('leaderboard?game=lights');
+ *   if (await ensurePass()) await postJson('leaderboard', { game: 'lights', name, value });
  *
  * On a plain static preview (`astro preview`) there is no API: every call
  * rejects with an ApiError and the callers show their quiet "offline" state.
