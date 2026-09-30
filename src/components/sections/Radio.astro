@@ -4,14 +4,16 @@
  * Plays lore.radioMessages: the owner (Poosa, callsign RAT) on the pit wall
  * talking to both drivers, #13 Isuru (DHA) and #17 Yasas (DEE). Typewriter
  * transcript, per-speaker name bar + team colour, canvas waveform, squelch
- * in/out and (sound on) garbled "cat-speak" blips pitched per speaker — the
- * owner is the cattiest. Autoplays the first exchange when seen.
+ * in/out and (sound on) every line spoken aloud through the radio bus — a
+ * text-to-speech clip per line, one voice per speaker, the owner pitched up.
+ * Clips come from `npm run voices`. Autoplays the first exchange when seen.
  */
 import SectionHeading from '@/components/ui/SectionHeading.astro';
 import Emblem from '@/components/ui/Emblem.astro';
 import PhotoSlot from '@/components/ui/PhotoSlot.astro';
 import { drivers, owner, radioMessages, sinhala, team, type Driver, type RadioSpeaker } from '@/data/lore';
 import { driverPortraits, type PhotoEntry } from '@/data/photos';
+import clipFiles from '@/assets/audio/radio/manifest.json';
 
 interface Speaker {
   id: RadioSpeaker;
@@ -76,7 +78,15 @@ const speakers: Record<RadioSpeaker, Speaker> = {
 };
 const cast = [speakers.Poosa, speakers.Isuru, speakers.Yasas];
 
-type Line = { from: RadioSpeaker; text: string };
+/** Spoken clips, keyed "<speaker>|<text>" in the manifest. A line without one plays silent. */
+const CLIP_DIR = '/src/assets/audio/radio/';
+const clipUrls = import.meta.glob<string>('/src/assets/audio/radio/*.m4a', { eager: true, query: '?url', import: 'default' });
+const clipFor = (from: RadioSpeaker, text: string): string | undefined => {
+  const file = (clipFiles as Record<string, string>)[`${from}|${text}`];
+  return file ? clipUrls[CLIP_DIR + file] : undefined;
+};
+
+type Line = { from: RadioSpeaker; text: string; clip?: string };
 type Exchange = { lap: number; car: RadioSpeaker; lines: Line[] };
 
 /**
@@ -93,7 +103,7 @@ const close = (lines: Line[]) =>
   });
 let pending: Line[] = [];
 for (const m of radioMessages) {
-  pending.push({ from: m.from, text: m.text });
+  pending.push({ from: m.from, text: m.text, clip: clipFor(m.from, m.text) });
   if (m.from === OWNER && pending.some((l) => l.from !== OWNER)) {
     close(pending);
     pending = [];
@@ -401,13 +411,15 @@ const speakerPayload = JSON.stringify(
 </section>
 
 <script>
-  import { sound, type Vowel, type BlipOptions } from '@/scripts/audio';
+  import { sound, type ClipHandle } from '@/scripts/audio';
   import { prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
   import type { RadioSpeaker } from '@/data/lore';
 
   interface Line {
     from: RadioSpeaker;
     text: string;
+    /** URL of the spoken clip, when one was generated. */
+    clip?: string;
   }
   interface Exchange {
     lap: number;
@@ -423,24 +435,26 @@ const speakerPayload = JSON.stringify(
   type Who = RadioSpeaker | '';
 
   /**
-   * How each speaker sounds in cat-speak. The owner is the cattiest: high,
-   * small-mouthed, every syllable a tiny rising mew. #13 talks low and fast
-   * (deploying the overtake); #17 sits in between and keeps losing signal.
+   * How each speaker's recorded line is played. The owner is sped up: higher,
+   * smaller, cattier (his clips are recorded slow to land at a normal pace).
+   * #17 keeps losing signal.
    */
-  interface Voice extends Pick<BlipOptions, 'formant' | 'mew' | 'duration' | 'volume'> {
-    pitch: number;
-    jitter: number;
-    glide: number;
-    /** ms per typed character. */
+  interface Voice {
+    /** Playback speed of the clip; above 1 also raises the pitch. */
+    rate: number;
+    volume: number;
+    /** ms per typed character when there's no voice to keep time with. */
     pace: number;
-    /** Share of syllables lost to "no signal" (0–1). */
+    /** How often the signal cuts out (0–1). */
     dropout: number;
   }
   const VOICES: Record<RadioSpeaker, Voice> = {
-    Poosa: { pitch: 540, jitter: 0.26, formant: 1.25, mew: true, duration: 0.11, glide: 1.14, volume: 0.5, pace: 42, dropout: 0 },
-    Isuru: { pitch: 158, jitter: 0.12, formant: 0.9, duration: 0.068, glide: 0.9, volume: 0.64, pace: 31, dropout: 0 },
-    Yasas: { pitch: 224, jitter: 0.16, formant: 1.04, duration: 0.078, glide: 0.97, volume: 0.58, pace: 35, dropout: 0.22 },
+    Poosa: { rate: 1.14, volume: 1, pace: 42, dropout: 0 },
+    Isuru: { rate: 1, volume: 0.95, pace: 31, dropout: 0 },
+    Yasas: { rate: 1, volume: 0.95, pace: 35, dropout: 0.22 },
   };
+  /** Longest a line waits for its clip to download before going ahead silent. */
+  const CLIP_WAIT = 1500;
   const OWNER: RadioSpeaker = 'Poosa';
 
   const root = document.querySelector<HTMLElement>('[data-rd-root]');
@@ -493,6 +507,7 @@ const speakerPayload = JSON.stringify(
     let shuffle = false;
     let userEngaged = false;
     let who: Who = '';
+    let voice: ClipHandle | null = null;
     const heard = new Set<number>();
 
     // Waveform state
@@ -581,28 +596,18 @@ const speakerPayload = JSON.stringify(
       segs[idx]?.setAttribute('data-state', idx === current ? 'on' : 'done');
     }
 
-    /* ---------------- cat-speak ---------------- */
-    const VOWELS: Record<string, Vowel> = { a: 'a', e: 'e', i: 'i', o: 'o', u: 'u', y: 'i' };
-
-    function syllable(ch: string, from: RadioSpeaker, question: boolean): void {
+    /* ---------------- voice ---------------- */
+    /** One waveform pulse per syllable (this also runs the bars with sound off). */
+    function syllable(from: RadioSpeaker): void {
       const v = VOICES[from] ?? VOICES.Isuru;
       // "No signal": some syllables never make it out of the jungle.
-      if (v.dropout && Math.random() < v.dropout) {
-        pulse = 0.25;
-        return;
-      }
-      pulse = 1;
-      if (!sound.enabled) return;
-      sound.blip({
-        pitch: v.pitch * (1 - v.jitter / 2 + Math.random() * v.jitter),
-        vowel: VOWELS[ch.toLowerCase()] ?? 'a',
-        duration: v.duration,
-        formant: v.formant,
-        mew: v.mew,
-        glide: question ? (v.mew ? 1.5 : 1.35) : v.glide,
-        volume: v.volume,
-        radio: true,
-      });
+      pulse = v.dropout && Math.random() < v.dropout ? 0.25 : 1;
+    }
+
+    /** Sound on: fetch a line's clip. Null when muted, missing or too slow to arrive. */
+    function fetchClip(line: Line): Promise<AudioBuffer | null> {
+      if (!line.clip || !sound.running) return Promise.resolve(null);
+      return Promise.race([sound.load(line.clip), wait(CLIP_WAIT).then(() => null)]);
     }
 
     /** Transcript label: "Poosa · RAT · Pit wall" / "Isuru · #13 DHA". */
@@ -616,7 +621,7 @@ const speakerPayload = JSON.stringify(
       const typed = el.querySelector<HTMLElement>('[data-rd-typed]');
       const rest = el.querySelector<HTMLElement>('[data-rd-rest]');
       const whoEl = el.querySelector<HTMLElement>('[data-rd-who]');
-      const pace = (VOICES[line.from] ?? VOICES.Isuru).pace;
+      const cfg = VOICES[line.from] ?? VOICES.Isuru;
       if (whoEl) whoEl.textContent = label(line.from);
       el.dataset.spk = line.from;
       // Captions roll like the broadcast: only the last two lines stay up.
@@ -640,14 +645,20 @@ const speakerPayload = JSON.stringify(
       }
 
       sound.play('radio', { volume: 0.55 });
-      await wait(260);
+      const [buf] = await Promise.all([fetchClip(line), wait(260)]);
       if (id !== runId) return false;
 
       setSpeaking(true);
       const text = line.text;
-      const qIndex = text.lastIndexOf('?');
+      voice =
+        buf && line.clip
+          ? sound.clip(line.clip, { pitch: cfg.rate, volume: cfg.volume, dropout: cfg.dropout, radio: true })
+          : null;
+      // With a voice the typing keeps time with it; without one it sets its own pace.
+      const per = voice ? (voice.duration * 1000) / text.length : 0;
+      const began = performance.now();
       let prevVowel = false;
-      let lastBlip = 0;
+      let lastPulse = 0;
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
         if (!reduced) {
@@ -656,19 +667,20 @@ const speakerPayload = JSON.stringify(
         }
         const vowel = /[aeiouy]/i.test(ch);
         const now = performance.now();
-        if (vowel && !prevVowel && now - lastBlip > 62) {
-          syllable(ch, line.from, qIndex > -1 && i > qIndex - 6 && i < qIndex);
-          lastBlip = now;
+        if (vowel && !prevVowel && now - lastPulse > 62) {
+          syllable(line.from);
+          lastPulse = now;
         }
         prevVowel = vowel;
         const pause = /[.?!…]/.test(ch) ? 190 : ch === ',' ? 130 : ch === ' ' ? 14 : 0;
-        await wait(pace + pause);
+        await wait(voice ? Math.max(0, began + per * (i + 1) - performance.now()) : cfg.pace + pause);
         if (id !== runId) {
           setSpeaking(false);
           return false;
         }
       }
       setSpeaking(false);
+      voice = null;
       el.removeAttribute('data-typing');
       sound.play('radio', { pitch: 0.8, volume: 0.45 });
       await wait(reduced ? 1400 : 1000);
@@ -685,6 +697,8 @@ const speakerPayload = JSON.stringify(
       if (announce && liveEl) {
         liveEl.textContent = `Lap ${ex.lap}. ${ex.lines.map((l) => `${l.from}: ${l.text}`).join(' ')}`;
       }
+      // Get the whole call downloading now so the replies start on cue.
+      for (const line of ex.lines) void fetchClip(line);
       await wait(220);
       if (id !== runId) return;
       for (let i = 0; i < ex.lines.length && i < lineEls.length; i++) {
@@ -728,6 +742,8 @@ const speakerPayload = JSON.stringify(
 
     function stop(): void {
       runId++;
+      voice?.stop();
+      voice = null;
       setSpeaking(false);
       setPlaying(false);
       lineEls.forEach((el) => el.removeAttribute('data-typing'));

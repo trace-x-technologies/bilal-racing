@@ -1,6 +1,8 @@
 /**
- * "Meow engine" sound system — every sound is synthesised with the Web Audio API
- * (no audio files). Muted by default; the visitor opts in via the nav toggle.
+ * "Meow engine" sound system. Engine, UI and radio-squelch sounds are synthesised
+ * with the Web Audio API; the cat itself (meow, purr, hiss) is real recordings,
+ * fetched only once sound is on, with the old synth voices as the fallback.
+ * Muted by default; the visitor opts in via the nav toggle.
  *
  * Public API (stable — other sections call this):
  *   import { sound } from '@/scripts/audio';
@@ -8,10 +10,10 @@
  *   sound.enabled / sound.setEnabled(true) / sound.toggle()
  *
  * Extras (additive, optional):
- *   sound.blip({ pitch: 440, vowel: 'a', radio: true })  // one "cat-speak" syllable
- *   sound.blip({ pitch: 540, formant: 1.25, mew: true })  // the owner: a tiny mew per syllable
  *   sound.getAnalyser()                                  // AnalyserNode on the master bus, or null
  *   sound.running                                        // true once the AudioContext is live
+ *   await sound.load(url)                                // fetch + decode a recording (null if it can't)
+ *   sound.clip(url, { radio: true })                     // play a loaded recording → { duration, stop() }
  *
  * Graph:  voice → (radio bus) → master gain → compressor → analyser → speakers
  *
@@ -20,6 +22,10 @@
  * a sound effect must never break the page.
  */
 import { emit, store } from './bus';
+import meow1 from '@/assets/audio/cat/meow-1.m4a?url';
+import meow2 from '@/assets/audio/cat/meow-2.m4a?url';
+import purrUrl from '@/assets/audio/cat/purr.m4a?url';
+import hissUrl from '@/assets/audio/cat/hiss.m4a?url';
 
 export type SfxName =
   | 'rev' // short V6-ish engine blip
@@ -40,28 +46,21 @@ export interface PlayOptions {
   pitch?: number;
 }
 
-export type Vowel = 'a' | 'e' | 'i' | 'o' | 'u';
-
-export interface BlipOptions {
-  /** Fundamental in Hz (default 320). */
-  pitch?: number;
-  vowel?: Vowel;
-  /** 0–1 (default 0.55). */
-  volume?: number;
-  /** Seconds (default 0.085). */
-  duration?: number;
-  /** End-of-syllable pitch multiplier: >1 rises (questions), <1 falls. */
-  glide?: number;
+export interface ClipOptions extends PlayOptions {
   /** Route through the band-limited team-radio bus. */
   radio?: boolean;
-  /**
-   * Vocal-tract size: multiplies the formant frequencies (default 1).
-   * >1 = smaller, cattier mouth; <1 = bigger, chestier voice. Clamped 0.6–1.6.
-   */
-  formant?: number;
-  /** Glide the formants m → ee → vowel → oo inside the syllable: a tiny "mew". */
-  mew?: boolean;
+  /** 0–1: how often the signal cuts out for a moment ("no signal"). */
+  dropout?: number;
 }
+
+export interface ClipHandle {
+  /** Seconds the clip plays for (pitch already applied). */
+  duration: number;
+  /** Cut it short with a quick fade. */
+  stop(): void;
+}
+
+type Vowel = 'a' | 'e' | 'i' | 'o' | 'u';
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -84,6 +83,19 @@ function automate(param: AudioParam, t: number, points: readonly Point[], exp = 
 
 /** Scale the value column of a breakpoint list. */
 const scale = (points: readonly Point[], k: number): Point[] => points.map(([t, v]) => [t, v * k] as const);
+
+/**
+ * Real cat recordings (CC0 / public domain — see src/assets/audio/cat/SOURCES.md).
+ * A name with several takes picks one at random; `vary` is ± pitch drift per play.
+ */
+const RECORDINGS: Partial<Record<SfxName, { urls: readonly string[]; gain: number; vary: number }>> = {
+  meow: { urls: [meow1, meow2], gain: 0.9, vary: 0.05 },
+  purr: { urls: [purrUrl], gain: 0.6, vary: 0.03 },
+  hiss: { urls: [hissUrl], gain: 0.85, vary: 0.04 },
+};
+const pick = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)];
+/** A recording that turns up later than this is no longer worth playing. */
+const LATE_MS = 1200;
 
 /** Formant tables (Hz) — human vowels nudged up ~15% for a smaller, catty vocal tract. */
 const FORMANTS: Record<Vowel | 'm', readonly [number, number, number]> = {
@@ -121,6 +133,9 @@ class SoundSystem {
   private noiseBuf: AudioBuffer | null = null;
   private glottal: PeriodicWave | null = null;
   private curves = new Map<number, Float32Array<ArrayBuffer>>();
+  private buffers = new Map<string, AudioBuffer>();
+  private loading = new Map<string, Promise<AudioBuffer | null>>();
+  private broken = new Set<string>();
   private active = 0;
   private suspendTimer = 0;
 
@@ -188,114 +203,154 @@ class SoundSystem {
   play(name: SfxName, opts: PlayOptions = {}): void {
     if (!this._enabled) return;
     try {
-      const v = this.voice(opts);
-      if (!v) return;
-      switch (name) {
-        case 'rev':
-          this.rev(v);
-          break;
-        case 'meow':
-          this.meow(v);
-          break;
-        case 'revMeow':
-          this.revMeow(v);
-          break;
-        case 'purr':
-          this.purr(v);
-          break;
-        case 'hiss':
-          this.hiss(v);
-          break;
-        case 'click':
-          this.click(v);
-          break;
-        case 'beep':
-          this.beep(v);
-          break;
-        case 'go':
-          this.go(v);
-          break;
-        case 'radio':
-          this.radio(v);
-          break;
-        case 'whoosh':
-          this.whoosh(v);
-          break;
-        default:
-          v.run(this.silence(v), 0, 0.01);
-      }
+      if (this.recorded(name, opts)) return;
+      this.synth(name, opts);
     } catch {
       /* swallow — a missing meow is not worth a crash */
     }
   }
 
   /**
-   * One syllable of garbled "cat-speak" (used by Team Radio — each speaker gets
-   * their own pitch / formant / mew settings so you can tell who's talking).
+   * Fetch and decode a recording once. Resolves null when audio isn't possible
+   * (muted, no user gesture yet) or the file can't be fetched / decoded.
    */
-  blip(opts: BlipOptions = {}): void {
-    if (!this._enabled) return;
-    try {
-      const v = this.voice({ volume: opts.volume ?? 0.55 }, opts.radio ? this.radioBus : null);
-      if (!v) return;
-      const { ctx, t, out } = v;
-      const f = clamp(opts.pitch ?? 320, 60, 1400);
-      const dur = clamp(opts.duration ?? 0.085, 0.03, 0.4);
-      const glide = opts.glide ?? 0.94;
-      const size = clamp(opts.formant ?? 1, 0.6, 1.6);
-      const vowel = opts.vowel ?? 'a';
-      const target = FORMANTS[vowel];
+  load(url: string): Promise<AudioBuffer | null> {
+    const hit = this.buffers.get(url);
+    if (hit) return Promise.resolve(hit);
+    const ctx = this.broken.has(url) ? null : this.ensure();
+    if (!ctx) return Promise.resolve(null);
+    let job = this.loading.get(url);
+    if (!job) {
+      job = fetch(url)
+        .then((res) => {
+          if (!res.ok) throw new Error(String(res.status));
+          return res.arrayBuffer();
+        })
+        .then((data) => ctx.decodeAudioData(data))
+        .then((buf) => {
+          this.buffers.set(url, buf);
+          return buf;
+        })
+        .catch(() => {
+          this.broken.add(url);
+          return null;
+        })
+        .finally(() => this.loading.delete(url));
+      this.loading.set(url, job);
+    }
+    return job;
+  }
 
-      const src = this.source(ctx);
-      // A mew arcs up then lands on the glide; plain speech is a gentle hump.
-      automate(
-        src.frequency,
-        t,
-        opts.mew
-          ? [
-              [0, f * 0.82],
-              [dur * 0.45, f * 1.16],
-              [dur, f * glide],
-            ]
-          : [
-              [0, f * 0.9],
-              [dur * 0.3, f * 1.06],
-              [dur, f * glide],
-            ],
-      );
-      const sum = ctx.createGain();
-      sum.gain.value = 1;
-      const shape: ReadonlyArray<readonly [number, (Vowel | 'm')]> = [
-        [0, 'm'],
-        [0.2, 'i'],
-        [0.55, vowel],
-        [1, 'u'],
-      ];
-      ([
-        [5, 1],
-        [8, 0.6],
-        [10, 0.25],
-      ] as const).forEach(([q, g], k) => {
-        const bp = this.formant(ctx, src, sum, target[k] * size, q, g);
-        if (opts.mew) {
-          automate(
-            bp.frequency,
-            t,
-            shape.map(([frac, vw]) => [dur * frac, FORMANTS[vw][k] * size] as const),
-          );
+  /**
+   * Play a recording that load() has already decoded (Team Radio's spoken
+   * lines). Returns null while muted, not loaded, or out of voices.
+   */
+  clip(url: string, opts: ClipOptions = {}): ClipHandle | null {
+    if (!this._enabled) return null;
+    try {
+      const buf = this.buffers.get(url);
+      if (!buf) return null;
+      const v = this.voice(opts, opts.radio ? this.radioBus : null);
+      if (!v) return null;
+      const { ctx, t, out } = v;
+      let dest: AudioNode = out;
+      const duration = buf.duration / v.p;
+      if (opts.dropout) {
+        // "No signal": the carrier drops for a few hundredths of a second.
+        const gate = ctx.createGain();
+        for (let x = 0.2; x < duration - 0.12; x += rand(0.16, 0.3)) {
+          if (Math.random() >= opts.dropout) continue;
+          gate.gain.setValueAtTime(0.05, t + x);
+          gate.gain.setValueAtTime(1, t + x + rand(0.05, 0.11));
         }
-      });
-      const env = ctx.createGain();
-      automate(env.gain, t, [
-        [0, 0],
-        [0.008, 1],
-        [dur * 0.55, 0.75],
-        [dur, 0],
-      ]);
-      sum.connect(env).connect(out);
-      v.run(src, 0, dur + 0.02);
+        gate.connect(out);
+        dest = gate;
+      }
+      const src = this.sample(v, buf, 0, dest);
+      return {
+        duration,
+        stop: () => {
+          try {
+            out.gain.setTargetAtTime(0, ctx.currentTime, 0.012);
+            src.stop(ctx.currentTime + 0.06);
+          } catch {
+            /* already ended */
+          }
+        },
+      };
     } catch {
-      /* ignore */
+      return null;
+    }
+  }
+
+  /**
+   * Play `name` from a real recording. True when that's handled (played now, or
+   * queued behind its download); false = use the synth.
+   */
+  private recorded(name: SfxName, opts: PlayOptions): boolean {
+    const rec = RECORDINGS[name];
+    if (!rec) return false;
+    const url = pick(rec.urls);
+    const start = (buf: AudioBuffer) => {
+      const v = this.voice({ volume: (opts.volume ?? 1) * rec.gain, pitch: (opts.pitch ?? 1) * rand(1 - rec.vary, 1 + rec.vary) });
+      if (v) this.sample(v, buf);
+    };
+    const ready = this.buffers.get(url);
+    if (ready) {
+      start(ready);
+      return true;
+    }
+    if (this.broken.has(url) || !this.ensure()) return false;
+    const asked = performance.now();
+    void this.load(url).then((buf) => {
+      try {
+        if (!this._enabled || performance.now() - asked > LATE_MS) return;
+        if (buf) start(buf);
+        else this.synth(name, opts);
+      } catch {
+        /* ignore */
+      }
+    });
+    return true;
+  }
+
+  /** The all-synth voices (and the fallback when a recording can't load). */
+  private synth(name: SfxName, opts: PlayOptions): void {
+    const v = this.voice(opts);
+    if (!v) return;
+    switch (name) {
+      case 'rev':
+        this.rev(v);
+        break;
+      case 'meow':
+        this.meow(v);
+        break;
+      case 'revMeow':
+        this.revMeow(v);
+        break;
+      case 'purr':
+        this.purr(v);
+        break;
+      case 'hiss':
+        this.hiss(v);
+        break;
+      case 'click':
+        this.click(v);
+        break;
+      case 'beep':
+        this.beep(v);
+        break;
+      case 'go':
+        this.go(v);
+        break;
+      case 'radio':
+        this.radio(v);
+        break;
+      case 'whoosh':
+        this.whoosh(v);
+        break;
+      default:
+        v.run(this.silence(v), 0, 0.01);
     }
   }
 
@@ -364,6 +419,8 @@ class SoundSystem {
         this.analyser = analyser;
         this.radioBus = radioIn;
         this.ctx = ctx;
+        // Sound is on: fetch the cat now so the first meow isn't the synth.
+        for (const rec of Object.values(RECORDINGS)) for (const url of rec.urls) void this.load(url);
       }
       const state = this.ctx.state as string;
       if (state === 'suspended' || state === 'interrupted') void this.ctx.resume().catch(() => {});
@@ -400,7 +457,8 @@ class SoundSystem {
       run: (node, start, stop) => {
         pending++;
         node.onended = done;
-        if (node instanceof AudioBufferSourceNode) node.start(t + start, rand(0, 1.5));
+        // The shared noise loop starts anywhere; a recording starts at the top.
+        if (node instanceof AudioBufferSourceNode) node.start(t + start, node.loop ? rand(0, 1.5) : 0);
         else node.start(t + start);
         node.stop(t + stop);
       },
@@ -412,6 +470,16 @@ class SoundSystem {
     n.buffer = this.noiseBuf;
     n.loop = true;
     return n;
+  }
+
+  /** One-shot recording on a voice, `start` seconds in, at the voice's pitch. */
+  private sample(v: Voice, buf: AudioBuffer, start = 0, dest: AudioNode = v.out): AudioBufferSourceNode {
+    const src = v.ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = v.p;
+    src.connect(dest);
+    v.run(src, start, start + buf.duration / v.p + 0.02);
+    return src;
   }
 
   private source(ctx: AudioContext): OscillatorNode {
@@ -682,6 +750,14 @@ class SoundSystem {
     this.engine(v, rpm, level, 1.66);
 
     // The meow starts under the engine at the same pitch, then takes over.
+    const real = this.buffers.get(pick(RECORDINGS.meow?.urls ?? []));
+    if (real) {
+      const g = v.ctx.createGain();
+      g.gain.value = 0.95;
+      g.connect(v.out);
+      this.sample(v, real, 1.26, g);
+      return;
+    }
     const d = 1.02;
     this.meowVoice(
       v,

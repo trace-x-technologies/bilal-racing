@@ -23,6 +23,8 @@ Pronouns: the owner is referred to as "he"; for everyone else avoid gendered pro
   (viewports desktop,mobile by default; prints console/page errors; exit 2 if errors). Locally it
   needs `npx playwright-core install chromium` once, or `CHROME_PATH` pointing at Chrome.
   Write screenshots to your scratchpad or /tmp, never into the repo.
+- Team-radio voices: after editing `radioMessages` in `lore.ts`, run `npm run voices` (macOS only:
+  `say` + `afconvert`) and commit the regenerated clips in `src/assets/audio/radio/`.
 - No new npm dependencies. Everything needed is installed.
 
 ## Layout
@@ -33,7 +35,8 @@ src/styles/tokens.css            design tokens (don't edit — define local vars
 src/styles/global.css            reset, .container/.section, type utils, [data-reveal] system
 src/scripts/motion.ts            gsap, ScrollTrigger, SplitText, Lenis, prefersReducedMotion(), isLowPowerDevice(), lockScroll(), scrollToTarget(), initReveals()
 src/scripts/bus.ts               emit()/on() typed window events + `store` (safe localStorage)
-src/scripts/audio.ts             `sound.play(name)` Web Audio synth, muted by default
+src/scripts/audio.ts             `sound.play(name)`: Web Audio synth + real cat recordings, muted by default
+src/assets/audio/                cat/ = meow/purr/hiss recordings (SOURCES.md); radio/ = spoken team-radio clips
 src/data/lore.ts                 team, owner, ownerStats, drivers[], timeline, radioMessages, approved Sinhala
 src/data/crew.ts                 crew roles + formation slots (person: null = vacancy)
 src/data/photos.ts               ownerPortrait, driverPortraits, gallery (15 real photos), resolvePhoto()

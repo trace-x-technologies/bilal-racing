@@ -11,6 +11,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
+    "voices": "node --experimental-strip-types tools/radio-voices.mjs",
     "preview:cf": "astro build && wrangler dev",
     "cf:whoami": "wrangler whoami",
     "deploy:dry": "astro check && astro build && wrangler deploy --dry-run",
