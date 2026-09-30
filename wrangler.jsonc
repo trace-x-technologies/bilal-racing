@@ -13,7 +13,9 @@
     "run_worker_first": ["/api/*"]
   },
   // Leaderboard, photo list, crew seats and the upload budget counters.
-  "d1_databases": [{ "binding": "DB", "database_name": "bilal-racing" }],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "bilal-racing", "database_id": "4e32e365-531f-4f1e-9369-0dcc19d28101" }
+  ],
   // Uploaded photos and crew faces.
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "bilal-racing-paddock" }],
   // "false" closes uploads by hand. The two passcodes are secrets, not vars:
