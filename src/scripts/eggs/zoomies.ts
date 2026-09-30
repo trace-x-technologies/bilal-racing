@@ -23,11 +23,11 @@ const EGG_LABEL: Record<ZoomiesSource, string> = {
 };
 
 const ENGAGED: Record<ZoomiesSource, string> = {
-  konami: 'ZOOMIES MODE: ENGAGED. The owner has left the pit wall.',
-  'nine-lives': 'Nine lives, one owner, zero chill. ZOOMIES MODE: ENGAGED.',
+  konami: 'ZOOMIES MODE: ENGAGED. The owner is on a victory lap.',
+  'nine-lives': 'Nine lives, one owner, full speed. ZOOMIES MODE: ENGAGED.',
 };
 
-const DISENGAGED = 'Zoomies disengaged. Owner back in his box, nap resumed.';
+const DISENGAGED = 'Zoomies complete. Owner back in his box, purring.';
 
 const SHAKE_TARGETS = 'main :is(h1, h2, h3, img, canvas, button, .photo-slot), footer :is(h2, h3, img)';
 

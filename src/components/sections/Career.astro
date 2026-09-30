@@ -30,7 +30,7 @@ const tyres = [
   { c: 'I', name: 'Inters · essential travel only', color: 'var(--c-teal)' },
   { c: 'S', name: 'Softs · buffet spec', color: 'var(--c-red)' },
   { c: 'H', name: 'Hards · signed with a paw print', color: 'var(--c-chalk)' },
-  { c: 'P', name: 'Pillows', color: 'var(--c-purple)' },
+  { c: 'P', name: 'Purrelli golds · champion spec', color: 'var(--c-purple)' },
 ];
 
 const cards = timeline.map((t, i) => ({
@@ -105,7 +105,7 @@ const track =
           data-circuit-svg
         >
           <title id="career-circuit-title">
-            Map of the Autodromo Nove Vite: a race circuit shaped suspiciously like a cat’s head, with two ear
+            Map of the Autodromo Nove Vite: a race circuit shaped exactly like a cat’s head, with two ear
             hairpins and a start line on the chin.
           </title>
           <defs>
@@ -1142,7 +1142,7 @@ const track =
         if (finished && armed && !flagged && dwell() > 2000) {
           flagged = true;
           emit('bilal:toast', {
-            message: 'Chequered flag! History made. The owner celebrated by napping on the trophy.',
+            message: 'Chequered flag! History made. The owner celebrated with a lap of honour and a tin of tuna.',
             tone: 'gold',
           });
         }

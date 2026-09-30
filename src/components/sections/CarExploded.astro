@@ -34,7 +34,7 @@ const specs: Array<{ k: string; v: string; note?: string }> = [
         {
           k: 'Top speed',
           v: `${fastest.value}${fastest.suffix}`,
-          note: `${speeds.map((s) => `${s.name} ${s.value}`).join(', ')}. Only recorded when a tuna can opens.`,
+          note: `${speeds.map((s) => `${s.name} ${s.value}`).join(', ')}. Fastest pair on the grid.`,
         },
       ]
     : []),
@@ -61,7 +61,7 @@ const poster = carPosterSVG('car-bp', livery);
       title="BR-09 <em>Purrari</em>"
       si={sinhala.vegaya.si}
       id="car-title"
-      lead={`Hand-built in a Malabe garage from carbon fibre, gold paint and questionable decisions. On the bench today: ${benchCar.fullName}’s car #${benchCar.number}. Scroll to take it apart. The stewards said it’s fine.`}
+      lead={`Hand-built in a Malabe garage from carbon fibre, gold paint and championship-grade ideas. On the bench today: ${benchCar.fullName}’s car #${benchCar.number}. Scroll to take it apart. The stewards called it a masterpiece.`}
     />
   </div>
 
@@ -110,7 +110,7 @@ const poster = carPosterSVG('car-bp', livery);
       <div class="car-bench" aria-hidden="true" data-car-bench>
         <p class="bench-kicker t-mono"><span data-bench-num>—</span> / {pad(PART_INFO.length)} · On the bench</p>
         <p class="bench-label" data-bench-label>Scroll to take it apart</p>
-        <p class="bench-joke" data-bench-joke>Twelve parts, one cat, zero instruction manuals.</p>
+        <p class="bench-joke" data-bench-joke>Twelve parts, one cat, one perfect car.</p>
       </div>
 
       <aside class="car-spec car-spec--pinned" aria-labelledby="car-spec-title">
@@ -129,7 +129,7 @@ const poster = carPosterSVG('car-bp', livery);
             ))
           }
         </dl>
-        <p class="spec-foot t-mono">FIA homologation: pending. FIA response: “what?”</p>
+        <p class="spec-foot t-mono">FIA homologation: approved. FIA response: “wow.”</p>
       </aside>
     </div>
   </div>
@@ -156,7 +156,7 @@ const poster = carPosterSVG('car-bp', livery);
     <div class="parts">
       <h3 class="parts-title">
         <span class="t-mono parts-kicker">Parts manifest</span>
-        <span>12 parts. 0 spares. 1 suspicious hairball.</span>
+        <span>12 parts. All perfect. 1 lucky whisker.</span>
       </h3>
       <ol class="parts-list" data-reveal-stagger="50">
         {
@@ -888,12 +888,12 @@ const poster = carPosterSVG('car-bp', livery);
         benchJoke.textContent = part.joke;
       } else if (progress >= 0.86) {
         benchNum.textContent = '12';
-        benchLabel.textContent = 'Reassembled. Mostly.';
-        benchJoke.textContent = 'There are two screws left over. The owner is napping on them.';
+        benchLabel.textContent = 'Reassembled. Perfectly.';
+        benchJoke.textContent = 'Every part back in place. The owner signs it off with a paw print.';
       } else {
         benchNum.textContent = '—';
         benchLabel.textContent = progress > 0.05 ? 'Unscrewing everything…' : 'Scroll to take it apart';
-        benchJoke.textContent = 'Twelve parts, one cat, zero instruction manuals.';
+        benchJoke.textContent = 'Twelve parts, one cat, one perfect car.';
       }
     };
 

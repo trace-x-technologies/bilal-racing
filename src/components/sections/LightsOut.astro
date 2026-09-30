@@ -20,16 +20,16 @@ interface Entry {
   name: string;
   /** Reaction in ms; null = no time. */
   ms: number | null;
-  /** Shown instead of a time when there is none (DNS, DSQ). */
+  /** Shown instead of a time when there is none. */
   status?: string;
   note: string;
   tone: Tone;
 }
 
 /** Driver colours (match Team Radio): #13 saffron, #17 teal. Notes are pure fiction. */
-const DRIVER_ROW: Record<Driver['id'], { tone: Tone; note: string; excuse: string }> = {
-  dha: { tone: 'saffron', note: 'number-matched on purpose', excuse: 'Already blaming a merge conflict.' },
-  dee: { tone: 'teal', note: 'no signal, went anyway', excuse: 'Already blaming the signal.' },
+const DRIVER_ROW: Record<Driver['id'], { tone: Tone; note: string; salute: string }> = {
+  dha: { tone: 'saffron', note: 'number-matched on purpose', salute: 'A handshake is already on its way.' },
+  dee: { tone: 'teal', note: 'no signal, went anyway', salute: 'A thumbs-up is coming from the waterfall.' },
 };
 
 /** A driver's launch in ms, from their lore stats. */
@@ -40,8 +40,8 @@ const reaction = (d: Driver): number | null => {
 
 /** For the result copy: the drivers' launches, fastest first. */
 const rivals = drivers
-  .map((d) => ({ name: d.firstName, number: d.number, ms: reaction(d), excuse: DRIVER_ROW[d.id].excuse }))
-  .filter((r): r is { name: string; number: number; ms: number; excuse: string } => r.ms != null)
+  .map((d) => ({ name: d.firstName, number: d.number, ms: reaction(d), salute: DRIVER_ROW[d.id].salute }))
+  .filter((r): r is { name: string; number: number; ms: number; salute: string } => r.ms != null)
   .sort((a, b) => a.ms - b.ms);
 
 const field: Entry[] = [
@@ -53,18 +53,17 @@ const field: Entry[] = [
     note: DRIVER_ROW[d.id].note,
     tone: DRIVER_ROW[d.id].tone,
   })),
-  { code: 'PIT', name: 'Pit crew (average)', ms: 342, note: 'distracted by tuna', tone: 'maroon' },
-  { code: 'ZZZ', name: `${owner.nicknameLatin}, no food`, ms: 9000, note: 'woke up for the podium photo', tone: 'faint' },
+  { code: 'PIT', name: 'Pit crew (average)', ms: 342, note: 'fuelled by tuna', tone: 'maroon' },
+  { code: 'GRD', name: 'The rest of the grid', ms: 450, note: 'still admiring the lights', tone: 'faint' },
   { code: 'YOU', name: 'You', ms: null, note: 'no time set — yet', tone: 'you' },
   {
     code: 'DOT',
     name: 'The laser dot',
     ms: null,
-    status: 'DSQ',
-    note: 'moved before the lights · the owner gave chase',
+    status: 'PAL',
+    note: 'the owner’s training partner · caught on the first pounce',
     tone: 'purple',
   },
-  { code: 'VAC', name: 'The vacuum cleaner', ms: null, status: 'DNS', note: 'the owner fled the building', tone: 'faint' },
 ];
 
 const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3));
@@ -233,14 +232,14 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     name: string;
     number: number;
     ms: number;
-    excuse: string;
+    salute: string;
   }
 
   /** Under this, humans are guessing — shown, but not counted. */
   const ANTICIPATION = 100;
   const SUS_SUBS = [
-    'Under a tenth is a guess. Stewards deleted the time.',
-    'Either you are a cat or you guessed. Time not counted.',
+    'Under a tenth is cat territory. Wait for the lights, then pounce.',
+    'Either you are a cat or you can see the future. Go again for a counted time.',
   ];
 
   const TIERS: Tier[] = [
@@ -250,8 +249,8 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       tone: 'purple',
       subs: [
         'You pounced before the red dot even moved.',
-        'Purple sector. The cat is filing a complaint.',
-        'Faster than Poosa hearing a tuna can. Almost.',
+        'Purple sector. The cat is taking notes.',
+        'Almost as fast as Poosa hearing a tuna can. High praise.',
       ],
     },
     {
@@ -261,24 +260,24 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       subs: [
         'Clean launch. The owner wants to sign you. The contract is a cardboard box.',
         'Sharp. Like claws on a brand-new sofa.',
-        'Quick. The drivers were quicker, and the owner was bribed with food. Respectable.',
+        'Quick. Right up there with the drivers. The owner nods.',
       ],
     },
     {
       max: 450,
-      label: 'Midfield napper',
+      label: 'Points finish',
       tone: 'gold',
       subs: [
         'Heard the fridge open — from another room.',
-        'You reacted like a cat pretending not to care.',
-        'Solid. Not purr-fect.',
+        'Cool and calm. Very cat of you.',
+        'Solid. Purr-fect is one launch away.',
       ],
     },
     {
       max: Infinity,
-      label: 'Napping like the owner',
-      tone: 'red',
-      subs: ['Box, box? More like nap, nap.', 'The lights went out. So did you.', 'Nine lives, and you spent one waiting.'],
+      label: 'Warming the tyres',
+      tone: 'gold',
+      subs: ['Tyres warm. The next launch is the quick one.', 'Smooth getaway. Now try it with zoomies.', 'Nine lives means nine more tries. Go again.'],
     },
   ];
 
@@ -362,7 +361,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         return `Quicker than ${rivals.map((r) => `#${r.number}`).join(' and ')}. The owner is drafting your contract on a napkin.`;
       }
       const r = beaten[0];
-      return `You out-launched #${r.number} ${r.name}. ${r.excuse}`;
+      return `You out-launched #${r.number} ${r.name}. ${r.salute}`;
     }
     const announce = (msg: string) => {
       if (!liveEl) return;
@@ -389,8 +388,8 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         hold: 'Wait for it…',
         go: 'GO GO GO',
         result: 'Go again',
-        jump: 'Try again',
-        dnf: 'Wake up & retry',
+        jump: 'Go again',
+        dnf: 'Go again',
       };
       if (ctaEl) ctaEl.textContent = cta[next];
     }
@@ -438,7 +437,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
             chip.setAttribute('aria-label', `${fmt(a.ms)} seconds${isBest ? ', personal best' : ''}`);
           } else {
             chip.dataset.tone = 'red';
-            const labels = { jump: ['JUMP', 'Jump start'], dnf: ['DNF', 'Did not finish'], sus: ['SUS', 'Anticipated, not counted'] };
+            const labels = { jump: ['KEEN', 'Early launch'], dnf: ['—', 'No launch'], sus: ['CAT', 'Quicker than the lights, not counted'] };
             const [text, aria] = labels[a.kind as 'jump' | 'dnf' | 'sus'] ?? labels.dnf;
             if (label) label.textContent = text;
             chip.setAttribute('aria-label', aria);
@@ -549,11 +548,11 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         setState('result');
         lockedUntil = performance.now() + COOLDOWN;
         record({ ms, kind: 'sus' });
-        setReadout(fmt(ms), 'Suspiciously quick', pick(SUS_SUBS), 'purple');
+        setReadout(fmt(ms), 'Quicker than the lights', pick(SUS_SUBS), 'purple');
         if (badgeEl) badgeEl.hidden = true;
         renderStats();
-        announce(`${fmt(ms)} seconds. Suspiciously quick — anticipation, not counted.`);
-        sound.play('hiss', { pitch: 1.3, volume: 0.6 });
+        announce(`${fmt(ms)} seconds. Quicker than the lights. Go again for a counted time.`);
+        sound.play('meow', { volume: 0.6 });
         return;
       }
       const tier = tierFor(ms);
@@ -584,11 +583,11 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       setState('jump');
       lockedUntil = performance.now() + COOLDOWN;
       record({ ms: null, kind: 'jump' });
-      setReadout('+5.000', 'JUMP START — 5 s penalty.', 'Even the cat waited.', 'red');
+      setReadout('EARLY', 'Keen start', 'Champions wait for the lights. Go again.', 'gold');
       if (badgeEl) badgeEl.hidden = true;
       renderStats();
-      announce('Jump start. Five second penalty. Even the cat waited.');
-      sound.play('hiss');
+      announce('Early launch. The lights were still on. Go again.');
+      sound.play('click');
       if (!prefersReducedMotion()) {
         rig!.animate(
           [
@@ -609,9 +608,9 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       setState('dnf');
       lockedUntil = performance.now() + COOLDOWN;
       record({ ms: null, kind: 'dnf' });
-      setReadout('DNF', 'Asleep on the grid', 'Reaction: none. Snoring: detected. The owner approves.', 'red');
+      setReadout('—', 'Lights are out', 'Tap the moment they go out. The next one is yours.', 'gold');
       renderStats();
-      announce('Did not finish. You fell asleep on the grid. The owner approves.');
+      announce('No launch recorded. Tap the moment the lights go out. Go again.');
       sound.play('purr');
     }
 
@@ -691,7 +690,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
     });
 
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) abort('You looked away. Very cat of you. Tap to try again.');
+      if (document.hidden) abort('Welcome back. Tap to go again.');
     });
 
     /* ---------------- share / reset ---------------- */
@@ -704,7 +703,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
       try {
         if (typeof navigator.share === 'function') {
           await navigator.share({ title: 'Bilal Racing — Lights Out', text, url });
-          emit('bilal:toast', { message: 'Result sent. The group chat has been warned.', tone: 'gold' });
+          emit('bilal:toast', { message: 'Result sent. The group chat will be impressed.', tone: 'gold' });
           return;
         }
       } catch (err) {
@@ -714,7 +713,7 @@ const fmt = (ms: number | null) => (ms == null ? '—' : (ms / 1000).toFixed(3))
         await navigator.clipboard.writeText(`${text} ${url}`);
         emit('bilal:toast', { message: 'Copied! Paste it in the group chat, machan.', tone: 'gold' });
       } catch {
-        emit('bilal:toast', { message: `Couldn’t copy — ${fmt(ms)} s. Screenshot it like it’s 2015.`, tone: 'red' });
+        emit('bilal:toast', { message: `Your time: ${fmt(ms)} s. Screenshot it and share the glory.`, tone: 'gold' });
       }
     });
 

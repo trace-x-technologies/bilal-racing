@@ -31,7 +31,7 @@ type Kind = 'pass' | 'polaroid';
 const FEATURED_ID = 'team-pool';
 
 /** Pass zone + stamp per photo, chosen to fit each shot (not cycled by position). 'All areas*'
- *  pairs with the wall footnote ("* Except the kitchen"). */
+ *  pairs with the wall footnote ("* Yes, even the kitchen"). */
 const LABELS: Record<string, { zone: string; stamp: string }> = {
   'team-pool': { zone: 'All areas*', stamp: 'Verified' },
   helmets: { zone: 'Pit lane', stamp: 'Helmets on' },
@@ -43,7 +43,7 @@ const LABELS: Record<string, { zone: string; stamp: string }> = {
   'wedding-street': { zone: 'Formation lap', stamp: 'Approved' },
   cycling: { zone: 'Fitness bay', stamp: 'Verified' },
   'wedding-hotel': { zone: 'Hospitality', stamp: 'Reference' },
-  'parc-ferme': { zone: 'Nap room', stamp: 'Impounded' },
+  'parc-ferme': { zone: 'Winners’ steps', stamp: 'Race won' },
   hospitality: { zone: 'Snack bay', stamp: 'P1 · Snacks' },
   'wedding-laughs': { zone: 'Photo lab', stamp: 'Exhibit B' },
   'shed-selfie': { zone: 'Rain delay', stamp: 'Certified' },
@@ -192,7 +192,7 @@ const LB_WIDTHS = [640, 960, 1400, 2000];
                   </div>
                   <div>
                     <dt>Issued by</dt>
-                    <dd>The owner (asleep)</dd>
+                    <dd>The owner (in person)</dd>
                   </div>
                 </dl>
                 <div class="pass-foot" aria-hidden="true">
@@ -304,7 +304,7 @@ const LB_WIDTHS = [640, 960, 1400, 2000];
     </ul>
 
     <p class="wall-foot t-mono" data-reveal="fade">
-      * Except the kitchen. Passes may be revoked once the owner wakes up.
+      * Yes, even the kitchen. The owner insists.
     </p>
   </div>
 

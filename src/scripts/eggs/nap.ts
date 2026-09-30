@@ -49,8 +49,8 @@ export function initNap(root: HTMLElement): void {
       { duration: reduced() ? 240 : 900, easing: EASE_OUT_EXPO },
     );
     sound.play('purr', { volume: 0.5 });
-    toast('The owner is napping on the spare tyres. Move to wake him.', 'info');
-    foundEgg('nap', 'Owner asleep on the spare tyres');
+    toast('The owner is taking a champion’s power nap on the spare tyres. Move to wake him.', 'info');
+    foundEgg('nap', 'Champion’s power nap on the spare tyres');
   }
 
   async function wake(): Promise<void> {

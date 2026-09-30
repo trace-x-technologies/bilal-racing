@@ -46,7 +46,7 @@ const facts: { k: string; v: string; fx: Fx }[] = [
   { k: 'Management style', v: owner.managementStyle, fx: 'knock' },
   { k: 'Office', v: owner.office, fx: 'office' },
   { k: 'Signature move', v: owner.signatureMove, fx: 'zoomies' },
-  { k: 'Weakness', v: owner.weakness, fx: 'laser' },
+  { k: 'Superpower', v: owner.superpower, fx: 'laser' },
   { k: 'Radio catchphrase', v: owner.radioCatchphrase, fx: 'radio' },
 ];
 
@@ -83,7 +83,7 @@ const rail = [
       index="01"
       kicker="The Line-up"
       title="One cat. <em>Two drivers.</em>"
-      lead="The cat owns the team. Two humans drive the cars. The cat takes the credit, the warm seat and every box in the garage."
+      lead="The cat owns the team. Two humans drive the cars. The cat calls the strategy, keeps the warm seat and shares every trophy."
       id="driver-title"
     />
 
@@ -158,7 +158,7 @@ const rail = [
             </button>
             <p class="code-joke" id="owner-rat-joke">
               <strong>Pit-wall callsign: {owner.callsign}.</strong> First three letters of the surname, FIA rules.
-              A cat whose callsign is RAT. The stewards called it “deeply ironic, but legal”.
+              A cat whose callsign is RAT. The stewards called it “deeply ironic, and rather brilliant”.
             </p>
           </div>
 
@@ -175,18 +175,18 @@ const rail = [
               <p class="nick-etym">
                 The formal word is <span class="t-si" lang="si">{sinhala.balala.si}</span>{' '}
                 (<i>{sinhala.balala.latin}</i>). Say it fast enough and you get <b>Bilal</b>. That’s the whole
-                team name. We’re not sorry.
+                team name. We’re very proud of it.
               </p>
             </div>
           </div>
 
           <p class="bio" data-reveal="up">
-            Born to race. Promoted to nap. {owner.fullName} —{' '}
+            Born to race. Promoted to win. {owner.fullName} —{' '}
             <span class="t-si" lang="si">{owner.nickname}</span> to anyone who has met him — hung up the helmet,
-            bought the team and now runs {team.name} from whichever box is warmest. The <b>#{team.luckyNumber}</b> on the shark fin isn’t a car number: it’s
-            the team’s lucky number, because a cat gets nine lives and he is speed-running them. Back in 2021 he drove
-            Malabe → Balangoda mid-lockdown on a police-approved pass, which is still more paperwork than the rest
-            of the grid will ever see.
+            bought the team and now runs {team.name} from the best box on the pit wall. The <b>#{team.luckyNumber}</b> on the shark fin isn’t a car number: it’s
+            the team’s lucky number, because a cat gets nine lives and he wins with every one. Back in 2021 he drove
+            Malabe → Balangoda mid-lockdown on a police-approved pass: the only driver on the grid who has
+            ever earned one.
           </p>
         </div>
       </div>
@@ -285,9 +285,9 @@ const rail = [
         <span class="dh-rule" aria-hidden="true"></span>
         <span>Cars {drivers.map((d) => `#${d.number}`).join(' & ')}</span>
       </p>
-      <p class="dh-title t-condensed" data-reveal="up">Two humans. <em>Zero naps.</em></p>
+      <p class="dh-title t-condensed" data-reveal="up">Two humans. <em>Two champions.</em></p>
       <p class="dh-lead" data-reveal="up">
-        {owner.nicknameLatin} hired two humans to do the actual driving. He kept the job with the most sitting down.
+        {owner.nicknameLatin} hired the two fastest humans he knows. He kept the job with the best view.
       </p>
       <p class="dh-hint t-mono t-mute" aria-hidden="true" data-reveal="fade">
         <span class="hint-hover">Hover to tilt · </span>Flip a card for the classified bits
@@ -378,8 +378,8 @@ const rail = [
                               <dd>{d.signatureMove}</dd>
                             </div>
                             <div>
-                              <dt class="t-mono">Weakness</dt>
-                              <dd>{d.weakness}</dd>
+                              <dt class="t-mono">Superpower</dt>
+                              <dd>{d.superpower}</dd>
                             </div>
                           </dl>
                           <figure class="tback-radio">
@@ -1365,7 +1365,7 @@ const rail = [
     font-style: italic;
   }
 
-  /* Weakness: laser pointers. A dot you cannot ignore. */
+  /* Superpower: the laser dot. Always one pounce ahead. */
   .laser {
     position: absolute;
     top: 50%;
@@ -2268,10 +2268,10 @@ const rail = [
     const chip = section.querySelector<HTMLButtonElement>('[data-rat]');
     if (!chip) return;
     const lines = [
-      'Stewards’ note: the RAT is, in fact, a cat. No further action.',
-      'Callsign RAT confirmed. The cat has lodged a protest.',
-      'FIA: “It’s just the first three letters.” The cat: 😾',
-      'Team Principal (RAT) reminded that chasing his own callsign is not a race strategy.',
+      'Stewards’ note: the RAT is, in fact, a cat. And a champion.',
+      'Callsign RAT confirmed. The cat wears it with pride.',
+      'FIA: “It’s just the first three letters.” The cat: 😼',
+      'Team Principal (RAT) chased his own callsign once. Caught it. Naturally.',
     ];
     let n = 0;
     chip.addEventListener('click', () => {

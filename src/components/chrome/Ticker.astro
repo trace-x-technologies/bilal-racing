@@ -9,20 +9,19 @@ import { team, drivers, sinhala } from '@/data/lore';
 
 /** "#13 DHA · #17 DEE" — timing-screen style. */
 const grid = drivers.map((d) => `#${d.number} ${d.code}`).join(' · ');
-const rebel = drivers.find((d) => d.id === 'dha');
 
 const jokes = [
   'Owner: a cat',
-  'Fuel: 100% tuna, 0% urgency',
-  `${grid} · box, box = owner nap`,
-  'Nine lives · zero pit-stop discipline',
+  'Fuel: 100% tuna, 100% commitment',
+  `${grid} · box, box = fastest stop in the pit lane`,
+  'Nine lives · world champions',
   `Tyres by ${team.tyres}`,
-  `Team orders: typed by paw${rebel ? `, ignored by #${rebel.number}` : ''}`,
-  'DRS: Deploy Rest Sequence',
+  'Team orders: typed by paw, delivered one-two',
+  'DRS: Definitely Really Speedy',
   `${team.engine}`,
-  'Undercut? The owner prefers a cushion',
-  'Pit wall: one cat, one box, zero urgency',
-  'Blue flags ignored · laser pointer spotted',
+  'Undercut? Nailed it. The owner celebrates on a cushion',
+  'Pit wall: one cat, one box, every call right',
+  'Blue flags for everyone else · Bilal Racing coming through',
   'Official partner: the warm bonnet',
 ];
 

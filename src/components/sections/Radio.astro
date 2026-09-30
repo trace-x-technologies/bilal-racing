@@ -134,7 +134,7 @@ const speakerPayload = JSON.stringify(
       kicker="Team Radio"
       id="radio-title"
       title="Box, box?<br/><em>Say less.</em>"
-      lead={`Genuine* pit-wall radio: the owner (callsign ${owner.callsign}) versus cars ${speakers.Isuru.car} and ${speakers.Yasas.car}. Transcribed by the stewards. Switch on the meow engine for the full, deeply unprofessional audio. *Not genuine.`}
+      lead={`Pit-wall radio from a championship-winning season: the owner (callsign ${owner.callsign}) with cars ${speakers.Isuru.car} and ${speakers.Yasas.car}. Transcribed by the stewards. Switch on the meow engine to hear every call.`}
       si={sinhala.hari.si}
     />
 
@@ -713,7 +713,7 @@ const speakerPayload = JSON.stringify(
         const next = nextIndex();
         if (next == null) {
           setPlaying(false);
-          if (statusEl) statusEl.textContent = 'End of transmission · Poosa is napping';
+          if (statusEl) statusEl.textContent = 'End of transmission · champions, all of them';
           return;
         }
         await wait(1100);
@@ -725,7 +725,7 @@ const speakerPayload = JSON.stringify(
         if (statusEl) {
           statusEl.textContent = left > 0
             ? `Press play for more · ${left} ${left === 1 ? 'call' : 'calls'} left`
-            : 'End of transmission · Poosa is napping';
+            : 'End of transmission · champions, all of them';
         }
       }
     }

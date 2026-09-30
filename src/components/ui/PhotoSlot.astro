@@ -43,7 +43,7 @@ const resolved = resolvePhoto(photo);
     <div class:list={['photo-slot', 'photo-placeholder', className]} role="img" aria-label={`${resolved.alt} (photo coming soon)`}>
       <Emblem size="100%" class="ph-emblem" title="" />
       <span class="ph-label t-mono">{resolved.placeholder ?? 'Photo incoming'}</span>
-      <span class="ph-sub t-mono">{photo.folder === 'team' ? 'Owner is napping · photo pending' : 'Photo pending'}</span>
+      <span class="ph-sub t-mono">{photo.folder === 'team' ? 'Owner is posing · photo pending' : 'Photo pending'}</span>
     </div>
   )
 }

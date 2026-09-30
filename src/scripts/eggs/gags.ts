@@ -21,7 +21,7 @@ export function initGags(root: HTMLElement): GagControl {
 
   async function meow(): Promise<void> {
     sound.play('meow');
-    toast(`${owner.nicknameLatin} heard you. The owner will now ignore you personally.`, 'gold');
+    toast(`${owner.nicknameLatin} heard you. The owner says hello back, personally.`, 'gold');
     foundEgg('meow', 'Meow detected on the radio');
     if (!peek || peekBusy) return;
     peekBusy = true;

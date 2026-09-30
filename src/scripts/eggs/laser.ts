@@ -1,6 +1,6 @@
 /**
  * Laser pointer ("l"): a red dot glued to the pointer, and the owner's arm
- * reaching up from below the pit wall (his one weakness). The paw lags behind
+ * reaching up from below the pit wall (his favourite training tool). The paw lags behind
  * the dot, the shoulder (a base point under the bottom edge) lags behind the
  * paw, so the arm swings like a real reach. Every so often it swipes — and the dot dodges.
  * rAF only runs while something is still moving; Esc also turns it off.
@@ -133,7 +133,7 @@ export function initLaser(root: HTMLElement): LaserControl | null {
       kick();
       scheduleSwipe();
       sound.play('click');
-      toast('Laser pointer armed. Team Principal focus: gone.', 'red');
+      toast('Laser pointer armed. Team Principal reflexes: engaged.', 'gold');
       foundEgg('laser', 'Laser pointer in the braking zone');
       if (!reduced()) {
         void play(dot, [{ opacity: 0, scale: '3' }, { opacity: 1, scale: '1' }], { duration: 360, easing: 'ease-out' });
@@ -144,7 +144,7 @@ export function initLaser(root: HTMLElement): LaserControl | null {
       cancelAnimationFrame(raf);
       raf = 0;
       layer!.hidden = true;
-      toast('Laser holstered. Focus restored (allegedly).', 'info');
+      toast('Laser holstered. The owner caught it nine times out of nine.', 'info');
     }
   }
 

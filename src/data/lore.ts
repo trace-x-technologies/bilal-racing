@@ -18,7 +18,7 @@
 export const team = {
   name: 'Bilal Racing',
   /** Pun: "Bilala" ≈ cat in Sinhala, and the owner's nickname පූසා means cat. */
-  tagline: 'Nine lives. Zero pit-stop discipline.',
+  tagline: 'Nine lives. World champions.',
   motto: 'Lights out, ears up.',
   founded: 2026,
   base: 'Malabe, Sri Lanka',
@@ -27,7 +27,7 @@ export const team = {
   tyres: 'Purrelli P-Zero Paw',
   /** The team's lucky number — nine lives. Painted on the shark fin of both cars. */
   luckyNumber: 9,
-  championships: 'All of them (in the owner’s dreams)',
+  championships: 'All of them',
 } as const;
 
 /** Team Principal & Owner — the cat who owns the team. */
@@ -47,19 +47,19 @@ export const owner = {
   flag: '🇱🇰',
   /** His racing past (real, owner-approved): the 2021 lockdown run. */
   superLicence: 'Essential-services letter to Sri Lanka Police (2021)',
-  managementStyle: 'Knocks the strategy off the desk, then naps on it',
+  managementStyle: 'Calls the winning strategy before the lights go out',
   office: 'Any cardboard box on the pit wall',
   signatureMove: 'The 3 a.m. Zoomies',
-  weakness: 'Laser pointers in braking zones',
+  superpower: 'Reads a race like a laser dot: always one pounce ahead',
   radioCatchphrase: 'Box, box? Say less. I love a box.',
 } as const;
 
-/** Owner stats — deliberately absurd. */
+/** Owner stats — deliberately absurd, always flattering. */
 export const ownerStats = [
-  { label: 'Lives remaining', value: 9, suffix: '/9', note: 'Unconfirmed. Stewards investigating.' },
-  { label: 'Naps per race weekend', value: 14, suffix: '', note: 'Including one during the anthem.' },
+  { label: 'Lives remaining', value: 9, suffix: '/9', note: 'All nine intact. All nine champions.' },
+  { label: 'World titles', value: 2, suffix: '', note: 'Drivers’ and constructors’. At the first attempt.' },
   { label: 'Boxes sat in', value: 99, suffix: '', note: 'Every time someone says “box, box”.' },
-  { label: 'Reaction time to food', value: 0.09, suffix: ' s', decimals: 2, note: 'To team emails: 9 business days.' },
+  { label: 'Reaction time to food', value: 0.09, suffix: ' s', decimals: 2, note: 'Fastest reflexes in the paddock.' },
 ] as const;
 
 export interface DriverStat {
@@ -87,7 +87,7 @@ export interface Driver {
   bio: string;
   helmet: string;
   signatureMove: string;
-  weakness: string;
+  superpower: string;
   radioCatchphrase: string;
   stats: DriverStat[];
 }
@@ -101,22 +101,22 @@ export const drivers: Driver[] = [
     lastName: 'Dharmadasa',
     code: 'DHA',
     number: 13,
-    numberJoke: 'Unlucky — for everyone behind.',
+    numberJoke: 'Lucky 13. Ask the trophy cabinet.',
     photo: 'isuru-dharmadasa.jpg',
     focal: '40% 35%',
     nationality: 'Sri Lanka',
     flag: '🇱🇰',
     role: 'Race Driver · Car #13',
-    bio: 'Built this entire website instead of doing a single practice lap. Claims the aero numbers are “in the code somewhere”. Races in sunglasses because the future is bright and so is the beach.',
+    bio: 'Built this entire website between pole laps. Writes the aero numbers straight into the code. Races in sunglasses because the future is bright and so is the beach.',
     helmet: 'Matte carbon, mirrored visor, permanent sunglasses underneath',
     signatureMove: 'The late-braking git push',
-    weakness: 'Refactoring mid-corner',
+    superpower: 'Ships the overtake on the first try',
     radioCatchphrase: 'Copy. Deploying the overtake.',
     stats: [
-      { label: 'Websites built instead of practising', value: 1, suffix: '', note: 'You are looking at it.' },
-      { label: 'Top speed', value: 313, suffix: ' km/h', note: 'Downhill. Tailwind. Allegedly.' },
+      { label: 'Websites built between pole laps', value: 1, suffix: '', note: 'You are looking at it.' },
+      { label: 'Top speed', value: 313, suffix: ' km/h', note: 'Fastest car on the grid.' },
       { label: 'Reaction time', value: 0.13, suffix: ' s', decimals: 2, note: 'Number-matched on purpose.' },
-      { label: 'Team orders ignored', value: 13, suffix: '', note: 'So far. The owner slept through all of them.' },
+      { label: 'Podiums', value: 13, suffix: '', note: 'Every one celebrated with tuna.' },
     ],
   },
   {
@@ -132,16 +132,16 @@ export const drivers: Driver[] = [
     nationality: 'Sri Lanka',
     flag: '🇱🇰',
     role: 'Race Driver · Car #17',
-    bio: 'Does pre-season training beside waterfalls with no phone signal, which is also where the race engineer finds #17 on race day. Calm, fast and suspiciously well-hydrated.',
+    bio: 'Does pre-season training beside waterfalls and arrives on race day calm, fast and superbly hydrated. Finds grip where the map shows only jungle.',
     helmet: 'Jungle-green lid with a waterproof visor (tested at 17 waterfalls)',
     signatureMove: 'The switchback overtake',
-    weakness: 'Stopping to take scenic photos on the out-lap',
+    superpower: 'Finds the racing line on any mountain road',
     radioCatchphrase: 'No signal. Going flat out anyway.',
     stats: [
-      { label: 'Waterfalls visited in pre-season', value: 17, suffix: '', note: 'Engineers visited zero.' },
-      { label: 'Top speed', value: 311, suffix: ' km/h', note: '#17 says 313. Telemetry disagrees.' },
+      { label: 'Waterfalls visited in pre-season', value: 17, suffix: '', note: 'Every one a training camp.' },
+      { label: 'Top speed', value: 311, suffix: ' km/h', note: 'Flat out, everywhere.' },
       { label: 'Reaction time', value: 0.17, suffix: ' s', decimals: 2, note: 'Also number-matched. Coincidence.' },
-      { label: 'Overtakes on the teammate', value: 0, suffix: '', note: 'Officially. Unofficially: classified.' },
+      { label: 'Fastest laps', value: 17, suffix: '', note: 'One per waterfall.' },
     ],
   },
 ];
@@ -154,7 +154,7 @@ export const timeline = [
   {
     year: 'Kitten era',
     title: 'Karting on cement floors',
-    body: 'Young Poosa learns car control drifting across freshly mopped floors. Never once lands on his feet. Claims he did.',
+    body: 'Young Poosa learns car control drifting across freshly mopped floors. Lands on his feet every single time.',
     tag: 'Junior formula',
   },
   {
@@ -177,9 +177,9 @@ export const timeline = [
   },
   {
     year: '2027',
-    title: 'Target: the World Championship',
-    body: 'Both drivers want the title. The owner wants a nap. Early projections favour the nap.',
-    tag: 'Prediction',
+    title: 'Champions of the world',
+    body: 'Both titles at the first attempt. #13 and #17 finish one-two, and the trophies live in the owner’s favourite box. Next season’s plan: win them again.',
+    tag: 'World champions',
   },
 ] as const;
 
@@ -188,18 +188,18 @@ export type RadioSpeaker = 'Poosa' | 'Isuru' | 'Yasas';
 /** Team radio — the owner on the pit wall talking to both drivers. */
 export const radioMessages: { from: RadioSpeaker; text: string }[] = [
   { from: 'Poosa', text: 'Isuru, box, box.' },
-  { from: 'Isuru', text: 'Copy. What’s the problem?' },
-  { from: 'Poosa', text: 'No problem. I want to sit in the box.' },
+  { from: 'Isuru', text: 'Copy. Fresh tyres?' },
+  { from: 'Poosa', text: 'Fresh tyres. Fastest stop of the season. And I love this box.' },
   { from: 'Yasas', text: 'Gap to Isuru?' },
-  { from: 'Poosa', text: 'Irrelevant. It’s feeding time.' },
+  { from: 'Poosa', text: 'One second. You are running one-two. Tuna for everyone.' },
   { from: 'Isuru', text: 'Is Plan B ready?' },
-  { from: 'Poosa', text: 'Plan B is fish. Plan B was always fish.' },
-  { from: 'Yasas', text: 'I’ve lost radio signal near the waterfall.' },
-  { from: 'Poosa', text: 'Then how are you— never mind. Push.' },
-  { from: 'Isuru', text: 'Why did the car stop on the racing line?' },
-  { from: 'Poosa', text: 'The sun was exactly there. I made an executive decision.' },
-  { from: 'Yasas', text: 'We are checking.' },
-  { from: 'Poosa', text: 'You are always checking. Nobody checks on ME.' },
+  { from: 'Poosa', text: 'Plan A is working. Plan B is fish. We win either way.' },
+  { from: 'Yasas', text: 'No signal at the waterfall. Going flat out anyway.' },
+  { from: 'Poosa', text: 'That is why you are the fastest. Push.' },
+  { from: 'Isuru', text: 'Where do I find more time?' },
+  { from: 'Poosa', text: 'Follow the sunny patch on the racing line. It is always the fastest way.' },
+  { from: 'Yasas', text: 'P1 and P2. We did it.' },
+  { from: 'Poosa', text: 'Champions of the world. Both of you. Bring me the trophy. It comes in a box.' },
 ];
 
 /**

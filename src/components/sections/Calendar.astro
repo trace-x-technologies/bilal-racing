@@ -77,7 +77,7 @@ const units = [
       title="2026/27 <em>Season</em>"
       id="calendar-title"
       si={sinhala.subaGaman.si}
-      lead="Nine rounds. One island. Two drivers flat out, one owner napping through all of it."
+      lead="Nine rounds. One island. Two drivers flat out, one owner calling every winning move."
     />
 
     <!-- ============ Live countdown ============ -->
@@ -129,7 +129,7 @@ const units = [
             }
           </div>
         </div>
-        <p class="cd__quip" data-cd-quip>Estimated owner arrival on the pit wall: lights out + 9 minutes.</p>
+        <p class="cd__quip" data-cd-quip>Owner on the pit wall: first in, every session.</p>
       </div>
     </div>
 
@@ -1402,9 +1402,9 @@ const units = [
     const mapSlot = root.querySelector<HTMLElement>('[data-cd-map]');
 
     const quips: Record<Mode, string> = {
-      next: 'Estimated owner arrival on the pit wall: lights out + 9 minutes.',
-      live: 'Race in progress. #13 and #17 are on track. The owner has been located: garage, box, napping.',
-      done: 'Season complete. Pre-season testing resumes when the owner wakes up.',
+      next: 'Owner on the pit wall: first in, every session.',
+      live: 'Race in progress. #13 and #17 are on track and out front. The owner is on the pit wall, calling it.',
+      done: 'Season complete. Both titles won. The owner is polishing the trophies.',
     };
 
     function paintTarget(): void {
@@ -1425,7 +1425,7 @@ const units = [
         try {
           const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
           if (tz === 'Asia/Colombo') {
-            localEl.textContent = 'Same time zone as the team. No excuses.';
+            localEl.textContent = 'Same time zone as the team. See you at lights out.';
           } else {
             const local = new Intl.DateTimeFormat(undefined, {
               weekday: 'short',
@@ -1434,7 +1434,7 @@ const units = [
               hour: '2-digit',
               minute: '2-digit',
             }).format(race.start);
-            localEl.textContent = `Your time: ${local}. Set an alarm. The owner won’t.`;
+            localEl.textContent = `Your time: ${local}. Set an alarm. Champions are worth it.`;
           }
           localEl.hidden = false;
         } catch {

@@ -2,7 +2,7 @@
 
 The official (entirely fictional) Formula 1 team owned by a cat: Team Principal & Owner
 **Nirod “පූසා” Rathnaweera**, with drivers **#13 Isuru Dharmadasa (DHA)** and **#17 Yasas Deegala (DEE)**.
-*Nine lives. Zero pit-stop discipline.*
+*Nine lives. World champions.*
 
 A friends-only joke site that doubles as a showcase of modern web tech: Astro 7, a procedural
 Three.js car with an exploded view, GSAP + Lenis scroll choreography, CSS scroll-driven

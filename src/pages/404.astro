@@ -1,20 +1,19 @@
 ---
 /**
- * 404 = DNF. Car #13 (unlucky, and its driver refactors mid-corner) loses it at
- * Turn 4 and spins into the gravel. The driver walks back; the cat who owns the
- * team climbs into the warm cockpit and falls asleep. Pure CSS/SVG animation (no
- * JS needed); "Watch the replay" restarts it. Reduced motion: the aftermath, frozen.
+ * 404 = victory donuts. The page you wanted is out celebrating: car #13 has just
+ * won, spins celebration donuts on the Turn 4 run-off, and the driver heads to the
+ * podium. The cat who owns the team climbs into the warm cockpit and purrs. Pure
+ * CSS/SVG animation (no JS needed); "Watch the replay" restarts it. Reduced motion:
+ * the celebration, frozen.
  */
 import Base from '@/layouts/Base.astro';
 import Nav from '@/components/chrome/Nav.astro';
 import { drivers } from '@/data/lore';
 
 const car = drivers.find((d) => d.id === 'dha') ?? drivers[0]!;
-// "Refactoring mid-corner" → "refactoring mid-corner" for the caption.
-const cause = car.weakness.charAt(0).toLowerCase() + car.weakness.slice(1);
 ---
 
-<Base title="DNF · Bilal Racing" description="This page retired to the garage. Probably napping.">
+<Base title="404 · Bilal Racing" description="This page is out on a victory lap. The champions are this way.">
   <Nav base="/" />
   <main id="main" class="dnf">
     <div class="dnf-bg" aria-hidden="true"></div>
@@ -25,20 +24,20 @@ const cause = car.weakness.charAt(0).toLowerCase() + car.weakness.slice(1);
           Race control · Error 404 · Lap 404
         </p>
         <h1 class="dnf-title t-condensed" id="dnf-title">
-          <span class="dnf-word" aria-hidden="true">DNF</span>
-          <span class="visually-hidden">Did not finish: page not found</span>
+          <span class="dnf-word" aria-hidden="true">P1</span>
+          <span class="visually-hidden">Page not found: it is out on a victory lap</span>
         </h1>
-        <p class="dnf-lead">This page retired to the garage. <span class="t-gold">Probably napping.</span></p>
+        <p class="dnf-lead">This page is out on a victory lap. <span class="t-gold">Champions do that.</span></p>
       </div>
 
       <div class="dnf-foot">
         <div class="timing">
           <p class="timing-row">
-            <span class="tpos t-mono"><span class="visually-hidden">Position </span>P—</span>
+            <span class="tpos t-mono"><span class="visually-hidden">Position </span>P1</span>
             <span class="tnum"><span class="visually-hidden">car </span>{car.number}</span>
             <span class="tcode t-condensed">{car.code}</span>
-            <span class="tgap t-mono">Stopped · T4 gravel</span>
-            <span class="tstat t-condensed">DNF</span>
+            <span class="tgap t-mono">Victory donuts · T4</span>
+            <span class="tstat t-condensed">WIN</span>
           </p>
         </div>
 
@@ -53,15 +52,16 @@ const cause = car.weakness.charAt(0).toLowerCase() + car.weakness.slice(1);
         </div>
 
         <p class="dnf-note t-mono">
-          Race control: car {car.number} beached at Turn 4. {car.firstName} is fine and walking back. The owner has
-          already climbed into the warm cockpit, reports he is “comfy” and will not move until someone brings tuna.
+          Race control: car {car.number} wins and spins victory donuts at Turn 4. {car.firstName} is off to the podium.
+          The owner has already climbed into the warm cockpit, reports he is “comfy” and has ordered tuna for the
+          whole team.
         </p>
       </div>
 
       <figure class="scene-wrap">
         <div class="scene-hud t-mono" aria-hidden="true">
           <span class="live"><i></i> Replay</span>
-          <span>T4 · Gravel trap</span>
+          <span>T4 · Donut zone</span>
         </div>
         <svg
           class="scene"
@@ -72,8 +72,8 @@ const cause = car.weakness.charAt(0).toLowerCase() + car.weakness.slice(1);
           preserveAspectRatio="xMidYMid meet"
         >
           <title id="scene-title">
-            Animation: the cat-eared number {car.number} car spins off the track into the gravel. The driver walks
-            away; the team’s cat owner curls up in the warm cockpit for a nap.
+            Animation: the cat-eared number {car.number} car spins celebration donuts on the run-off after a win. The
+            driver heads to the podium; the team’s cat owner curls up in the warm cockpit and purrs.
           </title>
           <defs>
             <pattern id="gravel" width="18" height="18" patternUnits="userSpaceOnUse">
@@ -94,7 +94,7 @@ const cause = car.weakness.charAt(0).toLowerCase() + car.weakness.slice(1);
             </radialGradient>
           </defs>
 
-          <!-- Gravel trap on the outside of the corner -->
+          <!-- Run-off on the outside of the corner (the donut zone) -->
           <path d="M470 150 C 610 150, 790 210, 800 330 L 800 460 L 380 460 C 420 380, 470 300, 470 150 Z" fill="url(#gravel)"></path>
 
           <!-- Track -->
@@ -159,7 +159,7 @@ const cause = car.weakness.charAt(0).toLowerCase() + car.weakness.slice(1);
           </g>
         </svg>
         <figcaption class="scene-cap t-mono">
-          Onboard replay · car {car.number} ({car.code}) · cause: {cause} · owner status: asleep in the cockpit
+          Onboard replay · car {car.number} ({car.code}) · cause: winning · owner status: purring in the cockpit
         </figcaption>
       </figure>
     </section>
@@ -348,8 +348,8 @@ const cause = car.weakness.charAt(0).toLowerCase() + car.weakness.slice(1);
   .tstat {
     padding: 0.1rem 0.5rem;
     border-radius: 3px;
-    background: var(--c-red);
-    color: #fff;
+    background: var(--c-gold);
+    color: var(--c-carbon);
     font-weight: 900;
     letter-spacing: 0.06em;
   }

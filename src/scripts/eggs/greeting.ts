@@ -32,13 +32,13 @@ export function greet(): void {
     `Owner & Team Principal: ${owner.firstName} “${owner.nicknameLatin}” ${owner.lastName}  ·  pit-wall callsign ${owner.callsign}`,
     `Drivers: ${lineup}`,
     `${team.car} · ${team.engine}`,
-    `${team.motto} The cat owns the team; the drivers just race it.`,
+    `${team.motto} The cat owns the team; the drivers win for it.`,
   ];
   const art = CAT.map((line, i) => line.padEnd(ART_W) + (text[i] ?? '')).join('\n');
 
   console.log(`%c${art}`, `color:${gold};font:600 12px/1.35 ui-monospace,Menlo,Consolas,monospace`);
 
-  // The owner has his own line above; this is everyone he bosses around.
+  // The owner has his own line above; this is the rest of the crew.
   const roster = crew.filter((r) => r.id !== 'principal');
   const open = roster.filter((r) => !r.person);
   const aboard = roster.length - open.length;
@@ -61,9 +61,9 @@ export function greet(): void {
       '  · the word cats say (the owner answers)\n' +
       '  · the thing cats sit in (say it twice on the radio)\n' +
       '  · the letter that comes after K\n' +
-      '  · the owner’s nine lives, spent on the emblem\n' +
-      '  · rev the engine until you run out of lives\n' +
-      '  · doing absolutely nothing for one minute (the owner’s speciality)',
+      '  · the owner’s nine lives, counted on the emblem\n' +
+      '  · rev the engine nine times\n' +
+      '  · doing absolutely nothing for one minute (a champion’s rest)',
     `color:${red};font-weight:700`,
     `color:${mute}`,
   );

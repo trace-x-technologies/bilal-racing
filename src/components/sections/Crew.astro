@@ -90,9 +90,9 @@ const word = (n: number) => WORDS[n] ?? String(n);
 
 /** Small print on open pit-wall seats, keyed by role id (only shown if a seat is vacant). */
 const REQUIREMENTS: Record<string, string> = {
-  engineer: 'Req: 1 × tuna, 0 × excuses',
-  strategist: 'Must survive being ignored on the radio',
-  catering: 'Interviews held during nap time',
+  engineer: 'Req: 1 × tuna, 100% enthusiasm',
+  strategist: 'Must love winning. And fish.',
+  catering: 'Interviews held over tea and tuna',
 };
 
 const withCodes = (r: CrewRole) => {
@@ -152,11 +152,11 @@ const wallNote = openWall
 /** Pit-stop choreography phases; `at` = timeline time the phase starts. */
 const phases = [
   { at: 0, label: 'Crew out', note: 'Sprint from the pit wall' },
-  { at: 2.4, label: 'Car in', note: `#${carNo} hits the marks. Mostly.` },
+  { at: 2.4, label: 'Car in', note: `#${carNo} hits the marks. Every time.` },
   { at: 3.9, label: 'Jacks up', note: 'Car in the air. Owner asks if it came in a box.' },
   { at: 4.3, label: 'Tyres', note: 'Hards off, Purrelli Paw softs on' },
   { at: 5.7, label: 'Release', note: 'Lollipop says GO' },
-  { at: 7.4, label: 'Box, box', note: 'Owner calls it back in. He wants the box.' },
+  { at: 7.4, label: 'Encore', note: 'A stop that good? The owner calls it back in to see it again.' },
 ];
 
 const wheels = [
@@ -207,8 +207,8 @@ const paws = [
 
           <div class="stamp" aria-hidden="true">
             <span class="stamp-top t-mono">Stewards · Official time</span>
-            <span class="stamp-time t-condensed">9.9 s</span>
-            <span class="stamp-note t-mono">Owner wanted the box</span>
+            <span class="stamp-time t-condensed">1.9 s</span>
+            <span class="stamp-note t-mono">New world record</span>
           </div>
 
           <ol class="phases" aria-hidden="true">
@@ -225,12 +225,13 @@ const paws = [
               ))
             }
           </ol>
-          <p class="phase-now t-mono" aria-hidden="true">Stop complete · stewards involved</p>
+          <p class="phase-now t-mono" aria-hidden="true">Stop complete · world record</p>
 
           <p class="visually-hidden">
             Pit stop replay: the crew sprints from the pit wall into formation, car {carNo} rolls into box 9,
-            jacks up, swaps four tyres and is released in 2.9 seconds. Then the team principal radios “box, box”
-            and it reverses straight back in, because he wants to sit in the box. Official time: 9.9 seconds.
+            jacks up, swaps four tyres and is released in 2.9 seconds. The stewards correct the clock: the official
+            time is 1.9 seconds, a new world record. Then the team principal radios “box, box” and calls the car
+            back in, because a stop that good deserves an encore.
           </p>
           <p class="hud-hint t-mono">Hover · tap · Tab a crew member</p>
         </div>
@@ -456,7 +457,7 @@ const paws = [
 
             <p class="radio" aria-hidden="true">
               <span class="radio-from t-mono">{owner.callsign} · Pit wall → #{carNo}</span>
-              <span class="radio-text">{carName}, box, box. I want to sit in the box.</span>
+              <span class="radio-text">{carName}, box, box. That stop was perfect. Do it again.</span>
             </p>
 
             <!-- ================= Crew tokens ================= -->
@@ -2907,7 +2908,7 @@ const paws = [
         if (phaseNow) {
           phaseNow.textContent =
             phase >= phaseItems.length
-              ? 'Stop complete · stewards involved'
+              ? 'Stop complete · world record'
               : `${String(phase + 1).padStart(2, '0')} / ${phaseLabels[phase]}`;
         }
         root.dataset.phase = String(phase);

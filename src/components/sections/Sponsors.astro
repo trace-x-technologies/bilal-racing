@@ -190,7 +190,7 @@ const merchArt: Record<string, string> = {
         <text x="70" y="68">13 DHA</text><text x="130" y="68" text-anchor="end" opacity="0.7">BOX</text>
         <text x="70" y="80">17 DEE</text><text x="130" y="80" text-anchor="end" opacity="0.7">BOX</text>
         <text x="70" y="92" style="fill: var(--c-gold)">RAT</text><text x="130" y="92" text-anchor="end" style="fill: var(--c-gold)">IN BOX</text>
-        <text x="70" y="104" opacity="0.6">DOG</text><text x="130" y="104" text-anchor="end" style="fill: var(--c-red)">DNF</text>
+        <text x="70" y="104" opacity="0.6">RESULT</text><text x="130" y="104" text-anchor="end" style="fill: var(--c-gold)">1–2</text>
       </g>
     </g>`,
   freshener: `
@@ -211,7 +211,7 @@ const merchArt: Record<string, string> = {
     <g class="mc__float">
       <rect x="44" y="18" width="112" height="120" rx="6" fill="rgb(255 255 255 / 0.1)" stroke="rgb(255 255 255 / 0.4)" stroke-width="1.5"/>
       <rect x="44" y="18" width="112" height="22" rx="4" style="fill: var(--c-red)"/>
-      <text x="100" y="33" text-anchor="middle" class="bf-wide" font-size="10" letter-spacing="2" fill="#fff">EVIDENCE</text>
+      <text x="100" y="33" text-anchor="middle" class="bf-wide" font-size="10" letter-spacing="2" fill="#fff">COLLECTOR</text>
       <path d="M44 46 H156" stroke="rgb(255 255 255 / 0.5)" stroke-width="2" stroke-dasharray="4 3"/>
       <g class="bf-mono" font-size="5.4" fill="rgb(255 255 255 / 0.75)">
         <text x="52" y="126">CASE #9 · PRE-SEASON</text>
@@ -233,7 +233,7 @@ const merchArt: Record<string, string> = {
       kicker="Partners"
       title="Official <em>Partners</em>"
       id="sponsors-title"
-      lead="Brands brave enough to be seen on a car with a nap button. All logos are original. All partnerships are imaginary. The gratitude is real."
+      lead="Brands proud to ride with the champions. All logos are original. All partnerships are imaginary. The gratitude is real."
     />
 
     <!-- ============ Sponsor wall ============ -->
@@ -337,7 +337,7 @@ const merchArt: Record<string, string> = {
     <div class="shop" data-shop>
       <header class="shop__head">
         <div>
-          <p class="t-mono shop__kicker" data-reveal="fade">Merchandise · Official · Unavailable</p>
+          <p class="t-mono shop__kicker" data-reveal="fade">Merchandise · Official · Sold out</p>
           <h3 class="shop__title t-condensed" data-reveal="up">Paddock <em>Shop</em></h3>
           <p class="shop__sub" data-reveal="up">Free shipping to any box the owner can fit in. Returns accepted if he is not in it.</p>
         </div>
@@ -631,7 +631,7 @@ const merchArt: Record<string, string> = {
     }
   }
 
-  /* laser pointer: the dot wanders when you hover (the owner's weakness) */
+  /* laser pointer: the dot wanders when you hover (the owner's favourite) */
   .sp :global(.lpl-caret) {
     animation: lpl-caret 1s steps(2, jump-none) infinite paused;
   }
@@ -1404,13 +1404,13 @@ const merchArt: Record<string, string> = {
       let timer = 0;
       btn.addEventListener('click', () => {
         tries += 1;
-        emit('bilal:toast', { message: btn.dataset.toast ?? 'Sold out.', tone: 'red' });
+        emit('bilal:toast', { message: btn.dataset.toast ?? 'Sold out.', tone: 'gold' });
         sound.play('meow');
         if (countEl) countEl.textContent = '0';
         if (triesEl) {
           triesEl.hidden = false;
           triesEl.textContent =
-            tries === 1 ? '· 1 failed attempt' : tries < 9 ? `· ${tries} failed attempts` : `· ${tries} attempts. Seek help.`;
+            tries === 1 ? '· 1 try' : tries < 9 ? `· ${tries} tries` : `· ${tries} tries. A true fan.`;
         }
         if (btn.getAttribute('aria-disabled') === 'true') return;
         btn.setAttribute('aria-disabled', 'true');

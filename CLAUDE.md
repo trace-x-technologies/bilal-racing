@@ -75,8 +75,12 @@ src/scripts/three/               Three.js car model + scenes
   the initial JS small. Images through `PhotoSlot`/astro:assets only.
 
 ## Tone & content
-- Affectionate roast. F1 jargon + cat puns ("box, box" → he loves boxes; nine lives; zoomies;
-  laser pointers; tuna). Punchy, short lines. Never mean about looks, weight, job, family or money.
+- **Positive only.** Bilal Racing is the best team on the grid: reigning world champions, 1–2 in
+  every race, record pit stops. No roasting: nothing that paints the owner, drivers or crew as
+  lazy, late, slow, ignored, clumsy or losing, and no failed results (DNF, DSQ, penalties).
+  Cat habits (boxes, tuna, power naps, zoomies, laser pointers) stay, framed as strengths.
+- F1 jargon + cat puns ("box, box" → he loves boxes; nine lives; zoomies; laser pointers; tuna).
+  Punchy, short lines. Never mean about looks, weight, job, family or money.
 - Facts about real people come **only** from `src/data/lore.ts` / `crew.ts`. Everything else is obviously fictional.
 - Parody sponsor names are fine (Purrelli, Meowcedes-ish). No real brand logos.
 - **Sinhala**: use only the words in `lore.sinhala` (render with `class="t-si" lang="si"`). Never

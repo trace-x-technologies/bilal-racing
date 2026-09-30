@@ -109,7 +109,7 @@ const siMeaning = ((m: string) => {
           {leds.map((c) => <span class={`led led--${c}`} />)}
         </div>
         <p class="ignite-hint t-mono" id="ignite-hint">
-          <span data-rpm>0</span> rpm · <span data-revs>0</span>/9 lives used
+          <span data-rpm>0</span> rpm · rev <span data-revs>0</span>/9
         </p>
       </div>
       <p class="visually-hidden" aria-live="polite" data-ignite-live></p>
@@ -1441,7 +1441,7 @@ const siMeaning = ((m: string) => {
       revs += 1;
       if (revsEl) revsEl.textContent = String(Math.min(revs, 9));
       const lives = Math.min(revs, 9);
-      if (live) live.textContent = `Engine started. Car #${livery.number}’s Purr-brid V6 at full meow. ${lives} of the team’s 9 lives used.`;
+      if (live) live.textContent = `Engine started. Car #${livery.number}’s Purr-brid V6 at full meow. Rev ${lives} of 9.`;
       // Restart the shake/flash on every rev and let only the latest rev end it.
       window.clearTimeout(revTimer);
       hero.classList.remove('is-revving');
@@ -1475,7 +1475,7 @@ const siMeaning = ((m: string) => {
       }
       if (revs === 9) {
         emit('bilal:egg', { id: 'nine-revs', label: 'Revved all nine lives' });
-        emit('bilal:toast', { message: 'Nine revs. All nine team lives used. The owner woke up from his nap to complain.', tone: 'gold' });
+        emit('bilal:toast', { message: 'Nine revs, nine lives, nine cheers. The owner purrs in approval.', tone: 'gold' });
       }
     };
     igniteBtn?.addEventListener('click', ignite);
