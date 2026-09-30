@@ -305,8 +305,13 @@ const units = [
     @media (prefers-reduced-motion: no-preference) {
       .cal__bgword span {
         animation: cal-drift linear both;
+      }
+
+      /* Timeline in its own, more specific rule: the minifier otherwise folds it into the
+         `animation` shorthand, which browsers reject. Drifts sideways while the word
+         itself crosses the viewport. */
+      .cal__bgword > span {
         animation-timeline: view();
-        /* drifts sideways while the word itself crosses the viewport */
         animation-range: cover 0% cover 100%;
       }
     }
@@ -628,6 +633,10 @@ const units = [
   @supports (animation-timeline: scroll()) {
     .cal__progress span {
       animation: cal-progress linear both;
+    }
+
+    /* Timeline in its own, more specific rule (see .cal__bgword). */
+    .cal__progress > span {
       animation-timeline: --cal-x;
     }
   }

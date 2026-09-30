@@ -2,15 +2,17 @@
 /**
  * Screenshot helper for visual QA (dev-only).
  *
- *   node tools/shoot.mjs --url http://localhost:4321/ --selector "#car" --out shots/car
+ *   node tools/shoot.mjs --url http://localhost:4321/ --selector "#car" --out /tmp/bilal-shots/car
  *     [--viewports desktop,mobile] [--scroll 0.5] [--wait 1200] [--full] [--reduced]
  *
- * Writes <out>-<viewport>.png and prints console errors / page errors so broken
- * scripts are caught, not just broken pixels. Exit code 2 if the page logged errors.
+ * Writes <out>-<viewport>.png (default: <os tmpdir>/bilal-shots/page, never inside the
+ * repo) and prints console errors / page errors so broken scripts are caught, not just
+ * broken pixels. Exit code 2 if the page logged errors.
  */
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, cur, i, all) => {
@@ -23,7 +25,7 @@ const args = Object.fromEntries(
 );
 
 const url = args.url ?? 'http://localhost:4321/';
-const out = args.out ?? 'shots/page';
+const out = typeof args.out === 'string' ? args.out : join(tmpdir(), 'bilal-shots', 'page');
 const selector = typeof args.selector === 'string' ? args.selector : null;
 const scrollFrac = args.scroll ? Number(args.scroll) : 0; // 0..1 through the target section
 const wait = args.wait ? Number(args.wait) : 1200;

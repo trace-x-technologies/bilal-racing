@@ -24,6 +24,7 @@ npm-debug.log*
 /photos-inbox/
 /test-results/
 /playwright-report/
+/shots/
 
 # Claude Code: agent worktrees + personal permission overrides (local only)
 /.claude/worktrees/

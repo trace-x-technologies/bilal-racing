@@ -43,7 +43,9 @@ Worker with static assets (`wrangler.jsonc`). It binds the custom domain `bilal.
 (the `tracex.tech` zone must be active in the **same** Cloudflare account — Cloudflare then
 creates the DNS record and certificate) and also serves on `bilal-racing.<account>.workers.dev`.
 
-Requirements: Node ≥ 22.12 (`nvm use` reads `.nvmrc`) and a Cloudflare account that owns `tracex.tech`.
+Requirements: Node ≥ 22.12 (`package.json` engines; `.nvmrc` says `22`, so `nvm install` gets the
+latest 22.x — check `node -v` if `nvm use` picks an older one) and a Cloudflare account that owns
+`tracex.tech`.
 
 ```bash
 git fetch origin && git switch main && git pull
@@ -67,8 +69,10 @@ Roll back: `npx wrangler deployments list`, then `npx wrangler rollback <version
 Using Claude Code locally? The repo ships a `deploy` skill (`.claude/skills/deploy/`) with this
 exact procedure and a project `.claude/settings.json` that pre-approves build, check,
 `npm run deploy:dry`, `whoami`, `deployments`/`versions list` and the exact live-check `curl`s,
-and asks before any `npm run deploy`, `wrangler deploy` / `versions deploy` / `triggers deploy`,
-`rollback` or `delete`. Personal overrides go in `.claude/settings.local.json` (git-ignored).
+and forces a prompt for the publishing commands (`npm run deploy`, `wrangler deploy` /
+`versions deploy|upload` / `triggers deploy` / `rollback` / `delete` / `secret` / `pages`, via
+`npx` or a global `wrangler`). Anything else that isn't pre-approved still prompts in the default
+permission mode. Personal overrides go in `.claude/settings.local.json` (git-ignored).
 
 Prefer Git-connected auto-deploys instead? Cloudflare dashboard → Workers & Pages → Import a
 repository → `trace-x-technologies/bilal-racing`, build `npm run build`, deploy

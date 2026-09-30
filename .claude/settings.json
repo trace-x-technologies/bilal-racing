@@ -29,6 +29,7 @@
     "ask": [
       "Bash(npm run deploy)",
       "Bash(npm run deploy *)",
+      "Bash(npm run-script deploy *)",
       "Bash(npx wrangler deploy)",
       "Bash(npx wrangler deploy *)",
       "Bash(npx wrangler versions deploy *)",
@@ -38,10 +39,24 @@
       "Bash(npx wrangler rollback *)",
       "Bash(npx wrangler delete)",
       "Bash(npx wrangler delete *)",
+      "Bash(npx wrangler secret *)",
+      "Bash(npx wrangler pages *)",
+      "Bash(wrangler deploy)",
       "Bash(wrangler deploy *)",
       "Bash(wrangler versions deploy *)",
+      "Bash(wrangler versions upload *)",
+      "Bash(wrangler triggers deploy *)",
+      "Bash(wrangler rollback)",
       "Bash(wrangler rollback *)",
-      "Bash(wrangler delete *)"
+      "Bash(wrangler delete)",
+      "Bash(wrangler delete *)",
+      "Bash(wrangler secret *)",
+      "Bash(wrangler pages *)",
+      "Bash(npx -y wrangler *)",
+      "Bash(npx wrangler@* *)",
+      "Bash(npm exec wrangler *)",
+      "Bash(./node_modules/.bin/wrangler *)",
+      "Bash(node_modules/.bin/wrangler *)"
     ]
   }
 }

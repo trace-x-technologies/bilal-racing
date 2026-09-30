@@ -781,12 +781,20 @@ const track =
     @supports (animation-timeline: view()) {
       .rail-fill {
         animation: career-fill linear both;
-        animation-timeline: view(block 45% 45%);
-        animation-range: cover 0% cover 100%;
       }
 
       .lap-card::before {
         animation: career-node linear both;
+      }
+
+      /* Timeline in its own, more specific rule: the minifier otherwise folds it into the
+         `animation` shorthand, which browsers reject. */
+      .rail-line > .rail-fill {
+        animation-timeline: view(block 45% 45%);
+        animation-range: cover 0% cover 100%;
+      }
+
+      .career .lap-card::before {
         animation-timeline: --career-lap;
         animation-range: cover 0% cover 12%;
       }
@@ -798,6 +806,9 @@ const track =
       @supports (animation-timeline: view()) {
         .c-trace-1 {
           animation: career-draw linear both;
+        }
+
+        .career .c-trace-1 {
           animation-timeline: --career-circuit;
           animation-range: entry 20% cover 60%;
         }

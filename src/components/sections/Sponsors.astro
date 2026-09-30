@@ -676,6 +676,11 @@ const merchArt: Record<string, string> = {
     @media (prefers-reduced-motion: no-preference) {
       .sp__badge svg {
         animation: sp-depth linear both;
+      }
+
+      /* Timeline in its own, more specific rule: the minifier otherwise folds it into the
+         `animation` shorthand, which browsers reject. */
+      .wall__item .sp__badge svg {
         animation-timeline: view();
         animation-range: cover;
       }

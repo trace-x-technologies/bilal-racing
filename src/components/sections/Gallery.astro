@@ -53,17 +53,29 @@ const LABEL_FALLBACK = { zone: 'Paddock', stamp: 'Verified' };
 const ACCENTS = ['gold', 'saffron', 'teal', 'purple'];
 const TILTS = [-1.8, 1.3, 2, -1.4, 2.2, -1.1, 0.8, -2.2];
 
+/**
+ * Read a photo's size from an untracked copy. Any property read on the imported
+ * ImageMetadata marks the original as used, and Astro then ships it untouched
+ * (metadata and all) next to the optimised AVIF/WebP. `clone` isn't tracked.
+ */
+const sizeOf = (src: ImageMetadata) => {
+  const { width, height } = (src as ImageMetadata & { clone?: ImageMetadata }).clone ?? src;
+  return { width, height };
+};
+
 /** Never ask sharp to upscale: clamp each width to the original, dedupe. */
-const fit = (widths: number[], src: ImageMetadata | null) =>
-  src ? [...new Set(widths.map((w) => Math.min(w, src.width)))].sort((a, b) => a - b) : widths;
+const fit = (widths: number[], src: ImageMetadata | null) => {
+  if (!src) return widths;
+  const max = sizeOf(src).width;
+  return [...new Set(widths.map((w) => Math.min(w, max)))].sort((a, b) => a - b);
+};
 
 const total = gallery.length;
 const pad = (n: number) => String(n).padStart(2, '0');
 
 const items = gallery.map((p, i) => {
   const src = resolvePhoto(p).src;
-  const w = src?.width ?? 4;
-  const h = src?.height ?? 3;
+  const { width: w, height: h } = src ? sizeOf(src) : { width: 4, height: 3 };
   const ar = w / h;
   const portrait = ar < 0.95;
   const kind: Kind = portrait ? 'pass' : 'polaroid';

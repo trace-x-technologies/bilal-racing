@@ -581,6 +581,11 @@ const buildDriver = drivers.find((d) => d.id === 'dha');
     @media (prefers-reduced-motion: no-preference) {
       .doc {
         animation: doc-settle linear both;
+      }
+
+      /* Timeline in its own, more specific rule: the minifier otherwise folds it into the
+         `animation` shorthand, which browsers reject. */
+      .doc-wrap > .doc {
         animation-timeline: view();
         animation-range: entry 0% entry 70%;
       }

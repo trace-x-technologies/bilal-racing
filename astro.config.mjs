@@ -1,7 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 // @ts-ignore -- Node built-in, build time only; the project has no @types/node (no new deps).
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir, unlink } from 'node:fs/promises';
 
 /**
  * Astro emits one <script type="module"> per component script, and the shared
@@ -51,6 +51,57 @@ const modulePreload = {
   },
 };
 
+/**
+ * Photo privacy safety net. astro:assets also ships an untouched copy of a source
+ * photo (metadata and all) whenever code reads a property of its ImageMetadata
+ * (see sizeOf() in Gallery.astro). After the build, delete any dist/_astro file that
+ * is byte-identical to a photo in src/assets/photos and that no page references.
+ */
+/** @type {URL | undefined} */
+let projectRoot;
+/** @type {import('astro').AstroIntegration} */
+const dropPhotoOriginals = {
+  name: 'bilal-drop-photo-originals',
+  hooks: {
+    'astro:config:done': ({ config }) => {
+      projectRoot = config.root;
+    },
+    'astro:build:done': async ({ dir, logger }) => {
+      if (!projectRoot) return;
+      const IMAGE = /\.(jpe?g|png|webp|avif)$/i;
+      const photosDir = new URL('src/assets/photos/', projectRoot);
+      /** @type {Map<number, any[]>} source photo bytes, bucketed by size */
+      const sources = new Map();
+      for (const rel of await readdir(photosDir, { recursive: true })) {
+        if (!IMAGE.test(rel)) continue;
+        const buf = await readFile(new URL(rel, photosDir));
+        sources.set(buf.length, [...(sources.get(buf.length) ?? []), buf]);
+      }
+      const astroDir = new URL('_astro/', dir);
+      /** @type {string[]} */
+      const originals = [];
+      for (const name of await readdir(astroDir)) {
+        if (!IMAGE.test(name)) continue;
+        const buf = await readFile(new URL(name, astroDir));
+        if ((sources.get(buf.length) ?? []).some((s) => s.equals(buf))) originals.push(name);
+      }
+      if (!originals.length) return;
+      let text = '';
+      for (const rel of await readdir(dir, { recursive: true })) {
+        if (/\.(html|css|js|json|xml|txt)$/.test(rel)) text += await readFile(new URL(rel, dir), 'utf8');
+      }
+      for (const name of originals) {
+        if (text.includes(name)) {
+          logger.warn(`original photo ${name} is referenced by a page; kept (it may carry metadata)`);
+          continue;
+        }
+        await unlink(new URL(name, astroDir));
+        logger.info(`removed unreferenced original photo _astro/${name}`);
+      }
+    },
+  },
+};
+
 // Static site, deployed to Cloudflare Workers (static assets) — see wrangler.jsonc.
 export default defineConfig({
   site: 'https://bilal.tracex.tech',
@@ -59,8 +110,9 @@ export default defineConfig({
   build: {
     inlineStylesheets: 'auto',
   },
-  integrations: [modulePreload],
-  // Photos are re-encoded by sharp via astro:assets, which strips EXIF (incl. GPS).
+  integrations: [modulePreload, dropPhotoOriginals],
+  // Photos are re-encoded by sharp via astro:assets, which strips EXIF (incl. GPS);
+  // dropPhotoOriginals removes any untouched source copy the build would also ship.
   devToolbar: { enabled: false },
   vite: {
     build: {
