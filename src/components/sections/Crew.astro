@@ -1,0 +1,2958 @@
+---
+/**
+ * 04 · The Crew — top-down pit-box formation + scroll-scrubbed pit stop,
+ * then the pit-wall cards and an accessible crew sheet.
+ *
+ * Line-up: the pit stop is car #13's (lore `drivers`); the cat who owns the team
+ * (lore `owner`, callsign RAT) runs the pit wall and calls the car straight back in
+ * because he wants to sit in the box. Every crew member is a real friend with a
+ * face-cropped avatar (data/crew.ts) — tokens and cards show their photos.
+ *
+ * Markup renders the FINAL state (crew in formation, car in the box, timer
+ * stopped, stewards' stamp down) so no-JS and reduced-motion visitors get a
+ * finished composition. With motion, a GSAP timeline scrubbed by the tall
+ * `.crew-scrolly` wrapper rewinds everything to the empty box and replays it.
+ */
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import PhotoSlot from '@/components/ui/PhotoSlot.astro';
+import Emblem from '@/components/ui/Emblem.astro';
+import { crew, type CrewRole } from '@/data/crew';
+import { sinhala, owner, drivers } from '@/data/lore';
+import { resolvePhoto, type PhotoEntry } from '@/data/photos';
+
+/** F1-timing-style three-letter role codes (open-seat fallback + crew sheet). CAT = catering, obviously. */
+const CODES: Record<string, string> = {
+  lollipop: 'REL',
+  'front-jack': 'FJK',
+  'gun-fl': 'WFL',
+  'gun-fr': 'WFR',
+  stabiliser: 'STB',
+  'gun-rl': 'WRL',
+  'gun-rr': 'WRR',
+  'rear-jack': 'RJK',
+  principal: 'TPR',
+  engineer: 'ENG',
+  strategist: 'STR',
+  catering: 'CAT',
+};
+
+const roleCodeFor = (r: CrewRole) =>
+  CODES[r.id] ??
+  r.role
+    .replace(/[^A-Za-z ]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0] ?? '')
+    .join('')
+    .slice(0, 3)
+    .toUpperCase();
+
+const initials = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+/** Only hand PhotoSlot a photo that actually exists (tokens are buttons: no placeholder <div> inside). */
+const photoFor = (r: CrewRole): PhotoEntry | null => {
+  if (!r.person?.photo) return null;
+  const entry: PhotoEntry = {
+    id: `crew-${r.id}`,
+    folder: 'crew',
+    file: r.person.photo,
+    alt: `${r.person.name}, ${r.role}`,
+    caption: r.duty,
+    // 480×480 face crops, centred: square frames show the whole crop.
+    focal: '50% 45%',
+  };
+  return resolvePhoto(entry).src ? entry : null;
+};
+
+/**
+ * Nickname as HTML: "පූසා · Poosa" → the Sinhala part wrapped in lang="si" + .t-si
+ * (text is escaped; the words themselves come straight from data/crew.ts).
+ */
+const SINHALA = /[඀-෿]/;
+const esc = (s: string) =>
+  s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+const nickHtml = (nick?: string) =>
+  (nick ?? '')
+    .split(/\s*·\s*/)
+    .filter(Boolean)
+    .map((t) => (SINHALA.test(t) ? `<span class="t-si" lang="si">${esc(t)}</span>` : esc(t)))
+    .join(' · ');
+
+const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+const word = (n: number) => WORDS[n] ?? String(n);
+
+/** Small print on open pit-wall seats, keyed by role id (only shown if a seat is vacant). */
+const REQUIREMENTS: Record<string, string> = {
+  engineer: 'Req: 1 × tuna, 0 × excuses',
+  strategist: 'Must survive being ignored on the radio',
+  catering: 'Interviews held during nap time',
+};
+
+const withCodes = (r: CrewRole) => {
+  const roleCode = roleCodeFor(r);
+  return {
+    ...r,
+    roleCode,
+    /** Token / card tag: the person's own code, or the role code for an open seat. */
+    code: r.person?.code ?? roleCode,
+    photo: photoFor(r),
+    nickHtml: nickHtml(r.person?.nickname),
+  };
+};
+
+const pitcrew = crew
+  .filter((r) => r.group === 'pitcrew' && r.slot)
+  .map((r, i) => {
+    const slot = r.slot ?? { x: 50, y: 50 };
+    return {
+      ...withCodes(r),
+      slot,
+      i,
+      /** Stands behind the car → can only run in once the car has stopped. */
+      late: slot.y > 85,
+      gun: r.id.startsWith('gun'),
+      side: slot.x < 50 ? 'l' : slot.x > 50 ? 'r' : 'c',
+    };
+  });
+
+const pitwall = crew
+  .filter((r) => r.group === 'pitwall')
+  .map((r, i) => ({ ...withCodes(r), i, isOwner: r.id === 'principal' }));
+
+const openCrew = pitcrew.filter((r) => !r.person).length;
+const openWall = pitwall.filter((r) => !r.person).length;
+const openSeats = openCrew + openWall;
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** The car in the box: #13 (falls back gracefully if the line-up changes). */
+const car = drivers.find((d) => d.id === 'dha') ?? drivers[0];
+const carNo = car ? String(car.number) : String(9);
+const carCode = car?.code ?? 'BR';
+const carName = car?.firstName ?? 'Driver';
+
+const lead = [
+  `${word(pitcrew.length)} on the car, ${word(pitwall.length).toLowerCase()} on the pit wall — one of them is the cat who owns the team.`,
+  openSeats
+    ? `${word(openSeats)} ${openSeats === 1 ? 'seat' : 'seats'} still open — apply with snacks.`
+    : 'Every seat filled (the owner sat in each one first, to check).',
+  `Scroll to run car #${carNo}’s stop; hover, tap or Tab onto anyone for the job description.`,
+].join(' ');
+
+const wallNote = openWall
+  ? `${word(openWall)} of ${word(pitwall.length).toLowerCase()} seats open — the stewards have been notified.`
+  : `${word(pitwall.length)} seats, one cardboard box. Guess who sits in the box.`;
+
+/** Pit-stop choreography phases; `at` = timeline time the phase starts. */
+const phases = [
+  { at: 0, label: 'Crew out', note: 'Sprint from the pit wall' },
+  { at: 2.4, label: 'Car in', note: `#${carNo} hits the marks. Mostly.` },
+  { at: 3.9, label: 'Jacks up', note: 'Car in the air. Owner asks if it came in a box.' },
+  { at: 4.3, label: 'Tyres', note: 'Hards off, Purrelli Paw softs on' },
+  { at: 5.7, label: 'Release', note: 'Lollipop says GO' },
+  { at: 7.4, label: 'Box, box', note: 'Owner calls it back in. He wants the box.' },
+];
+
+const wheels = [
+  { pos: 'fl', side: 'l', x: 16, y: 50, w: 30, h: 62 },
+  { pos: 'fr', side: 'r', x: 154, y: 50, w: 30, h: 62 },
+  { pos: 'rl', side: 'l', x: 10, y: 352, w: 38, h: 78 },
+  { pos: 'rr', side: 'r', x: 152, y: 352, w: 38, h: 78 },
+];
+const paws = [
+  { x: 58, y: 392, r: -8 },
+  { x: 70, y: 372, r: 6 },
+  { x: 60, y: 350, r: -10 },
+  { x: 73, y: 330, r: 4 },
+  { x: 63, y: 308, r: -6 },
+];
+---
+
+<section class="section crew" id="crew" aria-labelledby="crew-title" data-phase="done" data-timer="corrected">
+  <div class="container">
+    <SectionHeading
+      index="04"
+      kicker="The Crew"
+      id="crew-title"
+      title="Pit crew <em>formation</em>"
+      si={sinhala.machan.si}
+      lead={lead}
+    />
+  </div>
+
+  <h3 class="visually-hidden">Pit stop formation</h3>
+  <div class="crew-scrolly">
+    <div class="crew-sticky">
+      <div class="crew-rig container">
+        <!-- ================= HUD ================= -->
+        <div class="hud">
+          <p class="hud-label t-mono">
+            <span class="live-dot loop" aria-hidden="true"></span>
+            <span>Box 9 · Car {carNo} {carCode} · Lap 9</span>
+          </p>
+
+          <div class="timer" aria-hidden="true">
+            <span class="timer-digits t-condensed"
+              ><span class="timer-val">2.9</span><span class="timer-unit">s</span></span
+            >
+            <span class="timer-strike"></span>
+            <span class="pb-chip t-mono">Purrsonal best</span>
+          </div>
+
+          <div class="stamp" aria-hidden="true">
+            <span class="stamp-top t-mono">Stewards · Official time</span>
+            <span class="stamp-time t-condensed">9.9 s</span>
+            <span class="stamp-note t-mono">Owner wanted the box</span>
+          </div>
+
+          <ol class="phases" aria-hidden="true">
+            {
+              phases.map((p, i) => (
+                <li data-at={p.at} data-state="done">
+                  <span class="ph-i t-mono">{pad(i + 1)}</span>
+                  <span class="ph-text">
+                    <span class="ph-label">{p.label}</span>
+                    <span class="ph-note">{p.note}</span>
+                  </span>
+                  <span class="ph-tick" />
+                </li>
+              ))
+            }
+          </ol>
+          <p class="phase-now t-mono" aria-hidden="true">Stop complete · stewards involved</p>
+
+          <p class="visually-hidden">
+            Pit stop replay: the crew sprints from the pit wall into formation, car {carNo} rolls into box 9,
+            jacks up, swaps four tyres and is released in 2.9 seconds. Then the team principal radios “box, box”
+            and it reverses straight back in, because he wants to sit in the box. Official time: 9.9 seconds.
+          </p>
+          <p class="hud-hint t-mono">Hover · tap · Tab a crew member</p>
+        </div>
+
+        <!-- ================= Stage ================= -->
+        <div class="stage-wrap">
+          <div class="stage">
+            <svg class="ground" viewBox="0 0 300 400" aria-hidden="true" focusable="false">
+              <defs>
+                <pattern id="crw-kerb" width="5" height="16" patternUnits="userSpaceOnUse">
+                  <rect width="5" height="8" style="fill: var(--c-maroon)"></rect>
+                  <rect y="8" width="5" height="8" style="fill: var(--c-chalk)"></rect>
+                </pattern>
+                <pattern id="crw-hazard" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <rect width="5" height="10" style="fill: var(--c-gold)"></rect>
+                  <rect x="5" width="5" height="10" style="fill: var(--c-carbon)"></rect>
+                </pattern>
+                <g id="crw-paw">
+                  <ellipse cx="0" cy="3" rx="3.4" ry="2.8"></ellipse>
+                  <circle cx="-3.6" cy="-2" r="1.3"></circle>
+                  <circle cx="-1.3" cy="-4.2" r="1.3"></circle>
+                  <circle cx="1.3" cy="-4.2" r="1.3"></circle>
+                  <circle cx="3.6" cy="-2" r="1.3"></circle>
+                </g>
+              </defs>
+
+              <!-- pit wall + kerb -->
+              <rect class="g-wall" x="0" y="0" width="14" height="400"></rect>
+              <rect x="14" y="0" width="4" height="400" fill="url(#crw-kerb)"></rect>
+              <text class="g-label" x="8" y="200" transform="rotate(-90 8 200)">Pit wall · Bilal Racing</text>
+
+              <!-- fast lane -->
+              <path class="g-skid" d="M28 400 C 34 300 22 210 34 110 S 30 20 26 0"></path>
+              <path class="g-skid thin" d="M36 400 C 40 320 30 240 38 150 S 36 40 34 0"></path>
+              <line class="g-fastline" x1="44" y1="0" x2="44" y2="400"></line>
+              <g class="g-chev">
+                <path d="M24 244 l7 -6 l7 6"></path>
+                <path d="M24 254 l7 -6 l7 6"></path>
+                <path d="M24 88 l7 -6 l7 6"></path>
+                <path d="M24 98 l7 -6 l7 6"></path>
+              </g>
+              <circle class="g-limit" cx="31" cy="170" r="10"></circle>
+              <text class="g-limit-t" x="31" y="173.6">80</text>
+
+              <!-- garage -->
+              <rect class="g-garage" x="266" y="0" width="34" height="400"></rect>
+              <rect x="260" y="0" width="6" height="400" fill="url(#crw-hazard)" opacity="0.8"></rect>
+              <text class="g-label" x="286" y="200" transform="rotate(90 286 200)">Garage 9 · no dogs</text>
+              <g class="g-tyres">
+                <circle cx="283" cy="48" r="11"></circle>
+                <circle cx="283" cy="48" r="5"></circle>
+                <circle cx="283" cy="74" r="11"></circle>
+                <circle cx="283" cy="74" r="5"></circle>
+                <circle cx="283" cy="326" r="11"></circle>
+                <circle cx="283" cy="326" r="5"></circle>
+                <circle cx="283" cy="352" r="11"></circle>
+                <circle cx="283" cy="352" r="5"></circle>
+              </g>
+
+              <!-- painted team name + box -->
+              <text class="g-name" x="244" y="226" transform="rotate(90 244 226)">BILAL</text>
+              <rect class="g-box" x="72" y="62" width="156" height="324" rx="6"></rect>
+              <g class="g-marks">
+                <rect x="96" y="104" width="3" height="22"></rect>
+                <rect x="201" y="104" width="3" height="22"></rect>
+                <rect x="94" y="330" width="3" height="24"></rect>
+                <rect x="203" y="330" width="3" height="24"></rect>
+              </g>
+              <text class="g-boxno" x="104" y="56">BOX 9</text>
+
+              <!-- the owner's paw prints (he inspects every box personally, straight across the fast lane) -->
+              <g class="g-paws">
+                {paws.map((p) => <use href="#crw-paw" transform={`translate(${p.x} ${p.y}) rotate(${p.r})`} />)}
+              </g>
+
+              <!-- tape marks where the crew should stand -->
+              <g class="g-slots">
+                {
+                  pitcrew.map((r) => (
+                    <circle cx={r.slot.x * 3} cy={r.slot.y * 4} r="12" />
+                  ))
+                }
+              </g>
+            </svg>
+
+            <div class="speed" aria-hidden="true">
+              <i style="--sx: 34%; --sh: 38%; --st: 10%"></i>
+              <i style="--sx: 41%; --sh: 52%; --st: 22%"></i>
+              <i style="--sx: 50%; --sh: 60%; --st: 4%"></i>
+              <i style="--sx: 58%; --sh: 44%; --st: 30%"></i>
+              <i style="--sx: 66%; --sh: 36%; --st: 14%"></i>
+            </div>
+
+            <!-- ================= The car (top-down, nose up) ================= -->
+            <div class="car-rig" aria-hidden="true">
+              <div class="car-shadow"></div>
+              <div class="car-lift">
+                <svg class="car" viewBox="0 0 200 500" focusable="false">
+                  <defs>
+                    <linearGradient id="crw-wing" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0" style="stop-color: var(--c-maroon)"></stop>
+                      <stop offset="0.5" style="stop-color: var(--c-saffron)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-gold)"></stop>
+                    </linearGradient>
+                    <linearGradient id="crw-nose" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" style="stop-color: var(--c-gold)"></stop>
+                      <stop offset="0.55" style="stop-color: var(--c-saffron)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-maroon)"></stop>
+                    </linearGradient>
+                    <linearGradient id="crw-carbon" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0" style="stop-color: var(--c-carbon)"></stop>
+                      <stop offset="0.5" style="stop-color: var(--c-steel)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-carbon)"></stop>
+                    </linearGradient>
+                    <linearGradient id="crw-stripe" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" style="stop-color: var(--c-gold)"></stop>
+                      <stop offset="0.5" style="stop-color: var(--c-saffron)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-maroon)"></stop>
+                    </linearGradient>
+                    <linearGradient id="crw-tyre" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0" style="stop-color: var(--c-carbon)"></stop>
+                      <stop offset="0.5" style="stop-color: var(--c-graphite)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-carbon)"></stop>
+                    </linearGradient>
+                    <!-- #13's lid: matte carbon, mirrored visor (sunglasses underneath, obviously) -->
+                    <radialGradient id="crw-helmet" cx="0.35" cy="0.3" r="0.8">
+                      <stop offset="0" style="stop-color: var(--c-steel)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-carbon)"></stop>
+                    </radialGradient>
+                    <linearGradient id="crw-visor" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0" style="stop-color: var(--c-teal)"></stop>
+                      <stop offset="0.5" style="stop-color: var(--c-purple)"></stop>
+                      <stop offset="1" style="stop-color: var(--c-gold)"></stop>
+                    </linearGradient>
+                    <path
+                      id="crw-swoosh"
+                      d="M57 222 C 60 202 70 190 80 186 L84 196 C 73 204 67 216 65 236 L63 318 C 63 334 69 348 77 358 L71 363 C 61 351 55 335 55 318 Z"
+                    ></path>
+                  </defs>
+
+                  <!-- suspension -->
+                  <g class="c-arms">
+                    <path d="M44 70 L88 62 M44 96 L86 112 M156 70 L112 62 M156 96 L114 112"></path>
+                    <path d="M46 374 L72 350 M46 410 L76 398 M154 374 L128 350 M154 410 L124 398"></path>
+                  </g>
+
+                  <!-- wheels: old (hard, worn) come off, new (Purrelli Paw soft) go on -->
+                  {
+                    wheels.map((w) => (
+                      <g class="wheel w-old" data-side={w.side}>
+                        <rect x={w.x} y={w.y} width={w.w} height={w.h} rx="8" fill="url(#crw-tyre)" />
+                        <rect class="band band-old" x={w.x + 1.5} y={w.y + 1.5} width={w.w - 3} height={w.h - 3} rx="7" />
+                        <path class="grain" d={`M${w.x + 8} ${w.y + 14} h6 M${w.x + w.w - 14} ${w.y + 30} h6 M${w.x + 10} ${w.y + w.h - 16} h5`} />
+                      </g>
+                    ))
+                  }
+                  {
+                    wheels.map((w) => (
+                      <g class="wheel w-new" data-side={w.side}>
+                        <rect x={w.x} y={w.y} width={w.w} height={w.h} rx="8" fill="url(#crw-tyre)" />
+                        <rect class="band band-new" x={w.x + 1.5} y={w.y + 1.5} width={w.w - 3} height={w.h - 3} rx="7" />
+                      </g>
+                    ))
+                  }
+
+                  <!-- front wing -->
+                  <path d="M14 30 Q100 12 186 30 L186 44 Q100 30 14 44 Z" fill="url(#crw-wing)"></path>
+                  <path class="c-flap" d="M20 39 Q100 25 180 39"></path>
+                  <rect class="f-carbon" x="9" y="22" width="7" height="27" rx="2"></rect>
+                  <rect class="f-carbon" x="184" y="22" width="7" height="27" rx="2"></rect>
+
+                  <!-- nose + whiskers (team livery) + car number -->
+                  <path d="M93 20 Q100 8 107 20 L117 150 Q100 156 83 150 Z" fill="url(#crw-nose)"></path>
+                  <g class="c-whiskers">
+                    <path d="M90 64 L60 55 M90 72 L57 72 M90 80 L60 89 M110 64 L140 55 M110 72 L143 72 M110 80 L140 89"></path>
+                  </g>
+                  <text class="c-nosenum" x="100" y="130">{carNo}</text>
+
+                  <!-- monocoque + sidepods -->
+                  <path d="M83 148 L117 148 L124 190 L76 190 Z" fill="url(#crw-carbon)"></path>
+                  <path
+                    d="M76 176 C 56 182 50 206 50 236 L52 318 C 54 346 70 366 82 372 L118 372 C 130 366 146 346 148 318 L150 236 C 150 206 144 182 124 176 Z"
+                    fill="url(#crw-carbon)"></path>
+                  <use href="#crw-swoosh" fill="url(#crw-stripe)"></use>
+                  <use href="#crw-swoosh" fill="url(#crw-stripe)" transform="matrix(-1 0 0 1 200 0)"></use>
+
+                  <!-- engine cover, gearbox -->
+                  <path class="f-graphite" d="M92 246 L108 246 L106 420 L94 420 Z"></path>
+                  <path class="f-graphite" d="M88 398 L112 398 L116 446 L84 446 Z"></path>
+
+                  <!-- cockpit, halo, driver's helmet -->
+                  <path class="f-carbon" d="M87 170 Q100 162 113 170 L111 226 Q100 232 89 226 Z"></path>
+                  <circle class="c-helmet" cx="100" cy="204" r="11" fill="url(#crw-helmet)"></circle>
+                  <path class="c-visor" d="M91.5 199 Q100 192.5 108.5 199"></path>
+                  <path class="c-halo" d="M86 208 C 86 182 92 173 100 173 C 108 173 114 182 114 208"></path>
+                  <path class="c-halo" d="M100 173 V 160"></path>
+
+                  <!-- airbox with factory-fitted cat ears -->
+                  <path class="f-graphite" d="M89 226 Q100 219 111 226 L108 252 L92 252 Z"></path>
+                  <path class="c-ear" d="M93 238 L70 204 L99 226 Z"></path>
+                  <path class="c-ear" d="M107 238 L130 204 L101 226 Z"></path>
+                  <path class="f-maroon" d="M91.5 232.5 L77 212 L96 226.5 Z M108.5 232.5 L123 212 L104 226.5 Z"></path>
+
+                  <!-- race number + the driver's timing code -->
+                  <circle class="c-roundel" cx="100" cy="300" r="19"></circle>
+                  <text class="c-num" x="100" y="311">{carNo}</text>
+                  <text class="c-code" x="100" y="342">{carCode}</text>
+
+                  <!-- rear wing + rain light -->
+                  <rect x="34" y="444" width="132" height="24" rx="3" fill="url(#crw-wing)"></rect>
+                  <rect class="f-carbon" x="29" y="438" width="8" height="34" rx="2"></rect>
+                  <rect class="f-carbon" x="163" y="438" width="8" height="34" rx="2"></rect>
+                  <text class="c-wingtext" x="100" y="461">BILAL</text>
+                  <rect class="c-rain" x="94" y="470" width="12" height="5" rx="1"></rect>
+                </svg>
+                <!-- the tail. Do not touch the tail. (own element so its sway stays on the compositor) -->
+                <svg class="c-tail loop" viewBox="92 466 62 34" focusable="false">
+                  <path class="c-tail-base" d="M100 476 C 100 489 115 494 125 486 C 135 478 148 481 146 494"></path>
+                  <path class="c-tail-stripe" d="M100 476 C 100 489 115 494 125 486 C 135 478 148 481 146 494"></path>
+                </svg>
+              </div>
+            </div>
+
+            <p class="radio" aria-hidden="true">
+              <span class="radio-from t-mono">{owner.callsign} · Pit wall → #{carNo}</span>
+              <span class="radio-text">{carName}, box, box. I want to sit in the box.</span>
+            </p>
+
+            <!-- ================= Crew tokens ================= -->
+            <ul class="formation" role="list" aria-label={`Pit crew: ${pitcrew.length} roles`}>
+              {
+                pitcrew.map((r) => (
+                  <li
+                    class="tok-slot"
+                    data-id={r.id}
+                    data-x={r.slot.x}
+                    data-y={r.slot.y}
+                    data-late={r.late ? '' : undefined}
+                    style={`--x: ${r.slot.x}; --y: ${r.slot.y}; --i: ${r.i}`}
+                  >
+                    <button
+                      type="button"
+                      class="tok"
+                      popovertarget={`crew-pop-${r.id}`}
+                      data-vacant={r.person ? undefined : ''}
+                      data-crew-token
+                    >
+                      <span class="tok-body" aria-hidden="true">
+                        <span class="tok-shoulders" />
+                        <span class="tok-helmet">
+                          {r.photo ? (
+                            <PhotoSlot photo={r.photo} sizes="64px" widths={[96, 160]} class="tok-photo" />
+                          ) : r.person ? (
+                            <span class="tok-ini">{initials(r.person.name)}</span>
+                          ) : (
+                            <span class="tok-q">?</span>
+                          )}
+                        </span>
+                        {r.gun && <span class="tok-ring" />}
+                      </span>
+                      <span class="tok-code t-mono" aria-hidden="true">
+                        {r.code}
+                      </span>
+                      <span class="visually-hidden">
+                        {r.role}: {r.person ? r.person.name : 'seat open'}
+                      </span>
+                    </button>
+                    {r.id === 'lollipop' && (
+                      <span class="lolli" aria-hidden="true">
+                        <span class="lolli-stick" />
+                        <span class="lolli-board">
+                          <span class="lolli-face lolli-sit">SIT</span>
+                          <span class="lolli-face lolli-go">GO</span>
+                        </span>
+                      </span>
+                    )}
+                    <div class="crew-pop" id={`crew-pop-${r.id}`} popover data-placement="top">
+                      <div class="pop-id">
+                        {r.photo && (
+                          <span class="pop-avatar" aria-hidden="true">
+                            <PhotoSlot photo={r.photo} sizes="64px" widths={[96, 160]} />
+                          </span>
+                        )}
+                        <div class="pop-who">
+                          <p class="pop-top t-mono">
+                            <span class="pop-code">{r.code}</span>
+                            <span>{r.role}</span>
+                          </p>
+                          <p class="pop-name t-condensed">
+                            {r.person ? r.person.name : 'Seat open'}
+                            {r.nickHtml && (
+                              <span class="pop-nick">
+                                “<Fragment set:html={r.nickHtml} />”
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <p class="pop-duty">{r.duty}</p>
+                      {!r.person && (
+                        <p class="pop-apply t-mono">
+                          <svg viewBox="0 0 24 12" aria-hidden="true" class="fish">
+                            <path d="M1 6 L5 2 L5 10 Z M5 6 C 8 0 17 0 22 6 C 17 12 8 12 5 6 Z" />
+                          </svg>
+                          Apply with snacks
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+
+            <p class="stage-note t-mono" aria-hidden="true">Fig. 9 · not to scale</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Pit wall ================= -->
+  <div class="container pitwall">
+    <div class="pw-head">
+      <h3 class="pw-title t-condensed" data-reveal="up">The pit wall</h3>
+      <p class="pw-sub" data-reveal="up">
+        Best view on the circuit, best snacks in the paddock (catering sits here on purpose). {wallNote}
+      </p>
+    </div>
+    <ul class="pw-grid" role="list" data-reveal-stagger="90">
+      {
+        pitwall.map((r) => (
+          <li class="pw-item" data-reveal="up">
+            <article
+              class="pw-card"
+              data-vacant={r.person ? undefined : ''}
+              data-owner={r.isOwner && r.person ? '' : undefined}
+              aria-labelledby={`pw-${r.id}`}
+            >
+              <div class="pw-screen" aria-hidden={r.photo ? undefined : 'true'}>
+                {r.photo ? (
+                  <PhotoSlot
+                    photo={r.photo}
+                    sizes="(min-width: 64rem) 18rem, 9rem"
+                    widths={[160, 320, 480, 640]}
+                    class="pw-photo"
+                  />
+                ) : r.person ? (
+                  <span class="pw-mono">
+                    <span class="pw-mono-name">{r.person.name.split(/\s+/)[0]}</span>
+                    <Emblem size="4rem" title="" class="pw-emblem" />
+                  </span>
+                ) : (
+                  <span class="pw-bars">
+                    <span class="pw-nosig t-mono">No signal</span>
+                  </span>
+                )}
+                <span class="pw-ch t-mono">CH {pad(r.i + 1)}</span>
+                <span class:list={['pw-live t-mono', { on: !!r.person }]}>{r.person ? 'On air' : 'Vacant'}</span>
+                {r.isOwner && r.person && (
+                  <span class="pw-crown t-mono" aria-hidden="true">
+                    Owner
+                  </span>
+                )}
+              </div>
+              <div class="pw-body">
+                <p class="pw-role t-mono">
+                  <span class="pw-code">{r.code}</span> {r.isOwner && r.person ? owner.role : r.role}
+                </p>
+                <h4 class="pw-name t-condensed" id={`pw-${r.id}`}>
+                  {r.person ? r.person.name : 'Seat open'}
+                </h4>
+                {r.nickHtml ? (
+                  <p class="pw-nick">
+                    “<Fragment set:html={r.nickHtml} />”
+                  </p>
+                ) : !r.person ? (
+                  <p class="pw-apply">— apply with snacks</p>
+                ) : null}
+                <p class="pw-duty">{r.duty}</p>
+                {r.isOwner && r.person?.code && (
+                  <p class="pw-req t-mono">
+                    Callsign {r.person.code}. Sits in the box during every stop.
+                  </p>
+                )}
+                {!r.person && REQUIREMENTS[r.id] && <p class="pw-req t-mono">{REQUIREMENTS[r.id]}</p>}
+              </div>
+            </article>
+          </li>
+        ))
+      }
+    </ul>
+
+    <!-- ================= Crew sheet (list fallback) ================= -->
+    <details class="sheet" data-reveal="up">
+      <summary>
+        <span class="sheet-title">Crew sheet</span>
+        <span class="sheet-meta t-mono">List view · {pitcrew.length} pit crew roles</span>
+        <span class="sheet-chev" aria-hidden="true"></span>
+      </summary>
+      <ol class="sheet-list">
+        {
+          pitcrew.map((r) => (
+            <li class="sheet-row">
+              <span class="sheet-face" aria-hidden="true">
+                {r.photo ? (
+                  <PhotoSlot photo={r.photo} sizes="64px" widths={[96, 160]} />
+                ) : (
+                  <span class="sheet-ini">{r.person ? initials(r.person.name) : '?'}</span>
+                )}
+                <span class="sheet-code t-mono">{r.code}</span>
+              </span>
+              <span class="sheet-role">{r.role}</span>
+              <span class:list={['sheet-who', { open: !r.person }]}>
+                {r.person ? r.person.name : 'Seat open — apply with snacks'}
+                {r.nickHtml && (
+                  <span class="sheet-nick">
+                    “<Fragment set:html={r.nickHtml} />”
+                  </span>
+                )}
+              </span>
+              <span class="sheet-duty">{r.duty}</span>
+            </li>
+          ))
+        }
+      </ol>
+    </details>
+  </div>
+</section>
+
+<style>
+  .crew {
+    --hud-h: 8.25rem;
+    --stage-w: min(calc((100svh - var(--nav-h) - var(--hud-h) - 2.5rem) * 0.75), 40rem);
+    overflow-x: clip;
+  }
+
+  @media (min-width: 64rem) {
+    .crew {
+      --stage-w: min(calc((100svh - var(--nav-h) - 3rem) * 0.75), 40rem);
+    }
+  }
+
+  /* ================= Scrolly frame ================= */
+  .crew-scrolly {
+    position: relative;
+  }
+
+  .crew-sticky {
+    position: relative;
+    padding-block: var(--space-4) var(--space-6);
+  }
+
+  :global(.js-motion) .crew-scrolly {
+    height: 340svh;
+    margin-top: calc(var(--nav-h) * -1);
+  }
+
+  :global(.js-motion) .crew-sticky {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    display: grid;
+    align-items: center;
+    padding-block: calc(var(--nav-h) + var(--space-2)) var(--space-4);
+  }
+
+  .crew-sticky::before {
+    /* floodlight pooling on the pit box */
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(40% 55% at 64% 55%, rgb(255 197 46 / 0.08), transparent 70%),
+      radial-gradient(30% 40% at 20% 40%, rgb(160 21 62 / 0.1), transparent 70%);
+  }
+
+  .crew-rig {
+    display: grid;
+    gap: var(--space-3);
+    align-items: center;
+  }
+
+  @media (min-width: 64rem) {
+    .crew-rig {
+      grid-template-columns: minmax(15rem, 24rem) minmax(0, var(--stage-w));
+      justify-content: center;
+      gap: clamp(var(--space-6), 7vw, 8rem);
+    }
+  }
+
+  /* landscape phones: stacking the HUD over the box leaves a ~115px pit box, so put them side
+     by side and give the stage the full height under the nav */
+  @media (max-height: 30em) and (orientation: landscape) and (min-width: 40rem) and (max-width: 63.99rem) {
+    .crew {
+      --stage-w: min(calc((100svh - var(--nav-h) - 1.5rem) * 0.75), 40rem);
+    }
+
+    .crew-rig {
+      grid-template-columns: minmax(12rem, 1fr) minmax(0, var(--stage-w));
+      column-gap: var(--space-5);
+    }
+
+    :global(.js-motion) .crew-sticky {
+      padding-block: calc(var(--nav-h) + var(--space-1)) var(--space-2);
+    }
+  }
+
+  /* ================= HUD ================= */
+  .hud {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'label label'
+      'timer stamp'
+      'phases phases'
+      'now now';
+    column-gap: var(--space-4);
+    row-gap: var(--space-2);
+    align-items: center;
+    min-height: var(--hud-h);
+  }
+
+  .hud-label {
+    grid-area: label;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-mute);
+  }
+
+  .live-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    animation: blink 1.4s steps(2, jump-none) infinite;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0.25;
+    }
+  }
+
+  .timer {
+    grid-area: timer;
+    position: relative;
+    justify-self: start;
+    line-height: 0.8;
+  }
+
+  .timer-digits {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.06em;
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-size: clamp(3.4rem, 2rem + 6vw, 4.6rem);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--c-chalk);
+    transition: color var(--dur-med) var(--ease-out-expo), text-shadow var(--dur-med);
+  }
+
+  .timer-unit {
+    font-size: 0.42em;
+    color: var(--c-mute);
+    letter-spacing: 0;
+  }
+
+  .crew[data-timer='run'] .timer-digits {
+    color: var(--c-gold);
+    text-shadow: var(--glow-gold);
+  }
+
+  .crew[data-timer='pb'] .timer-digits,
+  .crew[data-timer='corrected'] .timer-digits {
+    color: var(--c-purple);
+    text-shadow: 0 0 1.8rem rgb(179 107 255 / 0.45);
+  }
+
+  .crew[data-timer='corrected'] .timer-digits {
+    opacity: 0.55;
+  }
+
+  .timer-strike {
+    position: absolute;
+    left: -6%;
+    right: -8%;
+    top: 46%;
+    height: 0.3rem;
+    border-radius: 2px;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    rotate: -9deg;
+    transform-origin: left center;
+  }
+
+  .pb-chip {
+    position: absolute;
+    left: 100%;
+    top: -0.2rem;
+    margin-left: 0.25rem;
+    padding: 0.25em 0.6em;
+    border-radius: 99px;
+    background: var(--c-purple);
+    color: var(--c-carbon);
+    font-size: 0.56rem;
+    font-weight: 700;
+    white-space: nowrap;
+    rotate: 6deg;
+  }
+
+  /* on phones up to ~390px the chip beside the digits runs into the stewards' stamp: stick it
+     over the top-left of the digits instead */
+  @media (max-width: 24.5rem) {
+    .pb-chip {
+      left: 0;
+      top: -1.15rem;
+      margin-left: 0;
+      rotate: -4deg;
+    }
+  }
+
+  .stamp {
+    grid-area: stamp;
+    justify-self: end;
+    display: grid;
+    justify-items: center;
+    gap: 0.2rem;
+    padding: 0.45rem 0.7rem 0.5rem;
+    border: 3px double var(--c-red);
+    border-radius: var(--radius-s);
+    color: var(--c-red);
+    background: color-mix(in oklab, var(--c-carbon) 70%, transparent);
+    rotate: -7deg;
+    text-align: center;
+    box-shadow: inset 0 0 0 1px rgb(255 45 58 / 0.25);
+  }
+
+  .stamp-top,
+  .stamp-note {
+    font-size: 0.52rem;
+    letter-spacing: 0.12em;
+  }
+
+  .stamp-time {
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-size: 2rem;
+    line-height: 0.85;
+  }
+
+  .phases {
+    grid-area: phases;
+    display: flex;
+    gap: 0.3rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .phases li {
+    flex: 1;
+    height: 0.3rem;
+    border-radius: 99px;
+    background: var(--c-line-strong);
+    transition: background-color var(--dur-med) var(--ease-out-expo);
+  }
+
+  .phases li[data-state='active'] {
+    background: var(--c-gold);
+    box-shadow: var(--glow-gold);
+  }
+
+  .phases li[data-state='done'] {
+    background: var(--c-teal);
+  }
+
+  .ph-i,
+  .ph-text,
+  .ph-tick {
+    display: none;
+  }
+
+  .phase-now {
+    grid-area: now;
+    color: var(--c-chalk);
+    font-size: 0.66rem;
+  }
+
+  .hud-hint {
+    display: none;
+  }
+
+  @media (min-width: 64rem) {
+    .hud {
+      grid-template-columns: 1fr;
+      grid-template-areas: 'label' 'timer' 'stamp' 'phases' 'hint';
+      row-gap: var(--space-4);
+      min-height: 0;
+    }
+
+    .timer-digits {
+      font-size: clamp(6rem, 3rem + 5vw, 8.5rem);
+    }
+
+    .pb-chip {
+      font-size: 0.66rem;
+      top: 0;
+    }
+
+    .stamp {
+      justify-self: start;
+      margin-top: calc(var(--space-6) * -1);
+      margin-left: 20%;
+      padding: 0.7rem 1rem 0.75rem;
+    }
+
+    .stamp-top,
+    .stamp-note {
+      font-size: 0.62rem;
+    }
+
+    .stamp-time {
+      font-size: 3rem;
+    }
+
+    .phases {
+      display: grid;
+      gap: 0;
+      border-top: 1px solid var(--c-line);
+    }
+
+    .phases li {
+      display: grid;
+      grid-template-columns: 2.2rem 1fr auto;
+      align-items: center;
+      gap: var(--space-2);
+      height: auto;
+      padding: 0.5rem 0;
+      border-radius: 0;
+      border-bottom: 1px solid var(--c-line);
+      background: none;
+      color: var(--c-mute);
+      transition:
+        color var(--dur-med) var(--ease-out-expo),
+        transform var(--dur-med) var(--ease-out-expo);
+    }
+
+    .phases li[data-state='active'],
+    .phases li[data-state='done'] {
+      background: none;
+      box-shadow: none;
+    }
+
+    .phases li[data-state='active'] {
+      color: var(--c-chalk);
+      transform: translateX(0.5rem);
+    }
+
+    .phases li[data-state='done'] {
+      color: var(--c-mute);
+    }
+
+    .ph-i {
+      display: block;
+    }
+
+    .phases li[data-state='active'] .ph-i {
+      color: var(--c-gold);
+    }
+
+    .ph-text {
+      display: grid;
+      line-height: 1.2;
+    }
+
+    .ph-label {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.95rem;
+    }
+
+    .ph-note {
+      font-size: 0.78rem;
+      color: var(--c-mute);
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition:
+        max-height var(--dur-med) var(--ease-out-expo),
+        opacity var(--dur-med);
+    }
+
+    .phases li[data-state='active'] .ph-note {
+      max-height: 1.4em;
+      opacity: 1;
+    }
+
+    .ph-tick {
+      display: block;
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+    }
+
+    .phases li[data-state='active'] .ph-tick {
+      border-color: var(--c-gold);
+      background: var(--c-gold);
+      box-shadow: var(--glow-gold);
+    }
+
+    .phases li[data-state='done'] .ph-tick {
+      border-color: var(--c-teal);
+      background: var(--c-teal);
+    }
+
+    .phase-now {
+      display: none;
+    }
+
+    .hud-hint {
+      grid-area: hint;
+      display: block;
+      color: var(--c-mute);
+    }
+  }
+
+  /* ================= Stage ================= */
+  .stage-wrap {
+    display: grid;
+    justify-items: center;
+    min-width: 0;
+  }
+
+  .stage {
+    position: relative;
+    container-type: inline-size;
+    width: min(100%, var(--stage-w));
+    aspect-ratio: 3 / 4;
+    border-radius: var(--radius-l);
+    overflow: clip;
+    border: 1px solid var(--c-line-strong);
+    background:
+      radial-gradient(70% 50% at 50% 48%, rgb(255 255 255 / 0.06), transparent 70%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E"),
+      linear-gradient(180deg, var(--c-graphite), var(--c-asphalt) 60%, var(--c-carbon));
+    box-shadow:
+      0 50px 120px -50px rgb(0 0 0 / 0.95),
+      0 0 0 1px rgb(0 0 0 / 0.6),
+      inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+
+
+  .stage::after {
+    /* vignette */
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    border-radius: inherit;
+    box-shadow: inset 0 0 6cqi rgb(0 0 0 / 0.65);
+  }
+
+  .ground {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .g-wall {
+    fill: var(--c-steel);
+  }
+
+  .g-garage {
+    fill: color-mix(in oklab, var(--c-graphite) 80%, var(--c-maroon));
+    opacity: 0.8;
+  }
+
+  .g-label {
+    fill: var(--c-mute);
+    font-family: var(--f-mono);
+    font-size: 5.2px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-anchor: middle;
+  }
+
+  .g-skid {
+    fill: none;
+    stroke: rgb(0 0 0 / 0.35);
+    stroke-width: 5;
+  }
+
+  .g-skid.thin {
+    stroke-width: 2.5;
+    stroke: rgb(0 0 0 / 0.28);
+  }
+
+  .g-fastline {
+    stroke: var(--c-chalk);
+    stroke-width: 1.5;
+    opacity: 0.55;
+  }
+
+  .g-chev path {
+    fill: none;
+    stroke: var(--c-chalk);
+    stroke-width: 1.4;
+    opacity: 0.3;
+  }
+
+  .g-limit {
+    fill: none;
+    stroke: var(--c-red);
+    stroke-width: 2;
+    opacity: 0.6;
+  }
+
+  .g-limit-t {
+    fill: var(--c-chalk);
+    opacity: 0.55;
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: 9.5px;
+    text-anchor: middle;
+  }
+
+  .g-tyres circle {
+    fill: var(--c-carbon);
+    stroke: var(--c-steel);
+    stroke-width: 1.5;
+  }
+
+  .g-tyres circle:nth-child(even) {
+    fill: none;
+    stroke: var(--c-purple);
+    stroke-width: 1.2;
+    opacity: 0.8;
+  }
+
+  .g-name {
+    fill: var(--c-gold);
+    opacity: 0.1;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: 30px;
+    letter-spacing: 0.1em;
+    text-anchor: middle;
+  }
+
+  .g-box {
+    fill: rgb(255 197 46 / 0.025);
+    stroke: var(--c-gold);
+    stroke-width: 1.6;
+    stroke-dasharray: 12 7;
+    opacity: 0.6;
+  }
+
+  .g-marks rect {
+    fill: var(--c-chalk);
+    opacity: 0.55;
+  }
+
+  .g-boxno {
+    fill: var(--c-gold);
+    opacity: 0.35;
+    font-family: var(--f-mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-anchor: middle;
+  }
+
+  .g-paws {
+    fill: var(--c-chalk);
+    opacity: 0.12;
+  }
+
+  .g-slots circle {
+    fill: none;
+    stroke: var(--c-gold);
+    stroke-width: 1.2;
+    stroke-dasharray: 3 3;
+    opacity: 0.5;
+  }
+
+  /* ---- speed lines ---- */
+  .speed {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .speed i {
+    position: absolute;
+    left: var(--sx);
+    top: var(--st);
+    width: 2px;
+    height: var(--sh);
+    border-radius: 2px;
+    background: linear-gradient(to bottom, transparent, rgb(244 241 234 / 0.7), transparent);
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /* ---- car ---- */
+  .car-rig {
+    position: absolute;
+    left: 32%;
+    top: 21.5%;
+    width: 36%;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .car-shadow {
+    position: absolute;
+    inset: 3% 2% 4%;
+    border-radius: 45% / 30%;
+    background: radial-gradient(closest-side, rgb(0 0 0 / 0.75), rgb(0 0 0 / 0.35) 60%, transparent);
+    translate: 3% 2%;
+  }
+
+  .car-lift {
+    position: relative;
+  }
+
+  .car {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 200 / 500;
+    overflow: visible;
+  }
+
+  .c-arms path {
+    fill: none;
+    stroke: var(--c-steel);
+    stroke-width: 3.5;
+    stroke-linecap: round;
+  }
+
+  .band {
+    fill: none;
+    stroke-width: 2;
+  }
+
+  .band-old {
+    stroke: var(--c-chalk);
+    opacity: 0.55;
+  }
+
+  .band-new {
+    stroke: var(--c-purple);
+  }
+
+  .grain {
+    fill: none;
+    stroke: var(--c-chalk);
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    opacity: 0.35;
+  }
+
+  .w-old {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .c-flap {
+    fill: none;
+    stroke: var(--c-carbon);
+    stroke-width: 2.5;
+  }
+
+  .f-carbon {
+    fill: var(--c-carbon);
+  }
+
+  .f-graphite {
+    fill: var(--c-graphite);
+  }
+
+  .f-gold {
+    fill: var(--c-gold);
+  }
+
+  .f-maroon {
+    fill: var(--c-maroon);
+  }
+
+  .c-whiskers path {
+    fill: none;
+    stroke: var(--c-chalk);
+    stroke-width: 1.3;
+    stroke-linecap: round;
+    opacity: 0.75;
+  }
+
+  .c-nosenum {
+    fill: var(--c-carbon);
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: 21px;
+    font-variation-settings: 'wdth' 62;
+    font-stretch: 62%;
+    text-anchor: middle;
+  }
+
+  .c-helmet {
+    stroke: var(--c-mute);
+    stroke-width: 1;
+  }
+
+  .c-visor {
+    fill: none;
+    stroke: url(#crw-visor);
+    stroke-width: 3.6;
+    stroke-linecap: round;
+  }
+
+  .c-halo {
+    fill: none;
+    stroke: var(--c-steel);
+    stroke-width: 4;
+    stroke-linecap: round;
+  }
+
+  .c-ear {
+    fill: var(--c-carbon);
+    stroke: var(--c-gold);
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+  }
+
+  .c-roundel {
+    fill: var(--c-carbon);
+    stroke: var(--c-gold);
+    stroke-width: 2;
+  }
+
+  .c-num {
+    fill: var(--c-gold);
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: 31px;
+    font-variation-settings: 'wdth' 62;
+    font-stretch: 62%;
+    letter-spacing: -0.02em;
+    text-anchor: middle;
+  }
+
+  .c-code {
+    fill: var(--c-mute);
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-anchor: middle;
+  }
+
+  .c-wingtext {
+    fill: var(--c-carbon);
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    text-anchor: middle;
+  }
+
+  .c-rain {
+    fill: var(--c-red);
+  }
+
+  .c-tail {
+    position: absolute;
+    left: 46%;
+    top: 93.2%;
+    width: 31%;
+    height: auto;
+    aspect-ratio: 62 / 34;
+    overflow: visible;
+    transform-origin: 12.9% 29.4%;
+    animation: tail-sway 2.8s var(--ease-in-out) infinite alternate;
+  }
+
+  .c-tail-base,
+  .c-tail-stripe {
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .c-tail-base {
+    stroke: var(--c-gold);
+    stroke-width: 6.5;
+  }
+
+  .c-tail-stripe {
+    stroke: var(--c-maroon);
+    stroke-width: 6.5;
+    stroke-dasharray: 3 7;
+  }
+
+  @keyframes tail-sway {
+    from {
+      transform: rotate(-9deg);
+    }
+    to {
+      transform: rotate(12deg);
+    }
+  }
+
+  /* ---- radio bubble ---- */
+  .radio {
+    position: absolute;
+    left: 58%;
+    top: 40%;
+    z-index: 4;
+    display: grid;
+    gap: 0.15rem;
+    max-width: 38%;
+    padding: 0.45rem 0.6rem 0.5rem;
+    border-radius: var(--radius-m) var(--radius-m) var(--radius-m) 2px;
+    background: color-mix(in oklab, var(--c-carbon) 86%, var(--c-gold));
+    border: 1px solid color-mix(in oklab, var(--c-gold) 55%, transparent);
+    box-shadow: 0 12px 30px -10px rgb(0 0 0 / 0.8);
+    transform-origin: 0% 100%;
+  }
+
+  .radio::before {
+    content: '';
+    position: absolute;
+    left: -7px;
+    bottom: 6px;
+    width: 12px;
+    height: 12px;
+    background: inherit;
+    border-left: inherit;
+    border-bottom: inherit;
+    rotate: 45deg;
+  }
+
+  .radio-from {
+    font-size: clamp(0.46rem, 1.6cqi, 0.6rem);
+    color: var(--c-gold);
+  }
+
+  .radio-text {
+    font-size: clamp(0.66rem, 2.3cqi, 0.9rem);
+    line-height: 1.25;
+    font-weight: 600;
+  }
+
+  /* ================= Tokens ================= */
+  .formation {
+    --tok: clamp(2.3rem, 10.5cqi, 4.1rem);
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* the landscape-phone box is only ~230px wide: at the 2.3rem floor the tokens fill 16% of it
+     (10.5% in portrait) and the front jack's code tag slides under the right-front gunner */
+  @media (max-height: 30em) and (orientation: landscape) and (min-width: 40rem) and (max-width: 63.99rem) {
+    .formation {
+      --tok: clamp(2rem, 14cqi, 4.1rem);
+    }
+
+    /* the lollipop helmet sits on the figure note, and the 4-line bubble covers the right-rear
+       gunner: drop the note, shrink the text and lift the bubble into the gap between the
+       gunners (above ~37% it runs into the right-front helmet) */
+    .stage-note {
+      display: none;
+    }
+
+    .radio {
+      top: 38%;
+      max-width: 46%;
+    }
+
+    .radio-text {
+      font-size: 0.6rem;
+    }
+  }
+
+  .tok-slot {
+    position: absolute;
+    left: calc(var(--x) * 1%);
+    top: calc(var(--y) * 1%);
+    width: var(--tok);
+    height: var(--tok);
+    translate: -50% -50%;
+  }
+
+  .tok {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    transition: transform 0.4s var(--ease-out-back);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tok:hover,
+  .tok:focus-visible,
+  .tok:global(.is-active) {
+    transform: scale(1.14);
+    z-index: 2;
+  }
+
+  .tok:focus-visible {
+    outline-offset: 6px;
+    border-radius: 50%;
+  }
+
+  .tok-body {
+    position: absolute;
+    inset: 0;
+  }
+
+  .tok-shoulders {
+    position: absolute;
+    left: -24%;
+    right: -24%;
+    top: 24%;
+    height: 58%;
+    border-radius: 50% / 62%;
+    background: linear-gradient(
+      90deg,
+      var(--c-maroon),
+      color-mix(in oklab, var(--c-maroon) 60%, var(--c-saffron)) 50%,
+      var(--c-maroon)
+    );
+    box-shadow:
+      0 0.5rem 1rem rgb(0 0 0 / 0.6),
+      inset 0 1px 0 rgb(255 255 255 / 0.15);
+  }
+
+  .tok-helmet {
+    position: absolute;
+    inset: 11%;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 28%, var(--c-steel), var(--c-carbon) 72%);
+    border: 2px solid var(--c-gold);
+    box-shadow: 0 0 0 2px rgb(0 0 0 / 0.35);
+  }
+
+  .tok-helmet::before,
+  .tok-helmet::after {
+    /* helmet cat ears */
+    content: '';
+    position: absolute;
+    top: -17%;
+    width: 36%;
+    height: 38%;
+    background: var(--c-gold);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    z-index: -1;
+  }
+
+  .tok-helmet::before {
+    left: 2%;
+    rotate: -26deg;
+  }
+
+  .tok-helmet::after {
+    right: 2%;
+    rotate: 26deg;
+  }
+
+  /* the avatar fills the helmet ring exactly: <picture> pinned to the circle, <img> covers it */
+  .tok-helmet :global(picture) {
+    position: absolute;
+    inset: 0;
+    display: block;
+    border-radius: 50%;
+    overflow: clip;
+    background: var(--c-graphite);
+  }
+
+  .tok-helmet :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .tok-ini,
+  .tok-q {
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-variation-settings: 'wdth' 62;
+    font-stretch: 62%;
+    line-height: 1;
+    color: var(--c-gold);
+  }
+
+  .tok-ini {
+    font-size: calc(var(--tok) * 0.34);
+  }
+
+  .tok-q {
+    font-size: calc(var(--tok) * 0.44);
+  }
+
+  .tok[data-vacant] .tok-shoulders {
+    background: color-mix(in oklab, var(--c-carbon) 55%, transparent);
+    border: 1.5px dashed var(--c-line-strong);
+    box-shadow: none;
+  }
+
+  .tok[data-vacant] .tok-helmet {
+    background: color-mix(in oklab, var(--c-carbon) 80%, transparent);
+    border: 2px dashed color-mix(in oklab, var(--c-gold) 85%, transparent);
+  }
+
+  .tok[data-vacant] .tok-helmet::before,
+  .tok[data-vacant] .tok-helmet::after {
+    background: color-mix(in oklab, var(--c-gold) 55%, transparent);
+  }
+
+  .tok[data-vacant]::after {
+    content: '';
+    position: absolute;
+    inset: 6%;
+    border-radius: 50%;
+    border: 2px solid var(--c-gold);
+    opacity: 0;
+    pointer-events: none;
+    animation: tok-pulse 2.6s var(--ease-out-expo) infinite;
+    animation-delay: calc(var(--i) * -0.33s);
+  }
+
+  @keyframes tok-pulse {
+    0% {
+      transform: scale(0.9);
+      opacity: 0.75;
+    }
+    70%,
+    100% {
+      transform: scale(1.75);
+      opacity: 0;
+    }
+  }
+
+  .tok-ring {
+    position: absolute;
+    inset: -20%;
+    border-radius: 50%;
+    border: 2px dashed var(--c-teal);
+    box-shadow: 0 0 1rem rgb(20 213 180 / 0.35);
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .tok-code {
+    position: absolute;
+    right: -38%;
+    bottom: -12%;
+    padding: 0.18em 0.45em;
+    border-radius: 99px;
+    background: var(--c-carbon);
+    border: 1px solid var(--c-line-strong);
+    color: var(--c-chalk);
+    font-size: clamp(0.5rem, 1.65cqi, 0.64rem);
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    pointer-events: none;
+  }
+
+  /* the rear jack sits at the bottom of the box: on a phone-sized stage (token at its size
+     floor) a tag below it is clipped by the stage, so hang it above-right instead. The big
+     desktop stage keeps it below, clear of the cat tail under the rear wing. */
+  @container (max-width: 30rem) {
+    .tok-slot[data-y='92'] .tok-code {
+      bottom: auto;
+      top: -12%;
+    }
+  }
+
+  .tok:hover .tok-code,
+  .tok:focus-visible .tok-code,
+  .tok:global(.is-active) .tok-code {
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    border-color: var(--c-gold);
+  }
+
+  /* ---- lollipop board ---- */
+  .lolli {
+    position: absolute;
+    left: 50%;
+    top: 90%;
+    width: calc(var(--tok) * 0.62);
+    translate: -50% 0;
+    display: grid;
+    justify-items: center;
+    perspective: 20rem;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .lolli-stick {
+    width: 3px;
+    height: calc(var(--tok) * 0.16);
+    background: var(--c-mute);
+  }
+
+  .lolli-board {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    transform-style: preserve-3d;
+  }
+
+  .lolli-face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    border: 2px solid var(--c-chalk);
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: calc(var(--tok) * 0.2);
+    letter-spacing: 0.04em;
+    backface-visibility: hidden;
+    box-shadow: 0 0.4rem 0.8rem rgb(0 0 0 / 0.5);
+  }
+
+  .lolli-sit {
+    background: var(--c-red);
+    color: var(--c-chalk);
+  }
+
+  .lolli-go {
+    background: var(--c-teal);
+    color: var(--c-carbon);
+    transform: rotateY(180deg);
+  }
+
+  .stage-note {
+    position: absolute;
+    right: 13%;
+    top: 1.6%;
+    z-index: 4;
+    font-size: clamp(0.45rem, 1.5cqi, 0.58rem);
+    color: var(--c-mute);
+    letter-spacing: 0.1em;
+  }
+
+  /* ---- popover info card (top layer) ---- */
+  .crew-pop {
+    position: fixed;
+    inset: auto;
+    left: 0;
+    top: 0;
+    margin: 0;
+    width: min(19rem, calc(100vw - 1.5rem));
+    padding: 0.95rem 1.1rem 1rem;
+    border: 1px solid color-mix(in oklab, var(--c-gold) 50%, transparent);
+    border-radius: var(--radius-m);
+    background:
+      radial-gradient(120% 90% at 0% 0%, rgb(255 197 46 / 0.12), transparent 60%),
+      linear-gradient(160deg, var(--c-graphite), var(--c-asphalt));
+    color: var(--c-chalk);
+    box-shadow:
+      0 1.5rem 3.5rem -0.75rem rgb(0 0 0 / 0.85),
+      0 0 0 1px rgb(0 0 0 / 0.5);
+    overflow: visible;
+    opacity: 0;
+    translate: 0 0.5rem;
+    scale: 0.96;
+    transition:
+      opacity 0.22s var(--ease-out-expo),
+      translate 0.35s var(--ease-out-expo),
+      scale 0.35s var(--ease-out-expo),
+      overlay 0.35s allow-discrete,
+      display 0.35s allow-discrete;
+  }
+
+  .crew-pop[data-placement='bottom'] {
+    translate: 0 -0.5rem;
+  }
+
+  .crew-pop:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+
+  @starting-style {
+    .crew-pop:popover-open {
+      opacity: 0;
+      translate: 0 0.5rem;
+      scale: 0.96;
+    }
+  }
+
+  .crew-pop::before {
+    /* arrow */
+    content: '';
+    position: absolute;
+    left: calc(var(--ax, 50%) - 7px);
+    width: 14px;
+    height: 14px;
+    rotate: 45deg;
+    background: var(--c-asphalt);
+    border: inherit;
+    border-width: 0 1px 1px 0;
+  }
+
+  .crew-pop[data-placement='top']::before {
+    bottom: -8px;
+  }
+
+  .crew-pop[data-placement='bottom']::before {
+    top: -8px;
+    border-width: 1px 0 0 1px;
+    background: var(--c-graphite);
+  }
+
+  .pop-id {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .pop-avatar {
+    position: relative;
+    flex: none;
+    width: 4rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid var(--c-gold);
+    box-shadow:
+      0 0 0 3px rgb(0 0 0 / 0.45),
+      0 0.6rem 1.2rem -0.4rem rgb(0 0 0 / 0.8);
+    overflow: clip;
+    background: var(--c-carbon);
+  }
+
+  .pop-avatar :global(picture) {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  .pop-avatar :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: cover;
+  }
+
+  .pop-who {
+    min-width: 0;
+  }
+
+  .pop-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem var(--space-2);
+    color: var(--c-gold);
+    font-size: 0.62rem;
+    line-height: 1.3;
+  }
+
+  .pop-code {
+    padding: 0.15em 0.45em;
+    border-radius: var(--radius-s);
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    font-weight: 700;
+  }
+
+  .pop-name {
+    margin-top: 0.35rem;
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-size: 1.6rem;
+    line-height: 0.95;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  .pop-nick {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.6em;
+    color: var(--c-gold);
+    text-transform: none;
+    font-variation-settings: 'wdth' 100;
+    font-stretch: 100%;
+  }
+
+  .pop-nick :global(.t-si) {
+    font-size: 1.05em;
+  }
+
+  .pop-duty {
+    margin-top: 0.5rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--c-chalk);
+  }
+
+  .pop-apply {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+    padding-top: 0.6rem;
+    border-top: 1px dashed var(--c-line-strong);
+    color: var(--c-teal);
+    font-size: 0.66rem;
+  }
+
+  .fish {
+    width: 1.5rem;
+    fill: currentColor;
+  }
+
+  /* ================= Pit wall ================= */
+  .pitwall {
+    margin-top: var(--space-8);
+  }
+
+  .pw-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-6);
+    margin-bottom: var(--space-6);
+  }
+
+  .pw-title {
+    font-size: var(--fs-h3);
+    text-transform: uppercase;
+  }
+
+  .pw-sub {
+    max-width: 44ch;
+    color: var(--c-mute);
+  }
+
+  .pw-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 40rem) {
+    .pw-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .pw-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .pw-item {
+    perspective: 60rem;
+  }
+
+  /* phones + tablets: "monitor + readout" rows; desktop: square feed on top */
+  .pw-card {
+    --rx: 0deg;
+    --ry: 0deg;
+    --gx: 50%;
+    --gy: 0%;
+    --shot: clamp(7.5rem, 30vw, 9.5rem);
+    position: relative;
+    height: 100%;
+    display: grid;
+    grid-template-columns: var(--shot) minmax(0, 1fr);
+    align-items: start;
+    border-radius: var(--radius-l);
+    border: 1px solid var(--c-line-strong);
+    background: linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 55%);
+    overflow: clip;
+    transition:
+      transform 0.5s var(--ease-out-expo),
+      border-color var(--dur-med),
+      box-shadow var(--dur-med);
+  }
+
+  @media (min-width: 64rem) {
+    .pw-card {
+      grid-template-columns: none;
+      grid-template-rows: auto 1fr;
+      align-items: stretch;
+    }
+  }
+
+  /* the owner's card: gold trim, warm glow (he sat on it) */
+  .pw-card[data-owner] {
+    border-color: color-mix(in oklab, var(--c-gold) 50%, transparent);
+    background:
+      radial-gradient(90% 55% at 100% 0%, rgb(255 197 46 / 0.14), transparent 65%),
+      linear-gradient(170deg, var(--c-graphite), var(--c-asphalt) 55%);
+    box-shadow: 0 1.5rem 3rem -1.75rem rgb(255 197 46 / 0.35);
+  }
+
+  .pw-card:hover {
+    /* 3D only while hovered, so idle cards don't each hold a compositor layer */
+    transform: rotateX(var(--rx)) rotateY(var(--ry));
+  }
+
+  .pw-card::after {
+    /* glare */
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(40% 50% at var(--gx) var(--gy), rgb(255 255 255 / 0.1), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--dur-med);
+  }
+
+  .pw-card:hover {
+    border-color: color-mix(in oklab, var(--c-gold) 55%, transparent);
+    box-shadow: 0 2rem 4rem -1.5rem rgb(0 0 0 / 0.9);
+  }
+
+  .pw-card:hover::after {
+    opacity: 1;
+  }
+
+  .pw-card:global(.is-tilting) {
+    transition:
+      transform 0.12s linear,
+      border-color var(--dur-med),
+      box-shadow var(--dur-med);
+  }
+
+  /* ---- the pit-wall camera feed ---- */
+  .pw-screen {
+    position: relative;
+    aspect-ratio: 1;
+    margin: 0.55rem 0 0.55rem 0.55rem;
+    border-radius: var(--radius-m);
+    overflow: clip;
+    background: var(--c-carbon);
+    border: 1px solid var(--c-line);
+    display: grid;
+  }
+
+  @media (min-width: 64rem) {
+    .pw-screen {
+      margin: 0.6rem 0.6rem 0;
+    }
+  }
+
+  .pw-card[data-owner] .pw-screen {
+    border-color: color-mix(in oklab, var(--c-gold) 45%, transparent);
+  }
+
+  .pw-screen::after {
+    /* scanlines + a soft CRT vignette over the feed */
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(0deg, rgb(0 0 0 / 0.12) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 95% at 50% 42%, transparent 58%, rgb(0 0 0 / 0.5));
+  }
+
+  .pw-screen :global(picture) {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  .pw-screen :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: cover;
+    transition: scale 0.9s var(--ease-out-expo);
+  }
+
+  .pw-card:hover .pw-screen :global(img) {
+    scale: 1.05;
+  }
+
+  .pw-mono {
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: clip;
+    background:
+      radial-gradient(60% 80% at 50% 50%, rgb(255 255 255 / 0.18), transparent 70%),
+      var(--g-livery);
+  }
+
+  .pw-mono-name {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -52%;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-variation-settings: 'wdth' 62;
+    font-stretch: 62%;
+    font-size: clamp(3.4rem, 2rem + 4vw, 6rem);
+    line-height: 0.8;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgb(7 7 11 / 0.14);
+    -webkit-text-stroke: 1.5px rgb(7 7 11 / 0.4);
+  }
+
+  .pw-mono :global(.pw-emblem) {
+    position: relative;
+    width: clamp(2.8rem, 30%, 4rem);
+    height: auto;
+    filter: drop-shadow(0 0.4rem 0.8rem rgb(0 0 0 / 0.45));
+  }
+
+  .pw-bars {
+    position: relative;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(
+      90deg,
+      var(--c-chalk) 0 14.3%,
+      var(--c-gold) 0 28.6%,
+      var(--c-teal) 0 42.9%,
+      var(--c-purple) 0 57.1%,
+      var(--c-saffron) 0 71.4%,
+      var(--c-red) 0 85.7%,
+      var(--c-maroon) 0
+    );
+    filter: saturate(0.75) brightness(0.8);
+  }
+
+  .pw-card:hover .pw-bars {
+    animation: glitch 0.5s steps(3, jump-none) infinite;
+  }
+
+  @keyframes glitch {
+    33% {
+      transform: translateX(-3%) skewX(-4deg);
+    }
+    66% {
+      transform: translateX(2%) skewX(3deg);
+    }
+  }
+
+  .pw-nosig {
+    padding: 0.35em 0.6em;
+    background: var(--c-carbon);
+    color: var(--c-chalk);
+    border: 1px solid var(--c-chalk);
+    font-size: 0.56rem;
+  }
+
+  .pw-ch,
+  .pw-live,
+  .pw-crown {
+    position: absolute;
+    z-index: 1;
+    padding: 0.2em 0.5em;
+    border-radius: var(--radius-s);
+    font-size: 0.52rem;
+    line-height: 1.4;
+  }
+
+  .pw-ch,
+  .pw-live {
+    top: 0.45rem;
+    background: rgb(7 7 11 / 0.72);
+    color: var(--c-chalk);
+  }
+
+  .pw-ch {
+    left: 0.45rem;
+    display: none;
+  }
+
+  .pw-live {
+    right: 0.45rem;
+    color: var(--c-mute);
+  }
+
+  .pw-live.on {
+    color: var(--c-chalk);
+  }
+
+  .pw-live.on::before {
+    content: '';
+    display: inline-block;
+    width: 0.42rem;
+    height: 0.42rem;
+    margin-right: 0.3rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    vertical-align: 0.02em;
+  }
+
+  /* broadcast lower-third on the owner's feed */
+  .pw-crown {
+    left: 0.45rem;
+    bottom: 0.45rem;
+    border-radius: 99px;
+    background: var(--c-maroon);
+    color: var(--c-chalk);
+    font-weight: 700;
+    box-shadow: 0 0 0 1px rgb(255 197 46 / 0.55);
+  }
+
+  @media (min-width: 64rem) {
+    .pw-ch,
+    .pw-live,
+    .pw-crown {
+      top: 0.55rem;
+      font-size: 0.58rem;
+    }
+
+    .pw-ch {
+      left: 0.55rem;
+      display: block;
+    }
+
+    .pw-live {
+      right: 0.55rem;
+    }
+
+    .pw-crown {
+      top: auto;
+      left: 0.6rem;
+      bottom: 0.6rem;
+    }
+  }
+
+  .pw-body {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 0.75rem 0.85rem 0.9rem;
+  }
+
+  @media (min-width: 64rem) {
+    .pw-body {
+      gap: 0.35rem;
+      padding: 1rem 1.15rem 1.25rem;
+    }
+  }
+
+  .pw-role {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.5rem;
+    color: var(--c-gold);
+    font-size: var(--fs-micro);
+    line-height: 1.3;
+  }
+
+  .pw-code {
+    padding: 0.1em 0.4em;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-s);
+  }
+
+  .pw-name {
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-size: clamp(1.6rem, 1.3rem + 1vw, 2.2rem);
+    line-height: 0.95;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  .pw-card[data-vacant] .pw-name {
+    color: transparent;
+    -webkit-text-stroke: 1px var(--c-chalk);
+  }
+
+  .pw-nick,
+  .pw-apply {
+    color: var(--c-gold);
+    font-weight: 600;
+  }
+
+  .pw-nick :global(.t-si) {
+    font-size: 1.05em;
+  }
+
+  .pw-apply {
+    color: var(--c-teal);
+  }
+
+  .pw-duty {
+    margin-top: 0.2rem;
+    color: var(--c-mute);
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  @media (min-width: 64rem) {
+    .pw-duty {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+  }
+
+  .pw-req {
+    margin-top: 0.4rem;
+    padding-top: 0.55rem;
+    border-top: 1px dashed var(--c-line-strong);
+    color: var(--c-mute);
+    font-size: 0.62rem;
+    line-height: 1.5;
+  }
+
+  /* ================= Crew sheet ================= */
+  .sheet {
+    margin-top: var(--space-6);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-l);
+    background: color-mix(in oklab, var(--c-asphalt) 80%, transparent);
+    overflow: clip;
+  }
+
+  .sheet summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .sheet summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .sheet summary:hover .sheet-title {
+    color: var(--c-gold);
+  }
+
+  .sheet-title {
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: color var(--dur-fast);
+  }
+
+  .sheet-meta {
+    color: var(--c-mute);
+  }
+
+  .sheet-chev {
+    margin-left: auto;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-right: 2px solid var(--c-gold);
+    border-bottom: 2px solid var(--c-gold);
+    rotate: 45deg;
+    transition: rotate var(--dur-med) var(--ease-out-expo);
+  }
+
+  .sheet[open] .sheet-chev {
+    rotate: 225deg;
+  }
+
+  .sheet-list {
+    margin: 0;
+    padding: 0 1.25rem 1rem;
+    list-style: none;
+  }
+
+  .sheet-row {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    gap: 0.15rem var(--space-3);
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--c-line);
+  }
+
+  .sheet-face {
+    grid-row: span 3;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 0.3rem;
+  }
+
+  .sheet-face :global(picture),
+  .sheet-ini {
+    position: relative;
+    display: block;
+    width: 2.75rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: clip;
+    border: 1.5px solid var(--c-gold);
+    background: var(--c-graphite);
+  }
+
+  .sheet-face :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: cover;
+  }
+
+  .sheet-ini {
+    display: grid;
+    place-items: center;
+    color: var(--c-gold);
+    font-weight: 800;
+  }
+
+  .sheet-code {
+    color: var(--c-gold);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+  }
+
+  .sheet-role {
+    font-weight: 700;
+  }
+
+  .sheet-who {
+    color: var(--c-chalk);
+  }
+
+  .sheet-who.open {
+    color: var(--c-teal);
+  }
+
+  .sheet-nick {
+    margin-left: 0.4em;
+    color: var(--c-gold);
+  }
+
+  .sheet-duty {
+    color: var(--c-mute);
+    font-size: 0.92rem;
+  }
+
+  @media (min-width: 48rem) {
+    .sheet-row {
+      grid-template-columns: 3.5rem minmax(10rem, 1fr) minmax(10rem, 1fr) 2fr;
+      align-items: center;
+    }
+
+    .sheet-face {
+      grid-row: auto;
+    }
+  }
+
+  /* ================= Offscreen pause + reduced motion ================= */
+  .crew[data-inview='false'] .loop,
+  .crew[data-inview='false'] .tok[data-vacant]::after {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .c-tail,
+    .live-dot,
+    .tok[data-vacant]::after,
+    .pw-card:hover .pw-bars {
+      animation: none;
+    }
+
+    .tok[data-vacant]::after {
+      opacity: 0.35;
+      transform: scale(1.3);
+    }
+
+    .pw-card {
+      transform: none;
+    }
+
+    .pw-screen :global(img),
+    .pw-card:hover .pw-screen :global(img) {
+      scale: none;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, ScrollTrigger, getLenis, prefersReducedMotion } from '@/scripts/motion';
+  import { sound } from '@/scripts/audio';
+
+  type PopMode = 'hover' | 'focus' | 'pinned';
+
+  /* ---------- Info cards: Popover API + hover/focus enhancement ---------- */
+  function setupPopovers(root: HTMLElement): void {
+    if (!('showPopover' in HTMLElement.prototype)) return;
+    const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-crew-token]'));
+    const modes = new WeakMap<HTMLElement, PopMode>();
+    let active: { btn: HTMLButtonElement; pop: HTMLElement } | null = null;
+    let raf = 0;
+    /** Token rect + viewport of the last place() — idle frames skip the rect reads/style writes. */
+    let last = '';
+
+    const place = (btn: HTMLElement, pop: HTMLElement) => {
+      const r = btn.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      const vh = window.innerHeight;
+      const pw = pop.offsetWidth;
+      const ph = pop.offsetHeight;
+      const gap = 14;
+      const navH = 64;
+      let top = r.top - ph - gap;
+      let placement = 'top';
+      if (top < navH + 8) {
+        top = r.bottom + gap;
+        placement = 'bottom';
+      }
+      top = Math.min(Math.max(8, top), Math.max(8, vh - ph - 8));
+      const cx = r.left + r.width / 2;
+      const left = Math.min(Math.max(8, cx - pw / 2), Math.max(8, vw - pw - 8));
+      pop.style.left = `${Math.round(left)}px`;
+      pop.style.top = `${Math.round(top)}px`;
+      pop.style.setProperty('--ax', `${Math.round(Math.min(Math.max(18, cx - left), pw - 18))}px`);
+      if (pop.dataset.placement !== placement) pop.dataset.placement = placement;
+    };
+
+    // Tokens keep moving during the scrub catch-up and Lenis inertia after the wheel stops,
+    // so keep following every frame — but only re-place when the token or viewport moved.
+    const follow = () => {
+      if (!active) return;
+      const r = active.btn.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight) {
+        active.pop.hidePopover();
+        return;
+      }
+      const key = `${r.left | 0},${r.top | 0},${r.width | 0},${window.innerWidth},${window.innerHeight}`;
+      if (key !== last) {
+        last = key;
+        place(active.btn, active.pop);
+      }
+      raf = requestAnimationFrame(follow);
+    };
+
+    buttons.forEach((btn) => {
+      const id = btn.getAttribute('popovertarget');
+      const pop = id ? document.getElementById(id) : null;
+      if (!pop) return;
+      let showT = 0;
+      let hideT = 0;
+
+      const isOpen = () => pop.matches(':popover-open');
+      const show = (mode: PopMode) => {
+        window.clearTimeout(hideT);
+        if (isOpen()) {
+          if (modes.get(pop) !== 'pinned') modes.set(pop, mode);
+          return;
+        }
+        modes.set(pop, mode);
+        try {
+          pop.showPopover();
+        } catch {
+          /* already open elsewhere / not connected */
+        }
+      };
+      const hide = () => {
+        if (isOpen()) pop.hidePopover();
+      };
+      const scheduleHide = () => {
+        if (modes.get(pop) !== 'hover') return;
+        window.clearTimeout(hideT);
+        hideT = window.setTimeout(hide, 160);
+      };
+
+      btn.addEventListener('pointerenter', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        window.clearTimeout(hideT);
+        showT = window.setTimeout(() => show('hover'), 60);
+      });
+      btn.addEventListener('pointerleave', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        window.clearTimeout(showT);
+        scheduleHide();
+      });
+      pop.addEventListener('pointerenter', () => window.clearTimeout(hideT));
+      pop.addEventListener('pointerleave', scheduleHide);
+
+      btn.addEventListener('focus', () => {
+        if (btn.matches(':focus-visible')) show('focus');
+      });
+      btn.addEventListener('blur', () => {
+        if (modes.get(pop) === 'focus') hide();
+      });
+      // A click on a card that hover/focus already opened pins it instead of toggling it shut.
+      btn.addEventListener('click', (e) => {
+        const mode = modes.get(pop);
+        if (isOpen() && (mode === 'hover' || mode === 'focus')) {
+          e.preventDefault();
+          modes.set(pop, 'pinned');
+        }
+      });
+
+      pop.addEventListener('beforetoggle', (e) => {
+        if ((e as ToggleEvent).newState !== 'open') return;
+        if (!modes.has(pop)) modes.set(pop, 'pinned');
+        requestAnimationFrame(() => place(btn, pop));
+      });
+      pop.addEventListener('toggle', (e) => {
+        const open = (e as ToggleEvent).newState === 'open';
+        btn.classList.toggle('is-active', open);
+        if (open) {
+          place(btn, pop);
+          last = '';
+          active = { btn, pop };
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(follow);
+          sound.play('click', { volume: 0.4 });
+        } else {
+          modes.delete(pop);
+          if (active?.pop === pop) {
+            active = null;
+            cancelAnimationFrame(raf);
+          }
+        }
+      });
+    });
+  }
+
+  /* ---------- Pit wall card tilt ---------- */
+  function setupTilt(root: HTMLElement): void {
+    if (prefersReducedMotion() || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    root.querySelectorAll<HTMLElement>('.pw-card').forEach((card) => {
+      let frame = 0;
+      card.addEventListener('pointermove', (e) => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const r = card.getBoundingClientRect();
+          const px = (e.clientX - r.left) / r.width;
+          const py = (e.clientY - r.top) / r.height;
+          card.classList.add('is-tilting');
+          card.style.setProperty('--ry', `${((px - 0.5) * 10).toFixed(2)}deg`);
+          card.style.setProperty('--rx', `${((0.5 - py) * 8).toFixed(2)}deg`);
+          card.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`);
+          card.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
+        });
+      });
+      card.addEventListener('pointerleave', () => {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        card.classList.remove('is-tilting');
+        card.style.setProperty('--rx', '0deg');
+        card.style.setProperty('--ry', '0deg');
+      });
+    });
+  }
+
+  /* ---------- Pause CSS loops offscreen ---------- */
+  function setupInView(root: HTMLElement): void {
+    const stage = root.querySelector('.stage');
+    if (!stage || !('IntersectionObserver' in window)) return;
+    root.dataset.inview = 'false';
+    new IntersectionObserver(([entry]) => {
+      root.dataset.inview = entry?.isIntersecting ? 'true' : 'false';
+    }).observe(stage);
+  }
+
+  /* ---------- Scroll-scrubbed pit stop ---------- */
+  function setupPitStop(root: HTMLElement): void {
+    const scrolly = root.querySelector<HTMLElement>('.crew-scrolly');
+    const stage = root.querySelector<HTMLElement>('.stage');
+    if (!scrolly || !stage) return;
+
+    const all = <T extends Element = HTMLElement>(sel: string, scope: ParentNode = stage) =>
+      Array.from(scope.querySelectorAll<T>(sel));
+    const one = <T extends Element = HTMLElement>(sel: string, scope: ParentNode = root) =>
+      scope.querySelector<T>(sel);
+
+    const slots = all('.tok-slot');
+    const carRig = one('.car-rig', stage);
+    const carLift = one('.car-lift', stage);
+    const shadow = one('.car-shadow', stage);
+    const oldWheels = all<SVGGElement>('.w-old');
+    const newWheels = all<SVGGElement>('.w-new');
+    const rings = all('.tok-ring');
+    const lolliBoard = one('.lolli-board', stage);
+    const speed = all('.speed i');
+    const radio = one('.radio', stage);
+    const frontJack = one('[data-id="front-jack"]', stage);
+    const timerVal = one('.timer-val');
+    const strike = one('.timer-strike');
+    const pb = one('.pb-chip');
+    const stamp = one('.stamp');
+    const phaseItems = all('.phases li', root);
+    const phaseNow = one('.phase-now');
+    if (!carRig || !carLift || !shadow || !timerVal) return;
+
+    // Stage size, read once per ScrollTrigger refresh (refreshInit runs before invalidated
+    // function-based values are re-evaluated). Reading clientWidth inside every function value
+    // forced a synchronous layout after each immediate-rendered fromTo.
+    let stageW = stage.clientWidth;
+    let stageH = stage.clientHeight;
+    ScrollTrigger.addEventListener('refreshInit', () => {
+      stageW = stage.clientWidth;
+      stageH = stage.clientHeight;
+    });
+    const W = () => stageW;
+    const H = () => stageH;
+    const phaseAt = phaseItems.map((li) => Number(li.dataset.at) || 0);
+    const phaseLabels = phaseItems.map((li) => li.querySelector('.ph-label')?.textContent ?? '');
+    const STOP_START = 3.6;
+    const STOP_END = 6.3;
+    const CORRECTED = 8.8;
+    const ALL_DONE = 9.5;
+
+    gsap.set(oldWheels, { autoAlpha: 1 });
+    timerVal.textContent = '0.0';
+
+    const tl = gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: {
+        trigger: scrolly,
+        start: 'top 62%',
+        end: 'bottom bottom',
+        scrub: 0.7,
+        invalidateOnRefresh: true,
+      },
+    });
+
+    // 1 — crew sprint in from the pit wall (left edge), staggered.
+    // Opacity, not autoAlpha: visibility:hidden would drop the tokens out of the Tab order
+    // until the scrub reached them (see the focus catch-up below).
+    const early = slots.filter((s) => !('late' in s.dataset));
+    const late = slots.filter((s) => 'late' in s.dataset);
+    const sprint = (slot: HTMLElement, at: number) => {
+      const x = Number(slot.dataset.x) || 50;
+      const y = Number(slot.dataset.y) || 50;
+      tl.fromTo(
+        slot,
+        { x: () => -(x / 100) * W() - W() * 0.12, y: () => (y < 50 ? 1 : -1) * H() * 0.04, opacity: 0 },
+        { x: 0, y: 0, opacity: 1, duration: 1.25, ease: 'power2.out' },
+        at,
+      );
+      const body = slot.querySelector('.tok-body');
+      if (body) {
+        tl.fromTo(body, { rotation: -14 }, { rotation: 14, duration: 0.17, repeat: 5, yoyo: true, ease: 'sine.inOut' }, at);
+        tl.to(body, { rotation: 0, duration: 0.3, ease: 'back.out(3)' }, at + 1.02);
+      }
+    };
+    early.forEach((slot, i) => sprint(slot, 0.1 + i * 0.17));
+
+    // 2 — car rolls into the box
+    tl.fromTo(carRig, { y: () => H() * 0.92 }, { y: 0, duration: 1.3, ease: 'power3.out' }, 2.4);
+    late.forEach((slot, i) => sprint(slot, 3.2 + i * 0.15));
+    // Every token (incl. the late runners' wobble settle) has landed by here.
+    const CREW_IN = 3.2 + late.length * 0.15 + 1.3;
+    tl.addLabel('crewIn', CREW_IN);
+
+    // 3 — jacks up (bigger + shadow spreads = lifted, top-down)
+    tl.to(carLift, { scale: 1.045, x: -3, y: -6, duration: 0.35, ease: 'power2.out' }, 3.9);
+    tl.to(shadow, { scale: 1.08, opacity: 0.5, duration: 0.35 }, 3.9);
+
+    // 4 — tyres: hards off, Purrelli Paw softs on, wheel guns spin
+    const side = (el: Element) => ((el as SVGElement).dataset.side === 'l' ? -46 : 46);
+    tl.to(oldWheels, { x: (_i: number, el: Element) => side(el), autoAlpha: 0, duration: 0.55, ease: 'power2.in', stagger: 0.05 }, 4.3);
+    // (staggered fromTo only immediate-renders its first target, so park the new set explicitly)
+    gsap.set(newWheels, { x: (_i: number, el: Element) => side(el), autoAlpha: 0 });
+    tl.to(newWheels, { x: 0, autoAlpha: 1, duration: 0.55, ease: 'power2.out', stagger: 0.05 }, 5.0);
+    if (rings.length) {
+      tl.fromTo(rings, { rotation: 0, autoAlpha: 0 }, { rotation: 540, autoAlpha: 1, duration: 1.25 }, 4.3);
+      tl.to(rings, { autoAlpha: 0, duration: 0.2 }, 5.55);
+    }
+
+    // 5 — jacks down, lollipop flips, front jack steps aside, GO
+    tl.to(carLift, { scale: 1, x: 0, y: 0, duration: 0.3, ease: 'power2.in' }, 5.7);
+    tl.to(shadow, { scale: 1, opacity: 1, duration: 0.3 }, 5.7);
+    if (frontJack) tl.to(frontJack, { x: () => W() * 0.16, duration: 0.35, ease: 'power2.out' }, 5.95);
+    if (lolliBoard) tl.to(lolliBoard, { rotationY: 180, duration: 0.3, ease: 'power2.inOut' }, 6.0);
+
+    // Timer runs from car-stop to release
+    const clock = { t: 0 };
+    tl.to(clock, { t: 2.9, duration: STOP_END - STOP_START }, STOP_START);
+    if (pb) tl.fromTo(pb, { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, duration: 0.3, ease: 'back.out(3)' }, STOP_END);
+
+    // 6 — launch out of the box
+    tl.to(carRig, { y: () => -H() * 0.95, duration: 0.6, ease: 'power3.in' }, 6.4);
+    if (speed.length) {
+      gsap.set(speed, { autoAlpha: 0, scaleY: 0.3 });
+      tl.to(speed, { autoAlpha: 1, scaleY: 1, duration: 0.3, stagger: 0.03 }, 6.6);
+      tl.to(speed, { autoAlpha: 0, duration: 0.3 }, 7.05);
+    }
+
+    // 7 — box, box: the owner radios it straight back in (he wants to sit in the box)
+    tl.to(carRig, { y: 0, duration: 0.9, ease: 'power2.out' }, 7.5);
+    if (lolliBoard) tl.to(lolliBoard, { rotationY: 360, duration: 0.3, ease: 'power2.inOut' }, 8.3);
+    if (radio) {
+      tl.fromTo(
+        radio,
+        { autoAlpha: 0, scale: 0.5, y: 12 },
+        { autoAlpha: 1, scale: 1, y: 0, duration: 0.3, ease: 'back.out(2.2)' },
+        8.3,
+      );
+    }
+    if (frontJack) tl.to(frontJack, { x: 0, duration: 0.35, ease: 'power2.out' }, 8.5);
+    if (strike) tl.fromTo(strike, { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: 'power2.out' }, CORRECTED);
+    if (stamp) {
+      tl.fromTo(
+        stamp,
+        { autoAlpha: 0, scale: 2.1, rotation: -30 },
+        // GSAP folds the CSS `rotate: -7deg` into its own rotation, so land on -7 explicitly
+        { autoAlpha: 1, scale: 1, rotation: -7, duration: 0.35, ease: 'power4.in' },
+        CORRECTED + 0.3,
+      );
+    }
+    tl.to({}, { duration: 0.9 }, ALL_DONE);
+
+    // HUD state (digits, phase list, timer colour) derived from timeline time. Called from the
+    // timeline's onUpdate AND after every ScrollTrigger refresh, because refresh restores the
+    // timeline's progress with callbacks suppressed.
+    let lastPhase = -2;
+    let lastTimer = '';
+    let lastDigits = '';
+    const hud = () => {
+      const t = tl.time();
+      const digits = clock.t.toFixed(1);
+      if (digits !== lastDigits) {
+        lastDigits = digits;
+        timerVal.textContent = digits;
+      }
+      let phase = 0;
+      phaseAt.forEach((at, i) => {
+        if (t >= at) phase = i;
+      });
+      if (t >= ALL_DONE) phase = phaseAt.length;
+      if (phase !== lastPhase) {
+        if (phase > lastPhase && lastPhase >= 0) {
+          if (phase === 4) sound.play('rev', { volume: 0.5 });
+          if (phase === 5) sound.play('meow', { volume: 0.5 });
+        }
+        lastPhase = phase;
+        phaseItems.forEach((li, i) => {
+          li.dataset.state = i < phase ? 'done' : i === phase ? 'active' : '';
+        });
+        if (phaseNow) {
+          phaseNow.textContent =
+            phase >= phaseItems.length
+              ? 'Stop complete · stewards involved'
+              : `${String(phase + 1).padStart(2, '0')} / ${phaseLabels[phase]}`;
+        }
+        root.dataset.phase = String(phase);
+      }
+      const timer = t < STOP_START ? 'idle' : t < STOP_END ? 'run' : t < CORRECTED ? 'pb' : 'corrected';
+      if (timer !== lastTimer) {
+        lastTimer = timer;
+        root.dataset.timer = timer;
+      }
+    };
+    tl.eventCallback('onUpdate', hud);
+    ScrollTrigger.addEventListener('refresh', hud);
+    hud();
+
+    // Keyboard users can Tab onto a token before the scrub has run it in (it would be
+    // off-stage and transparent). Jump the page to the point where the crew is in formation
+    // and settle the scrub on the same frame, so focus and its info card land on a visible token.
+    const formation = one('.formation', stage);
+    formation?.addEventListener('focusin', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.matches(':focus-visible') || tl.time() >= CREW_IN) return;
+      const st = tl.scrollTrigger;
+      if (!st) return;
+      const y = st.start + (st.end - st.start) * (CREW_IN / tl.duration());
+      const lenis = getLenis();
+      if (lenis) lenis.scrollTo(y, { immediate: true });
+      else window.scrollTo({ top: y, behavior: 'instant' });
+      ScrollTrigger.update(); // bumps ScrollTrigger's scroll cache, then updates every trigger
+      st.getTween()?.progress(1);
+    });
+  }
+
+  function initCrew(): void {
+    const root = document.querySelector<HTMLElement>('#crew');
+    if (!root) return;
+    // The crew sheet adds ~740px (desktop) / ~1060px (phone) when opened: every trigger below
+    // #crew (gallery batch, calendar, lights out, footer) must re-measure, reduced motion or not.
+    root
+      .querySelector<HTMLDetailsElement>('details.sheet')
+      ?.addEventListener('toggle', () => requestAnimationFrame(() => ScrollTrigger.refresh()));
+    setupPopovers(root);
+    setupTilt(root);
+    setupInView(root);
+    if (!prefersReducedMotion()) setupPitStop(root);
+  }
+
+  initCrew();
+</script>

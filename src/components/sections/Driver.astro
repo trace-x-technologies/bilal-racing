@@ -1,0 +1,2345 @@
+---
+/**
+ * 01 — THE LINE-UP.
+ * Official-F1-style line-up page. First the Team Principal & Owner, Nirod
+ * "පූසා" Rathnaweera, hero-scale: clip-path portrait reveal with parallax over
+ * the team's giant lucky #9, RAT callsign chip, dictionary-style nickname,
+ * count-up owner stats and the paddock dossier. Then the two race drivers as
+ * holographic collectible cards (3D tilt, foil, flip-to-back) with bio and
+ * count-up season stats. Every fact comes from src/data/lore.ts.
+ */
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import PhotoSlot from '@/components/ui/PhotoSlot.astro';
+import Emblem from '@/components/ui/Emblem.astro';
+import { owner, ownerStats, drivers, sinhala, team, type DriverStat } from '@/data/lore';
+import { ownerPortrait, driverPortraits, resolvePhoto } from '@/data/photos';
+
+/** Split a surname so its three-letter code can glow inside it (RATHNAWEERA, DHARMADASA). */
+function splitSurname(lastName: string, code: string) {
+  const upper = lastName.toUpperCase();
+  const hit = upper.startsWith(code.toUpperCase()) ? code.length : 0;
+  return { head: upper.slice(0, hit).split(''), tail: upper.slice(hit).split(''), hit };
+}
+
+/** Count-up rows. 0 → the stewards delete it; decimals → counts down from 9. */
+function toRows(list: readonly DriverStat[]) {
+  return list.map((s, i) => {
+    const decimals = s.decimals ?? 0;
+    const mode = s.value === 0 ? 'deleted' : decimals > 0 ? 'down' : 'up';
+    return {
+      ...s,
+      idx: String(i + 1).padStart(2, '0'),
+      decimals,
+      mode,
+      display: s.value.toFixed(decimals),
+      lives: s.suffix === '/9',
+    };
+  });
+}
+
+const ownerName = splitSurname(owner.lastName, owner.callsign);
+const ownerRows = toRows(ownerStats);
+
+type Fx = 'licence' | 'knock' | 'office' | 'zoomies' | 'laser' | 'radio';
+const facts: { k: string; v: string; fx: Fx }[] = [
+  { k: 'Super licence', v: owner.superLicence, fx: 'licence' },
+  { k: 'Management style', v: owner.managementStyle, fx: 'knock' },
+  { k: 'Office', v: owner.office, fx: 'office' },
+  { k: 'Signature move', v: owner.signatureMove, fx: 'zoomies' },
+  { k: 'Weakness', v: owner.weakness, fx: 'laser' },
+  { k: 'Radio catchphrase', v: owner.radioCatchphrase, fx: 'radio' },
+];
+
+// Until a real portrait lands, the placeholder shows the emblem — copy must not point at a photo.
+const hasPortrait = Boolean(resolvePhoto(ownerPortrait).src);
+
+const lineup = drivers.map((d) => ({
+  ...d,
+  portrait: driverPortraits[d.id],
+  name: splitSurname(d.lastName, d.code),
+  rows: toRows(d.stats),
+  serial: String(d.number).padStart(3, '0'),
+}));
+
+const rail = [
+  `Line-up ${team.founded}`,
+  `TP ${owner.callsign}`,
+  ...drivers.map((d) => `#${d.number} ${d.code}`),
+  team.name,
+  team.car,
+].join(' · ');
+---
+
+<section class="section lineup" id="driver" aria-labelledby="driver-title" data-driver>
+  <div class="lineup-bg" aria-hidden="true">
+    <span class="bg-glow"></span>
+    <span class="bg-glow bg-glow--low"></span>
+    <span class="bg-stripes"></span>
+    <span class="bg-rail t-mono">{rail}</span>
+  </div>
+
+  <div class="container">
+    <SectionHeading
+      index="01"
+      kicker="The Line-up"
+      title="One cat. <em>Two drivers.</em>"
+      lead="The cat owns the team. Two humans drive the cars. The cat takes the credit, the warm seat and every box in the garage."
+      id="driver-title"
+    />
+
+    <!-- ================= Team Principal & Owner ================= -->
+    <article class="owner" aria-labelledby="owner-name" data-live>
+      <div class="profile">
+        <div class="portrait-col">
+          <figure class="portrait">
+            <p class="nine-tag t-mono" aria-hidden="true">Lucky No. {team.luckyNumber} · nine lives</p>
+            <div class="portrait-stack">
+              <div class="nine" aria-hidden="true">
+                <span class="nine-fill" data-nine-fill>{team.luckyNumber}</span>
+                <span class="nine-line" data-nine-line>{team.luckyNumber}</span>
+              </div>
+              <div class="portrait-frame" data-portrait-frame>
+                <div class="portrait-media" data-portrait-media>
+                  <PhotoSlot
+                    photo={ownerPortrait}
+                    sizes="(min-width: 60em) 28rem, 80vw"
+                    widths={[480, 720, 1080]}
+                  />
+                </div>
+                <span class="portrait-shade" aria-hidden="true"></span>
+                <span class="portrait-scan" aria-hidden="true"></span>
+                <span class="portrait-sweep" aria-hidden="true"></span>
+                <span class="portrait-tag t-mono" aria-hidden="true">
+                  <b>TP</b>
+                  {owner.callsign}
+                </span>
+                <span class="portrait-corner tl" aria-hidden="true"></span>
+                <span class="portrait-corner br" aria-hidden="true"></span>
+              </div>
+            </div>
+            {hasPortrait && <figcaption class="portrait-cap t-mono">{ownerPortrait.caption}</figcaption>}
+          </figure>
+        </div>
+
+        <div class="identity" data-reveal-stagger="90">
+          <p class="id-meta t-mono" data-reveal="fade">
+            <span class="id-role">{owner.role}</span>
+            <span class="id-flag" role="img" aria-label={`Flag of ${owner.nationality}`}>{owner.flag}</span>
+            <span>{owner.nationality}</span>
+            <span class="id-sep" aria-hidden="true">/</span>
+            <span>{team.name}</span>
+          </p>
+
+          <h3 class="name name--owner" id="owner-name" data-reveal="fade">
+            <span class="visually-hidden">{owner.fullName}, {owner.role}</span>
+            <span class="name-first" aria-hidden="true">
+              <span>{owner.firstName}</span>
+              <span class="name-middle">{owner.middleName}</span>
+            </span>
+            <span class="name-last t-condensed" aria-hidden="true">
+              <span class="name-code">
+                {ownerName.head.map((c, i) => <span class="ch" style={`--ci:${i}`}>{c}</span>)}
+              </span>{
+                ownerName.tail.map((c, i) => (
+                  <span class="ch" style={`--ci:${i + ownerName.hit}`}>
+                    {c}
+                  </span>
+                ))
+              }
+            </span>
+          </h3>
+
+          <div class="code" data-reveal="up">
+            <button class="chip code-chip" type="button" data-rat aria-describedby="owner-rat-joke">
+              <span class="chip-bar" aria-hidden="true"></span>
+              <span class="chip-pos t-mono" aria-hidden="true">TP</span>
+              <span class="chip-txt">{owner.callsign}</span>
+              <span class="visually-hidden">— pit-wall callsign. Press to ask the stewards.</span>
+            </button>
+            <p class="code-joke" id="owner-rat-joke">
+              <strong>Pit-wall callsign: {owner.callsign}.</strong> First three letters of the surname, FIA rules.
+              A cat whose callsign is RAT. The stewards called it “deeply ironic, but legal”.
+            </p>
+          </div>
+
+          <div class="nick" data-reveal="up">
+            <p class="nick-word t-si" lang="si">{owner.nickname}</p>
+            <div class="nick-def">
+              <p class="nick-meta t-mono">
+                <i>{owner.nicknameLatin}</i> · noun · Sinhala
+              </p>
+              <ol class="nick-senses">
+                <li>{owner.nicknameMeaning}.</li>
+                <li>the boss of this team. <span class="t-mute">({hasPortrait ? 'see photo' : 'see emblem'})</span></li>
+              </ol>
+              <p class="nick-etym">
+                The formal word is <span class="t-si" lang="si">{sinhala.balala.si}</span>{' '}
+                (<i>{sinhala.balala.latin}</i>). Say it fast enough and you get <b>Bilal</b>. That’s the whole
+                team name. We’re not sorry.
+              </p>
+            </div>
+          </div>
+
+          <p class="bio" data-reveal="up">
+            Born to race. Promoted to nap. {owner.fullName} —{' '}
+            <span class="t-si" lang="si">{owner.nickname}</span> to anyone who has met him — hung up the helmet,
+            bought the team and now runs {team.name} from whichever box is warmest. The <b>#{team.luckyNumber}</b> on the shark fin isn’t a car number: it’s
+            the team’s lucky number, because a cat gets nine lives and he is speed-running them. Back in 2021 he drove
+            Malabe → Balangoda mid-lockdown on a police-approved pass, which is still more paperwork than the rest
+            of the grid will ever see.
+          </p>
+        </div>
+      </div>
+
+      <div class="owner-data">
+        <div class="stats-block">
+          <header class="block-head" data-reveal="fade">
+            <p class="t-mono"><span class="t-gold">Owner stats</span> · official-ish</p>
+            <p class="t-mono t-mute">Source: team telemetry (a notebook)</p>
+          </header>
+          <ul class="stats" role="list" data-stats data-reveal-stagger="80">
+            {
+              ownerRows.map((s) => (
+                <li class:list={['stat', `stat--${s.mode}`]} data-reveal="up" data-stat>
+                  <p class="stat-label t-mono">
+                    <span class="stat-idx">{s.idx}</span>
+                    {s.label}
+                  </p>
+                  <p class="stat-value t-condensed">
+                    <span class="visually-hidden">
+                      {s.display}
+                      {s.suffix}
+                    </span>
+                    <span class="stat-figure" aria-hidden="true">
+                      <span class="stat-num" data-count={s.value} data-decimals={s.decimals} data-mode={s.mode}>
+                        {s.display}
+                      </span>
+                      <span class="stat-suffix">{s.suffix}</span>
+                    </span>
+                    {s.mode === 'deleted' && (
+                      <span class="stat-flag t-mono" aria-hidden="true">
+                        Deleted by stewards
+                      </span>
+                    )}
+                  </p>
+                  {s.lives && (
+                    <span class="lives" aria-hidden="true">
+                      {Array.from({ length: 9 }, (_, k) => (
+                        <span class="pip" style={`--k:${k}`}>
+                          <svg viewBox="0 0 20 20">
+                            <ellipse cx="10" cy="13.2" rx="4.6" ry="3.8" />
+                            <circle cx="4.4" cy="8.4" r="1.9" />
+                            <circle cx="8" cy="5.2" r="1.9" />
+                            <circle cx="12" cy="5.2" r="1.9" />
+                            <circle cx="15.6" cy="8.4" r="1.9" />
+                          </svg>
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  <p class="stat-note">{s.note}</p>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="dossier">
+          <header class="block-head" data-reveal="fade">
+            <p class="t-mono"><span class="t-gold">Paddock dossier</span> · file #00{team.luckyNumber}</p>
+            <p class="t-mono t-mute">Classified-ish</p>
+          </header>
+          <dl class="facts" data-reveal-stagger="70">
+            {
+              facts.map((f, i) => (
+                <div class:list={['fact', `fx-${f.fx}`]} data-reveal="left">
+                  <dt class="t-mono">
+                    <span class="fact-idx">{String(i + 1).padStart(2, '0')}</span>
+                    {f.k}
+                  </dt>
+                  <dd>
+                    <span class="fact-v">{f.v}</span>
+                    {f.fx === 'laser' && <span class="laser" aria-hidden="true" />}
+                    {f.fx === 'radio' && (
+                      <span class="radio-wave" aria-hidden="true">
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              ))
+            }
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- ================= Race drivers ================= -->
+    <header class="drivers-head">
+      <p class="dh-kicker t-mono" data-reveal="fade">
+        <span class="t-gold">Race drivers</span>
+        <span class="dh-rule" aria-hidden="true"></span>
+        <span>Cars {drivers.map((d) => `#${d.number}`).join(' & ')}</span>
+      </p>
+      <p class="dh-title t-condensed" data-reveal="up">Two humans. <em>Zero naps.</em></p>
+      <p class="dh-lead" data-reveal="up">
+        {owner.nicknameLatin} hired two humans to do the actual driving. He kept the job with the most sitting down.
+      </p>
+      <p class="dh-hint t-mono t-mute" aria-hidden="true" data-reveal="fade">
+        <span class="hint-hover">Hover to tilt · </span>Flip a card for the classified bits
+      </p>
+    </header>
+
+    <div class="drivers">
+      {
+        lineup.map((d) => (
+          <article class="racer" aria-labelledby={`racer-${d.id}-name`} data-live>
+            <div class="card-zone" data-reveal="scale">
+              <div class="racer-num" aria-hidden="true" data-racer-num>
+                <span class="racer-num-fill t-condensed" data-racer-num-fill>
+                  {d.number}
+                </span>
+                <span class="racer-num-line t-condensed" data-racer-num-line>
+                  {d.number}
+                </span>
+              </div>
+              <div class="tcard-float">
+                <div
+                  class="tcard"
+                  id={`tcard-${d.id}`}
+                  data-tcard
+                  role="group"
+                  aria-roledescription="trading card"
+                  aria-label={`Collectible driver card: ${d.fullName}, car #${d.number}, timing code ${d.code}, ${team.name}. Line-up Edition, 1 of 1.`}
+                >
+                  <div class="tcard-inner">
+                    <div class="tcard-face tcard-front" data-tcard-front>
+                      <span class="tcard-foil" aria-hidden="true" />
+                      <div class="tcard-body">
+                        <header class="tcard-top">
+                          <Emblem size="1.9rem" title="" />
+                          <span class="t-mono">
+                            {team.name} · {team.founded}
+                          </span>
+                          <span class="tcard-flag" role="img" aria-label={`Flag of ${d.nationality}`}>
+                            {d.flag}
+                          </span>
+                        </header>
+                        <div class="tcard-photo">
+                          <PhotoSlot
+                            photo={d.portrait}
+                            sizes="(min-width: 60em) 21rem, (min-width: 42em) 19rem, 88vw"
+                            widths={[360, 640, 960]}
+                          />
+                          <span class="tcard-shade" aria-hidden="true" />
+                          <span class="tcard-no t-condensed" aria-hidden="true">
+                            {d.number}
+                          </span>
+                          <span class="chip chip--card" aria-hidden="true">
+                            <span class="chip-bar" />
+                            <span class="chip-txt t-condensed">{d.code}</span>
+                          </span>
+                        </div>
+                        <p class="tcard-name t-condensed">
+                          <span>{d.firstName}</span>
+                          {d.lastName}
+                        </p>
+                        <footer class="tcard-foot t-mono">
+                          <span>Line-up Edition</span>
+                          <span class="tcard-seal">1/1</span>
+                        </footer>
+                      </div>
+                      <span class="tcard-glare" aria-hidden="true" />
+                    </div>
+                    <div class="tcard-face tcard-back" data-tcard-back aria-hidden="true">
+                      <span class="tcard-foil" aria-hidden="true" />
+                      <div class="tcard-body tcard-body--back">
+                        <header class="tback-head">
+                          <Emblem size="2rem" title="" />
+                          <p class="tcard-serial t-mono">
+                            Card #{d.serial}
+                            <br />
+                            {d.code} · 1 of 1
+                          </p>
+                          <span class="tback-no t-condensed">{d.number}</span>
+                        </header>
+                        <div class="tback-main">
+                          <dl class="tback-facts">
+                            <div>
+                              <dt class="t-mono">Helmet</dt>
+                              <dd>{d.helmet}</dd>
+                            </div>
+                            <div>
+                              <dt class="t-mono">Signature move</dt>
+                              <dd>{d.signatureMove}</dd>
+                            </div>
+                            <div>
+                              <dt class="t-mono">Weakness</dt>
+                              <dd>{d.weakness}</dd>
+                            </div>
+                          </dl>
+                          <figure class="tback-radio">
+                            <figcaption class="t-mono">Team radio · {d.code}</figcaption>
+                            <blockquote class="tcard-quote">“{d.radioCatchphrase}”</blockquote>
+                          </figure>
+                          <p class="tback-why">
+                            <b>Why #{d.number}?</b> {d.numberJoke}
+                          </p>
+                        </div>
+                        <span class="tcard-barcode" aria-hidden="true" />
+                      </div>
+                      <span class="tcard-glare" aria-hidden="true" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <span class="tcard-shadow" aria-hidden="true" />
+              <button
+                class="flip-btn t-mono"
+                type="button"
+                data-flip
+                aria-pressed="false"
+                aria-controls={`tcard-${d.id}`}
+              >
+                <span class="flip-ico" aria-hidden="true">
+                  ↻
+                </span>
+                <span data-flip-label>Flip the card</span>
+                <span class="visually-hidden"> of {d.fullName}</span>
+              </button>
+            </div>
+
+            <div class="racer-info" data-reveal-stagger="80">
+              <p class="id-meta t-mono" data-reveal="fade">
+                <span class="chip chip--meta">
+                  <span class="chip-bar" aria-hidden="true" />
+                  <span class="chip-pos" aria-hidden="true">
+                    {d.number}
+                  </span>
+                  <span class="chip-txt t-condensed">
+                    <span class="visually-hidden">Timing code </span>
+                    {d.code}
+                  </span>
+                </span>
+                <span class="id-flag" role="img" aria-label={`Flag of ${d.nationality}`}>
+                  {d.flag}
+                </span>
+                <span>{d.nationality}</span>
+              </p>
+
+              <h3 class="name name--racer" id={`racer-${d.id}-name`} data-reveal="fade">
+                <span class="visually-hidden">{d.fullName}</span>
+                <span class="name-first" aria-hidden="true">
+                  {d.firstName}
+                </span>
+                <span class="name-last t-condensed" aria-hidden="true">
+                  <span class="name-code">
+                    {d.name.head.map((c, i) => (
+                      <span class="ch" style={`--ci:${i}`}>
+                        {c}
+                      </span>
+                    ))}
+                  </span>{d.name.tail.map((c, i) => (
+                    <span class="ch" style={`--ci:${i + d.name.hit}`}>
+                      {c}
+                    </span>
+                  ))}
+                </span>
+              </h3>
+
+              <p class="racer-role t-mono" data-reveal="up">
+                <span aria-hidden="true">▸</span> {d.role}
+              </p>
+
+              <p class="racer-bio" data-reveal="up">
+                {d.bio}
+              </p>
+
+              <div class="racer-stats">
+                <p class="racer-stats-k t-mono" data-reveal="fade">
+                  <span class="t-gold">Season stats</span> · car #{d.number}
+                </p>
+                <ul class="stats" role="list" data-stats data-reveal-stagger="80">
+                  {d.rows.map((s) => (
+                    <li class:list={['stat', `stat--${s.mode}`]} data-reveal="up" data-stat>
+                      <p class="stat-label t-mono">
+                        <span class="stat-idx">{s.idx}</span>
+                        {s.label}
+                      </p>
+                      <p class="stat-value t-condensed">
+                        <span class="visually-hidden">
+                          {s.display}
+                          {s.suffix}
+                        </span>
+                        <span class="stat-figure" aria-hidden="true">
+                          <span
+                            class="stat-num"
+                            data-count={s.value}
+                            data-decimals={s.decimals}
+                            data-mode={s.mode}
+                          >
+                            {s.display}
+                          </span>
+                          <span class="stat-suffix">{s.suffix}</span>
+                        </span>
+                        {s.mode === 'deleted' && (
+                          <span class="stat-flag t-mono" aria-hidden="true">
+                            Deleted by stewards
+                          </span>
+                        )}
+                      </p>
+                      <p class="stat-note">{s.note}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ================= Section shell ================= */
+  .lineup {
+    --d-line: color-mix(in oklab, var(--c-gold) 38%, transparent);
+    overflow-x: clip;
+  }
+
+  .lineup-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .bg-glow {
+    position: absolute;
+    width: min(70rem, 140vw);
+    aspect-ratio: 1;
+    left: -20%;
+    top: 4%;
+    background: radial-gradient(closest-side, rgb(160 21 62 / 0.28), transparent 70%);
+    filter: blur(10px);
+  }
+
+  .bg-glow--low {
+    left: auto;
+    right: -25%;
+    top: auto;
+    bottom: 4%;
+    background: radial-gradient(closest-side, rgb(255 197 46 / 0.1), transparent 70%);
+  }
+
+  .bg-stripes {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      115deg,
+      transparent 0 44px,
+      rgb(255 255 255 / 0.018) 44px 46px
+    );
+    mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+  }
+
+  .bg-rail {
+    display: none;
+  }
+
+  @media (min-width: 75em) {
+    .bg-rail {
+      display: block;
+      position: absolute;
+      top: 50%;
+      left: 0.9rem;
+      translate: 0 -50%;
+      writing-mode: vertical-rl;
+      rotate: 180deg;
+      color: var(--c-faint);
+      font-size: 0.62rem;
+      white-space: nowrap;
+    }
+  }
+
+  .block-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-5);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
+    border-bottom: 1px solid var(--c-line-strong);
+  }
+
+  /* ================= Owner profile ================= */
+  .profile {
+    display: grid;
+    gap: var(--space-8);
+    align-items: center;
+  }
+
+  @media (min-width: 60em) {
+    .profile {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: clamp(3rem, 6vw, 7rem);
+    }
+  }
+
+  /* ---- Portrait + the team's giant lucky 9 ---- */
+  .portrait-col {
+    position: relative;
+    container-type: inline-size;
+    padding-block: 10cqi 0;
+  }
+
+  .nine-tag {
+    position: absolute;
+    bottom: calc(100% + var(--space-3));
+    left: 0;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-gold);
+    font-size: 0.62rem;
+  }
+
+  .nine-tag::before {
+    content: '';
+    width: 1.75rem;
+    height: 1px;
+    background: currentColor;
+  }
+
+  /* Giant #9: a livery-filled numeral behind, an outline in front (layered depth). */
+  .nine {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .portrait-stack {
+    position: relative;
+  }
+
+  .nine > span {
+    position: absolute;
+    top: 50%;
+    left: -21cqi;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-stretch: 62%;
+    font-variation-settings: 'wdth' 62;
+    font-size: 158cqi;
+    line-height: 0.74;
+    letter-spacing: -0.04em;
+    will-change: transform;
+  }
+
+  .nine-fill {
+    z-index: -1;
+    translate: 7cqi -47%;
+    background: var(--g-livery);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    opacity: 0.3;
+  }
+
+  .nine-line {
+    z-index: 2;
+    translate: 0 -52%;
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--d-line);
+    mix-blend-mode: screen;
+  }
+
+  .portrait {
+    position: relative;
+    isolation: isolate;
+    width: min(84%, 28rem);
+    margin-left: auto;
+  }
+
+  .portrait .portrait-media :global(.ph-emblem),
+  .tcard .tcard-photo :global(.ph-emblem) {
+    width: clamp(4.5rem, 30cqi, 8.5rem);
+    height: auto;
+    max-width: none;
+  }
+
+  .portrait-frame {
+    --wipe: 1;
+    position: relative;
+    /* Above the lucky-9 outline (z 2): the stroke shows only in the margin, never across the face. */
+    z-index: 3;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border-radius: var(--radius-m);
+    background: var(--c-graphite);
+    box-shadow:
+      0 2.5rem 5rem -2rem rgb(0 0 0 / 0.8),
+      0 0 0 1px var(--c-line-strong);
+    clip-path: polygon(
+      0 0,
+      calc(var(--wipe) * 135%) 0,
+      calc(var(--wipe) * 135% - 35%) 100%,
+      0 100%
+    );
+  }
+
+  .portrait-media {
+    position: absolute;
+    inset: -8% 0;
+    will-change: transform;
+  }
+
+  /* <picture> is display:block with an auto height globally, which would leave the
+     <img> at its natural aspect (top-aligned, focal ignored). Pin it to the frame so
+     object-fit: cover + the manifest's focal point do the cropping. */
+  .portrait-media :global(picture),
+  .tcard-photo :global(picture) {
+    position: absolute;
+    inset: 0;
+  }
+
+  .portrait-media :global(.photo-slot) {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .portrait-shade {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to top, rgb(7 7 11 / 0.85), transparent 38%),
+      linear-gradient(115deg, rgb(160 21 62 / 0.25), transparent 45%);
+    pointer-events: none;
+  }
+
+  .portrait-scan {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 4px);
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  /* Gold slash riding the leading edge of the wipe reveal. */
+  .portrait-sweep {
+    position: absolute;
+    top: -5%;
+    bottom: -5%;
+    left: calc(var(--wipe) * 135% - 17.5% - 3%);
+    width: 6%;
+    background: linear-gradient(90deg, transparent, var(--c-gold) 45%, #fff 55%, transparent);
+    transform: skewX(-15.6deg);
+    box-shadow: 0 0 2rem 0.5rem rgb(255 197 46 / 0.45);
+    pointer-events: none;
+  }
+
+  .portrait-tag {
+    position: absolute;
+    left: var(--space-4);
+    bottom: var(--space-4);
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding: 0.3rem 0.6rem;
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    font-weight: 700;
+    transform: skewX(var(--skew));
+  }
+
+  .portrait-tag b {
+    font-weight: 800;
+    opacity: 0.7;
+  }
+
+  .portrait-corner {
+    position: absolute;
+    width: 1.6rem;
+    height: 1.6rem;
+    border: 2px solid var(--c-gold);
+    pointer-events: none;
+  }
+
+  .portrait-corner.tl {
+    top: var(--space-3);
+    left: var(--space-3);
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .portrait-corner.br {
+    right: var(--space-3);
+    bottom: var(--space-3);
+    border-left: 0;
+    border-top: 0;
+  }
+
+  .portrait-cap {
+    position: relative;
+    z-index: 3;
+    margin-top: calc(var(--space-6) + 4cqi);
+    color: var(--c-mute);
+    font-size: 0.66rem;
+    line-height: 1.6;
+    text-transform: none;
+    letter-spacing: 0.04em;
+    max-width: 36ch;
+  }
+
+  /* ---- Identity ---- */
+  .identity {
+    container-type: inline-size;
+    display: grid;
+    gap: var(--space-5);
+    min-width: 0;
+  }
+
+  .id-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .id-role {
+    color: var(--c-on-gold);
+    background: var(--c-gold);
+    padding: 0.2rem 0.6rem;
+    font-weight: 800;
+    transform: skewX(var(--skew));
+  }
+
+  .id-flag {
+    font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
+  .id-sep {
+    color: var(--c-faint);
+  }
+
+  .name {
+    display: grid;
+    gap: 0.2em;
+    text-transform: uppercase;
+    line-height: 0.86;
+  }
+
+  .name-first {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.35em;
+    font-size: clamp(1.4rem, 6.5cqi, 2.6rem);
+    font-weight: 500;
+    font-stretch: 100%;
+    letter-spacing: 0.02em;
+    color: var(--c-chalk);
+  }
+
+  .name-middle {
+    color: var(--c-mute);
+    font-weight: 300;
+  }
+
+  .name-last {
+    display: block;
+    font-size: min(9.5rem, 21.5cqi);
+    font-weight: 900;
+    letter-spacing: -0.015em;
+    white-space: nowrap;
+    clip-path: inset(-40% -5% -0.06em -5%);
+    padding-bottom: 0.04em;
+  }
+
+  .name--racer .name-first {
+    font-size: clamp(1.25rem, 6cqi, 2.1rem);
+  }
+
+  .name--racer .name-last {
+    font-size: min(7rem, 19cqi);
+  }
+
+  .name-code {
+    position: relative;
+    color: var(--c-gold);
+    text-shadow: 0 0 0.35em rgb(255 197 46 / 0.35);
+  }
+
+  .ch {
+    display: inline-block;
+    transition:
+      transform 1s var(--ease-out-expo) calc(var(--ci) * 40ms + 120ms),
+      opacity 1s var(--ease-out-expo) calc(var(--ci) * 40ms + 120ms);
+  }
+
+  :global(.js-motion) .name:not(.is-in) .ch {
+    transform: translate3d(0, 105%, 0) rotate(8deg);
+    opacity: 0;
+  }
+
+  /* ---- Timing-tower chips (RAT callsign, DHA/DEE codes) ---- */
+  .chip {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    background: var(--c-chalk);
+    color: var(--c-carbon);
+    border-radius: 0.25rem;
+    overflow: hidden;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .chip-bar {
+    width: 0.45rem;
+    background: var(--g-livery);
+  }
+
+  .chip-pos {
+    display: grid;
+    place-items: center;
+    padding-inline: 0.55rem;
+    background: var(--c-carbon);
+    color: var(--c-chalk);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .chip-txt {
+    padding: 0.2rem 0.85rem 0.15rem;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: 2rem;
+    line-height: 1.1;
+    font-stretch: 80%;
+    font-variation-settings: 'wdth' 80;
+    letter-spacing: 0.06em;
+  }
+
+  .chip--meta {
+    transform: skewX(var(--skew));
+  }
+
+  .chip--meta .chip-pos {
+    font-family: var(--f-display);
+    font-size: 0.95rem;
+    font-weight: 900;
+  }
+
+  .chip--meta .chip-txt {
+    font-size: 1.05rem;
+    padding: 0.15rem 0.55rem 0.1rem;
+  }
+
+  .code {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4) var(--space-5);
+  }
+
+  .code-chip {
+    box-shadow: 0 0.75rem 2rem -0.75rem rgb(255 197 46 / 0.55);
+    transition:
+      transform var(--dur-med) var(--ease-out-back),
+      box-shadow var(--dur-med) var(--ease-out-expo);
+  }
+
+  @media (hover: hover) {
+    .code-chip:hover {
+      transform: translateY(-3px) rotate(-2deg);
+      box-shadow: 0 1rem 2.4rem -0.75rem rgb(255 197 46 / 0.8);
+    }
+  }
+
+  .code-chip:active {
+    transform: scale(0.96);
+  }
+
+  .code-chip.is-squeak {
+    animation: squeak 520ms var(--ease-out-back);
+  }
+
+  @keyframes squeak {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.12, 0.86) rotate(-4deg); }
+    60% { transform: scale(0.94, 1.08) rotate(3deg); }
+    100% { transform: scale(1); }
+  }
+
+  .code-joke {
+    flex: 1 1 18rem;
+    font-size: var(--fs-small);
+    color: var(--c-mute);
+    line-height: 1.5;
+    max-width: 44ch;
+  }
+
+  .code-joke strong {
+    color: var(--c-chalk);
+    font-weight: 700;
+  }
+
+  /* ---- Nickname dictionary card ---- */
+  .nick {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: center;
+    padding: var(--space-5);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-m);
+    background:
+      linear-gradient(135deg, rgb(255 197 46 / 0.07), transparent 55%),
+      color-mix(in oklab, var(--c-asphalt) 85%, transparent);
+    backdrop-filter: blur(6px);
+  }
+
+  .nick::before {
+    content: 'n.';
+    position: absolute;
+    top: -0.65rem;
+    right: var(--space-5);
+    padding: 0 0.45rem;
+    background: var(--c-carbon);
+    color: var(--c-gold);
+    font-family: var(--f-mono);
+    font-size: var(--fs-micro);
+  }
+
+  .nick-word {
+    font-size: clamp(3rem, 2rem + 5vw, 5rem);
+    line-height: 1;
+    color: var(--c-gold);
+    text-shadow: 0 0 1.5rem rgb(255 197 46 / 0.3);
+  }
+
+  .nick-def {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .nick-meta {
+    color: var(--c-mute);
+  }
+
+  .nick-meta i {
+    font-style: italic;
+    text-transform: none;
+    color: var(--c-chalk);
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+  }
+
+  .nick-senses {
+    padding-left: 1.2rem;
+    font-size: var(--fs-lead);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .nick-senses li::marker {
+    color: var(--c-gold);
+    font-family: var(--f-mono);
+    font-size: 0.8em;
+  }
+
+  .nick-etym {
+    font-size: var(--fs-small);
+    color: var(--c-mute);
+    line-height: 1.55;
+  }
+
+  .nick-etym .t-si {
+    color: var(--c-chalk);
+  }
+
+  .nick-etym b {
+    color: var(--c-gold);
+  }
+
+  @container (max-width: 26rem) {
+    .nick {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+  }
+
+  .bio {
+    font-size: var(--fs-lead);
+    line-height: 1.55;
+    color: var(--c-mute);
+    max-width: 58ch;
+  }
+
+  .bio b,
+  .bio .t-si {
+    color: var(--c-chalk);
+  }
+
+  /* ================= Owner stats + dossier ================= */
+  .owner-data {
+    margin-top: var(--space-9);
+    display: grid;
+    gap: var(--space-8);
+    align-items: start;
+  }
+
+  @media (min-width: 60em) {
+    .owner-data {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: clamp(2.5rem, 5vw, 5rem);
+    }
+  }
+
+  .stats {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+  }
+
+  .stat {
+    --mx: 50%;
+    --my: 0%;
+    position: relative;
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: clamp(1rem, 0.6rem + 1.6vw, 1.75rem);
+    background:
+      radial-gradient(22rem 14rem at var(--mx) var(--my), rgb(255 197 46 / 0.08), transparent 70%),
+      var(--c-asphalt);
+    box-shadow: 0 0 0 1px var(--c-line);
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .stat::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 3px;
+    width: 100%;
+    background: var(--g-livery);
+    transform: scaleX(0.14);
+    transform-origin: left;
+    transition: transform var(--dur-slow) var(--ease-out-expo);
+  }
+
+  .stat:hover::before {
+    transform: scaleX(1);
+  }
+
+  .stat-label {
+    display: flex;
+    gap: var(--space-2);
+    color: var(--c-mute);
+    font-size: 0.64rem;
+    line-height: 1.4;
+  }
+
+  .stat-idx {
+    color: var(--c-gold);
+  }
+
+  .stat-value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+    line-height: 0.85;
+    font-weight: 850;
+  }
+
+  .stat-figure {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .stat-num {
+    font-size: clamp(2.5rem, 34cqi, 6rem);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    display: inline-block;
+  }
+
+  .stat-suffix {
+    font-size: clamp(0.95rem, 10cqi, 1.9rem);
+    color: var(--c-gold);
+    font-weight: 700;
+    margin-left: 0.08em;
+  }
+
+  .stat-note {
+    margin-top: auto;
+    font-size: var(--fs-small);
+    color: var(--c-mute);
+    line-height: 1.45;
+    padding-top: var(--space-3);
+    border-top: 1px dashed var(--c-line-strong);
+  }
+
+  .stat-note::before {
+    content: 'Telemetry: ';
+    font-family: var(--f-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+  }
+
+  .stat-flag {
+    white-space: nowrap;
+    line-height: 1.4;
+    padding: 0.2rem 0.5rem;
+    background: var(--c-red);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.58rem;
+    transform: skewX(var(--skew)) rotate(-3deg);
+    box-shadow: var(--glow-red);
+    transition:
+      opacity var(--dur-med) var(--ease-out-expo),
+      transform var(--dur-med) var(--ease-out-back);
+  }
+
+  :global(.js-motion) .stat--deleted:not(.is-deleted) .stat-flag {
+    opacity: 0;
+    transform: skewX(var(--skew)) rotate(-3deg) scale(1.6);
+  }
+
+  .stat--deleted.is-deleted .stat-num {
+    color: var(--c-red);
+    text-decoration: line-through 0.06em var(--c-red);
+  }
+
+  .stat--deleted .stat-num {
+    transition: color var(--dur-slow) var(--ease-out-expo);
+  }
+
+  .stat--deleted.is-settled .stat-num {
+    color: var(--c-chalk);
+    text-decoration: none;
+  }
+
+  .lives {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem;
+  }
+
+  .pip {
+    width: clamp(0.7rem, 8.4cqi, 1.25rem);
+    aspect-ratio: 1;
+    color: var(--c-gold);
+    transition:
+      color var(--dur-fast) linear,
+      transform var(--dur-med) var(--ease-out-back);
+  }
+
+  .pip svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+  }
+
+  :global(.js-motion) .lives:not(.is-counted) .pip:not(.on) {
+    color: var(--c-steel);
+    transform: scale(0.7);
+  }
+
+  .lives .pip.on {
+    color: var(--c-gold);
+    transform: scale(1);
+  }
+
+  /* The ninth life: "unconfirmed, stewards investigating". */
+  .pip:last-child {
+    animation: flicker 2.6s steps(1, end) infinite paused;
+  }
+
+  .owner.is-live .pip:last-child {
+    animation-play-state: running;
+  }
+
+  @keyframes flicker {
+    0%, 62%, 70%, 74%, 100% { opacity: 1; }
+    64%, 72% { opacity: 0.2; }
+  }
+
+  /* ---- Dossier ---- */
+  .facts {
+    display: grid;
+    container-type: inline-size;
+  }
+
+  .fact {
+    position: relative;
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-3);
+    border-bottom: 1px solid var(--c-line);
+    isolation: isolate;
+  }
+
+  @container (min-width: 32rem) {
+    .fact {
+      grid-template-columns: 11rem minmax(0, 1fr);
+      gap: var(--space-5);
+      align-items: start;
+    }
+
+    .fact dt {
+      padding-top: 0.5em;
+    }
+  }
+
+  .fact::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(90deg, rgb(255 197 46 / 0.1), transparent 80%);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-med) var(--ease-out-expo);
+  }
+
+  .fact:hover::before {
+    transform: scaleX(1);
+  }
+
+  .fact dt {
+    display: flex;
+    gap: var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .fact-idx {
+    color: var(--c-gold);
+  }
+
+  .fact dd {
+    position: relative;
+    font-size: var(--fs-lead);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .fact-v {
+    display: inline-block;
+    transition: transform var(--dur-med) var(--ease-out-back);
+  }
+
+  .fx-radio .fact-v {
+    color: var(--c-gold);
+    font-style: italic;
+  }
+
+  /* Weakness: laser pointers. A dot you cannot ignore. */
+  .laser {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    opacity: 0;
+    pointer-events: none;
+    translate: 0 -50%;
+  }
+
+  .fx-laser:hover .laser {
+    opacity: 1;
+    left: auto;
+    right: 0;
+  }
+
+  /* Radio: little squelch bars. */
+  .radio-wave {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    height: 1em;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+
+  .radio-wave i {
+    width: 3px;
+    height: 30%;
+    background: var(--c-gold);
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* Management style: knocks the strategy off the desk. */
+    .fx-knock .fact-v {
+      transform-origin: 0 100%;
+    }
+
+    .fx-knock:hover .fact-v {
+      transform: translateX(0.9rem) rotate(4deg);
+    }
+
+    /* Signature move: the 3 a.m. zoomies. */
+    .fx-zoomies:hover .fact-v {
+      animation: zoomies 700ms var(--ease-in-out);
+    }
+
+    .fx-laser:hover .laser {
+      left: 0;
+      right: auto;
+      animation: laser 1.8s var(--ease-in-out) infinite;
+    }
+
+    .fx-laser:hover .fact-v {
+      transform: translateX(0.4rem);
+    }
+
+    .fx-radio:hover .radio-wave i {
+      animation: squelch 600ms ease-in-out infinite alternate;
+    }
+  }
+
+  @keyframes zoomies {
+    0% { transform: translateX(0); }
+    35% { transform: translateX(1.2rem) skewX(-14deg); }
+    55% { transform: translateX(-0.6rem) skewX(10deg); }
+    75% { transform: translateX(0.3rem) skewX(-4deg); }
+    100% { transform: translateX(0); }
+  }
+
+  @keyframes laser {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(min(18rem, 40cqi), -0.9rem); }
+    50% { transform: translate(min(9rem, 20cqi), 0.8rem); }
+    75% { transform: translate(min(24rem, 55cqi), 0); }
+    100% { transform: translate(0, 0); }
+  }
+
+  .radio-wave i:nth-child(2) { animation-delay: -150ms; }
+  .radio-wave i:nth-child(3) { animation-delay: -300ms; }
+  .radio-wave i:nth-child(4) { animation-delay: -450ms; }
+  .radio-wave i:nth-child(5) { animation-delay: -80ms; }
+
+  @keyframes squelch {
+    to { height: 100%; }
+  }
+
+  /* ================= Race drivers ================= */
+  .drivers-head {
+    position: relative;
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-10);
+    padding-top: var(--space-7);
+  }
+
+  /* Chequered strip: the pit wall ends, the garage begins. */
+  .drivers-head::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 0.75rem;
+    background: repeating-conic-gradient(var(--c-chalk) 0 25%, transparent 0 50%) 0 0 / 0.75rem 0.75rem;
+    opacity: 0.14;
+    mask-image: linear-gradient(90deg, #000, transparent 75%);
+  }
+
+  .dh-kicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--c-mute);
+  }
+
+  .dh-rule {
+    width: 3rem;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.5;
+  }
+
+  .dh-title {
+    font-size: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+    font-weight: 850;
+    line-height: 0.9;
+    text-transform: uppercase;
+  }
+
+  .dh-title em {
+    font-style: normal;
+    background: var(--g-livery);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .dh-lead {
+    font-size: var(--fs-lead);
+    line-height: 1.5;
+    color: var(--c-mute);
+    max-width: 52ch;
+  }
+
+  .dh-hint {
+    font-size: 0.62rem;
+  }
+
+  @media (hover: none), (prefers-reduced-motion: reduce) {
+    .hint-hover {
+      display: none;
+    }
+  }
+
+  .drivers {
+    position: relative;
+    display: grid;
+    gap: var(--space-9);
+    margin-top: var(--space-8);
+  }
+
+  @media (min-width: 60em) {
+    .drivers {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(3rem, 6vw, 6rem);
+    }
+
+    /* Hairline between the two garages. */
+    .drivers::before {
+      content: '';
+      position: absolute;
+      top: 8%;
+      bottom: 4%;
+      left: 50%;
+      width: 1px;
+      background: linear-gradient(transparent, var(--c-line-strong) 20%, var(--c-line-strong) 80%, transparent);
+    }
+  }
+
+  .racer {
+    display: grid;
+    gap: var(--space-6);
+    align-content: start;
+    min-width: 0;
+  }
+
+  /* Tablet: one driver per row, card beside the data (drivers go side by side at 60em). */
+  @media (42em <= width < 60em) {
+    .racer {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      align-items: start;
+      gap: var(--space-6) clamp(1.5rem, 4vw, 3rem);
+    }
+  }
+
+  .racer-info {
+    container-type: inline-size;
+    display: grid;
+    gap: var(--space-5);
+    min-width: 0;
+  }
+
+  .racer-role {
+    color: var(--c-gold);
+  }
+
+  .racer-bio {
+    font-size: var(--fs-body);
+    line-height: 1.65;
+    color: var(--c-mute);
+    max-width: 56ch;
+  }
+
+  .racer-stats {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+  }
+
+  .racer-stats-k {
+    color: var(--c-mute);
+  }
+
+  /* ---- Card stage: giant number + holographic card ---- */
+  .card-zone {
+    position: relative;
+    container-type: inline-size;
+    display: grid;
+    justify-items: center;
+    gap: var(--space-4);
+    padding-top: min(20cqi, 8rem);
+    perspective: 1100px;
+    isolation: isolate;
+  }
+
+  /* spotlight */
+  .card-zone::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    z-index: -2;
+    translate: -50% 0;
+    pointer-events: none;
+    top: 0;
+    width: min(38rem, 120%);
+    aspect-ratio: 1;
+    background: radial-gradient(closest-side, rgb(255 197 46 / 0.14), rgb(160 21 62 / 0.08) 55%, transparent 75%);
+  }
+
+  .racer-num {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .racer-num > span {
+    position: absolute;
+    top: 0;
+    left: -3cqi;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: min(62cqi, 26rem);
+    line-height: 0.74;
+    letter-spacing: -0.04em;
+    will-change: transform;
+  }
+
+  .racer:nth-child(2) .racer-num > span {
+    left: auto;
+    right: -3cqi;
+  }
+
+  .racer-num-fill {
+    z-index: -1;
+    translate: 3cqi 2cqi;
+    background: var(--g-livery);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    opacity: 0.32;
+  }
+
+  /* Behind the card too: an outline crossing the holo foil reads as a glitch. */
+  .racer-num-line {
+    z-index: -1;
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--d-line);
+    mix-blend-mode: screen;
+  }
+
+  .tcard-shadow {
+    width: min(17rem, 70%);
+    height: 2rem;
+    margin-top: calc(-1 * var(--space-3));
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(0 0 0 / 0.8), transparent);
+    pointer-events: none;
+  }
+
+  .tcard-float {
+    width: min(100%, 22rem);
+    transform-style: preserve-3d;
+    transform: rotateX(4deg) rotateY(-9deg);
+  }
+
+  .racer:nth-child(2) .tcard-float {
+    transform: rotateX(4deg) rotateY(9deg);
+  }
+
+  @media (hover: none) and (prefers-reduced-motion: no-preference) {
+    .tcard-float,
+    .racer:nth-child(2) .tcard-float {
+      animation: card-sway 7s var(--ease-in-out) infinite alternate paused;
+    }
+
+    .racer:nth-child(2) .tcard-float {
+      animation-direction: alternate-reverse;
+    }
+
+    .racer.is-live .tcard-float {
+      animation-play-state: running;
+    }
+  }
+
+  @keyframes card-sway {
+    from {
+      transform: rotateX(5deg) rotateY(-14deg) translateY(0);
+    }
+    to {
+      transform: rotateX(-3deg) rotateY(12deg) translateY(-0.5rem);
+    }
+  }
+
+  .tcard {
+    --rx: 0deg;
+    --ry: 0deg;
+    --mx: 50%;
+    --my: 30%;
+    --glare: 0;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 7;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx)) rotateY(var(--ry));
+    transition: transform 700ms var(--ease-out-expo);
+    touch-action: pan-y;
+  }
+
+  .tcard.is-tilting {
+    transition: transform 90ms linear;
+  }
+
+  .tcard-inner {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 1s var(--ease-out-expo);
+  }
+
+  .tcard.is-flipped .tcard-inner {
+    transform: rotateY(180deg);
+  }
+
+  .tcard-face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-l);
+    padding: 3px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    background: var(--c-steel);
+    box-shadow:
+      0 2rem 4rem -1.5rem rgb(0 0 0 / 0.9),
+      0 0 3rem -1rem rgb(255 197 46 / 0.35);
+  }
+
+  .tcard-back {
+    transform: rotateY(180deg);
+  }
+
+  /* Holographic foil: animated registered angle + pointer-driven origin. */
+  .tcard-foil {
+    position: absolute;
+    inset: -1px;
+    background: conic-gradient(
+      from var(--livery-angle) at var(--mx) var(--my),
+      var(--c-maroon),
+      var(--c-saffron),
+      var(--c-gold),
+      var(--c-teal),
+      var(--c-purple),
+      var(--c-maroon)
+    );
+    animation: foil-spin 7s linear infinite paused;
+  }
+
+  .racer.is-live .tcard-foil {
+    animation-play-state: running;
+  }
+
+  @keyframes foil-spin {
+    to {
+      --livery-angle: 360deg;
+    }
+  }
+
+  .tcard-body {
+    position: relative;
+    z-index: 1;
+    container-type: inline-size;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.9rem;
+    border-radius: calc(var(--radius-l) - 3px);
+    background:
+      radial-gradient(120% 70% at 50% 0%, rgb(255 197 46 / 0.12), transparent 60%),
+      linear-gradient(160deg, var(--c-graphite), var(--c-carbon) 70%);
+    overflow: hidden;
+  }
+
+  /* holo sheen over the body */
+  .tcard-body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--livery-angle) at var(--mx) var(--my),
+      rgb(255 106 19 / 0.5),
+      rgb(255 197 46 / 0.5),
+      rgb(20 213 180 / 0.5),
+      rgb(179 107 255 / 0.5),
+      rgb(255 106 19 / 0.5)
+    );
+    mix-blend-mode: color-dodge;
+    opacity: calc(0.1 + var(--glare) * 0.28);
+    -webkit-mask-image: repeating-linear-gradient(115deg, #000 0 2px, transparent 2px 7px);
+    mask-image: repeating-linear-gradient(115deg, #000 0 2px, transparent 2px 7px);
+    animation: foil-spin 7s linear infinite paused;
+  }
+
+  .racer.is-live .tcard-body::after {
+    animation-play-state: running;
+  }
+
+  .tcard-glare {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(
+      circle at var(--mx) var(--my),
+      rgb(255 255 255 / 0.26),
+      rgb(255 255 255 / 0.06) 28%,
+      transparent 55%
+    );
+    mix-blend-mode: screen;
+    opacity: var(--glare);
+    transition: opacity var(--dur-med) var(--ease-out-expo);
+  }
+
+  .tcard-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6rem;
+    color: var(--c-chalk);
+  }
+
+  .tcard-flag {
+    margin-left: auto;
+    font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  /* z-index lifts the real photo above the holo sheen: foil on the frame, clean faces. */
+  .tcard-photo {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 0;
+    border-radius: var(--radius-s);
+    overflow: hidden;
+    border: 1px solid rgb(255 197 46 / 0.35);
+    background: var(--c-graphite);
+  }
+
+  .tcard-photo :global(.photo-slot) {
+    height: 100%;
+    min-height: 0;
+    border: 0;
+  }
+
+  .tcard-photo :global(.ph-sub) {
+    display: none;
+  }
+
+  .tcard-shade {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to top, rgb(7 7 11 / 0.88), rgb(7 7 11 / 0.35) 26%, transparent 46%),
+      linear-gradient(200deg, rgb(160 21 62 / 0.22), transparent 40%);
+    pointer-events: none;
+  }
+
+  /* F1-style car number: italic, gold, bottom-left over the shade. */
+  .tcard-no {
+    position: absolute;
+    left: 0.55rem;
+    bottom: 0.2rem;
+    font-size: clamp(3.5rem, 30cqi, 6rem);
+    font-weight: 900;
+    line-height: 0.8;
+    letter-spacing: -0.02em;
+    color: var(--c-gold);
+    transform: skewX(var(--skew));
+    text-shadow:
+      0 0.05em 0 var(--c-maroon),
+      0 0.4rem 1.2rem rgb(0 0 0 / 0.55);
+  }
+
+  .chip--card {
+    position: absolute;
+    right: 0.55rem;
+    bottom: 0.6rem;
+    box-shadow: 0 0.5rem 1.2rem -0.4rem rgb(0 0 0 / 0.7);
+  }
+
+  .chip--card .chip-txt {
+    font-size: clamp(1.1rem, 8.5cqi, 1.6rem);
+    padding: 0.15rem 0.6rem 0.1rem;
+  }
+
+  .tcard-name {
+    display: flex;
+    flex-direction: column;
+    text-transform: uppercase;
+    font-size: clamp(1.6rem, 14cqi, 2.6rem);
+    font-weight: 900;
+    line-height: 0.82;
+    white-space: nowrap;
+  }
+
+  .tcard-name span {
+    font-size: 0.48em;
+    color: var(--c-gold);
+    font-weight: 700;
+  }
+
+  .tcard-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.58rem;
+    color: var(--c-gold);
+  }
+
+  .tcard-seal {
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: var(--g-livery);
+    color: var(--c-on-gold);
+    font-weight: 800;
+  }
+
+  /* ---- Card back ---- */
+  .tcard-body--back {
+    gap: 0.65rem;
+    padding: 1rem 1.05rem;
+    background:
+      repeating-linear-gradient(45deg, rgb(255 197 46 / 0.05) 0 10px, transparent 10px 20px),
+      linear-gradient(160deg, var(--c-graphite), var(--c-carbon) 70%);
+  }
+
+  .tback-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px dashed var(--c-line-strong);
+  }
+
+  .tcard-serial {
+    color: var(--c-gold);
+    font-size: 0.58rem;
+    line-height: 1.5;
+  }
+
+  .tback-no {
+    margin-left: auto;
+    font-size: 2.6rem;
+    font-weight: 900;
+    line-height: 0.8;
+    color: var(--c-gold);
+    transform: skewX(var(--skew));
+  }
+
+  /* The dossier sits centred between the serial strip and the barcode. */
+  .tback-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(0.6rem, 4cqi, 1.1rem);
+  }
+
+  .tback-facts {
+    display: grid;
+    gap: clamp(0.45rem, 3cqi, 0.8rem);
+  }
+
+  .tback-facts dt {
+    font-size: 0.55rem;
+    color: var(--c-gold);
+  }
+
+  .tback-facts dd {
+    font-size: clamp(0.78rem, 4.9cqi, 1.05rem);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .tback-radio {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.5rem 0.7rem;
+    border-left: 3px solid var(--c-gold);
+    background: rgb(255 197 46 / 0.07);
+  }
+
+  .tback-radio figcaption {
+    font-size: 0.52rem;
+    color: var(--c-mute);
+  }
+
+  .tcard-quote {
+    font-size: clamp(0.95rem, 6.2cqi, 1.4rem);
+    font-weight: 800;
+    line-height: 1.12;
+    font-stretch: 80%;
+    font-variation-settings: 'wdth' 80;
+    color: var(--c-chalk);
+  }
+
+  .tback-why {
+    font-size: clamp(0.72rem, 4cqi, 0.85rem);
+    line-height: 1.4;
+    color: var(--c-mute);
+  }
+
+  .tback-why b {
+    color: var(--c-gold);
+  }
+
+  .tcard-barcode {
+    align-self: center;
+    flex: none;
+    width: 62%;
+    height: 1.3rem;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--c-chalk) 0 2px,
+      transparent 2px 4px,
+      var(--c-chalk) 4px 5px,
+      transparent 5px 9px,
+      var(--c-chalk) 9px 12px,
+      transparent 12px 14px
+    );
+    opacity: 0.55;
+  }
+
+  .flip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.7rem 1.2rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: 999px;
+    color: var(--c-chalk);
+    background: var(--c-asphalt);
+    transition:
+      background var(--dur-fast) linear,
+      border-color var(--dur-fast) linear,
+      color var(--dur-fast) linear;
+  }
+
+  @media (hover: hover) {
+    .flip-btn:hover {
+      background: var(--c-gold);
+      border-color: var(--c-gold);
+      color: var(--c-on-gold);
+    }
+  }
+
+  .flip-ico {
+    display: inline-block;
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform var(--dur-slow) var(--ease-out-expo);
+  }
+
+  .flip-btn[aria-pressed='true'] .flip-ico {
+    transform: rotate(-180deg);
+  }
+
+  /* ================= Reduced motion: still designed ================= */
+  @media (prefers-reduced-motion: reduce) {
+    .tcard,
+    .tcard-inner {
+      transition: none;
+    }
+  }
+
+  /* ================= Landscape phones: fit the viewport height =================
+     Width-driven sizing makes the 4:5 portrait and 5:7 cards taller than a sideways
+     phone; cap them by svh so face, tag and caption share one screen. Must stay after
+     the base .portrait / .tcard-float rules. */
+  @media (orientation: landscape) and (max-height: 30em) {
+    .portrait {
+      width: min(84%, 28rem, calc(82svh * 0.8));
+    }
+
+    /* The base 2rem + 4cqi gap is ~60px on a wide landscape column: tighten it so the
+       caption lands inside the same screen as the frame. */
+    .portrait-cap {
+      margin-top: var(--space-4);
+    }
+
+    .tcard-float {
+      width: min(100%, 22rem, calc(85svh * 0.68));
+      margin-inline: auto;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, ScrollTrigger, prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
+  import { emit } from '@/scripts/bus';
+  import { sound } from '@/scripts/audio';
+
+  const root = document.querySelector<HTMLElement>('[data-driver]');
+  if (root) initLineup(root);
+
+  function initLineup(section: HTMLElement): void {
+    const reduced = prefersReducedMotion();
+
+    // ---- Pause CSS loops (foil, flickering life, card sway) while offscreen ----
+    const live = Array.from(section.querySelectorAll<HTMLElement>('[data-live]'));
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            (entry.target as HTMLElement).classList.toggle('is-live', entry.isIntersecting);
+          }
+        },
+        { rootMargin: '10% 0px' },
+      );
+      live.forEach((el) => io.observe(el));
+    } else {
+      live.forEach((el) => el.classList.add('is-live'));
+    }
+
+    initRatChip(section);
+    section.querySelectorAll<HTMLElement>('[data-tcard]').forEach((card) => initCard(section, card, reduced));
+
+    if (reduced) return;
+    initPortrait(section);
+    initNumbers(section);
+    section.querySelectorAll<HTMLElement>('[data-stats]').forEach(initStats);
+  }
+
+  /* ---------- Owner portrait: clip-path wipe + layered parallax ---------- */
+  function initPortrait(section: HTMLElement): void {
+    const col = section.querySelector<HTMLElement>('.portrait-col');
+    const frame = section.querySelector<HTMLElement>('[data-portrait-frame]');
+    const media = section.querySelector<HTMLElement>('[data-portrait-media]');
+    const fill = section.querySelector<HTMLElement>('[data-nine-fill]');
+    const line = section.querySelector<HTMLElement>('[data-nine-line]');
+    if (!col || !frame || !media) return;
+
+    gsap.set(frame, { '--wipe': 0 });
+    gsap.set(media, { scale: 1.3 });
+    ScrollTrigger.create({
+      trigger: frame,
+      start: 'top 82%',
+      once: true,
+      onEnter: () => {
+        gsap.to(frame, { '--wipe': 1, duration: 1.5, ease: 'expo.out' });
+        gsap.to(media, { scale: 1.08, duration: 2, ease: 'expo.out' });
+      },
+    });
+
+    const scrub = { trigger: col, start: 'top bottom', end: 'bottom top', scrub: true };
+    gsap.fromTo(media, { yPercent: -5 }, { yPercent: 5, ease: 'none', scrollTrigger: scrub });
+    if (line) gsap.fromTo(line, { yPercent: 16 }, { yPercent: -16, ease: 'none', scrollTrigger: scrub });
+    if (fill) gsap.fromTo(fill, { yPercent: -8 }, { yPercent: 8, ease: 'none', scrollTrigger: scrub });
+  }
+
+  /* ---------- Drivers' giant numbers: counter-drifting layers ---------- */
+  function initNumbers(section: HTMLElement): void {
+    section.querySelectorAll<HTMLElement>('[data-racer-num]').forEach((wrap) => {
+      const zone = wrap.parentElement;
+      const fill = wrap.querySelector<HTMLElement>('[data-racer-num-fill]');
+      const line = wrap.querySelector<HTMLElement>('[data-racer-num-line]');
+      if (!zone) return;
+      const scrub = { trigger: zone, start: 'top bottom', end: 'bottom top', scrub: true };
+      if (line) gsap.fromTo(line, { yPercent: 14 }, { yPercent: -14, ease: 'none', scrollTrigger: scrub });
+      if (fill) gsap.fromTo(fill, { yPercent: -6 }, { yPercent: 6, ease: 'none', scrollTrigger: scrub });
+    });
+  }
+
+  /* ---------- Stats: count-up with a couple of gags ---------- */
+  function initStats(list: HTMLElement): void {
+    const cards = Array.from(list.querySelectorAll<HTMLElement>('[data-stat]'));
+
+    const prepared = cards.map((card) => {
+      const num = card.querySelector<HTMLElement>('.stat-num');
+      const target = Number(num?.dataset.count ?? 0);
+      const decimals = Number(num?.dataset.decimals ?? 0);
+      const mode = num?.dataset.mode ?? 'up';
+      const lives = card.querySelector<HTMLElement>('.lives');
+      const pips = lives ? Array.from(lives.querySelectorAll<HTMLElement>('.pip')) : [];
+      const start = mode === 'down' ? 9 : 0;
+      if (num) num.textContent = start.toFixed(decimals);
+      return { card, num, target, decimals, mode, lives, pips, start };
+    });
+
+    // Pointer-follow glow (cheap: two custom props, rAF-batched).
+    cards.forEach((card) => {
+      let frame = 0;
+      card.addEventListener('pointermove', (e) => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const r = card.getBoundingClientRect();
+          card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+          card.style.setProperty('--my', `${e.clientY - r.top}px`);
+        });
+      });
+    });
+
+    ScrollTrigger.create({
+      trigger: list,
+      start: 'top 78%',
+      once: true,
+      onEnter: () => {
+        prepared.forEach((s, i) => {
+          const { num, decimals, mode, target, card, lives, pips } = s;
+          if (!num) return;
+          const state = { v: s.start };
+          const render = () => {
+            num.textContent = state.v.toFixed(decimals);
+            if (pips.length) {
+              const lit = Math.round(state.v);
+              pips.forEach((p, k) => p.classList.toggle('on', k < lit));
+            }
+          };
+          const delay = 0.15 + i * 0.09;
+          if (mode === 'deleted') {
+            // Counts up to something respectable... then the stewards delete it.
+            gsap
+              .timeline({ delay })
+              .to(state, { v: 3, duration: 0.9, ease: 'power2.out', onUpdate: render })
+              .add(() => card.classList.add('is-deleted'), '+=0.15')
+              .to(state, { v: 0, duration: 0.35, ease: 'power3.in', onUpdate: render }, '+=0.35')
+              .fromTo(num, { x: -10 }, { x: 0, duration: 0.6, ease: 'elastic.out(1, 0.3)' })
+              .add(() => card.classList.add('is-settled'), '+=0.2');
+            return;
+          }
+          gsap.to(state, {
+            v: target,
+            delay,
+            duration: mode === 'down' ? 1.8 : 1.6,
+            ease: mode === 'down' ? 'expo.out' : 'power3.out',
+            onUpdate: render,
+            onComplete: () => {
+              render();
+              lives?.classList.add('is-counted');
+            },
+          });
+        });
+      },
+    });
+  }
+
+  /* ---------- RAT callsign chip: ask the stewards ---------- */
+  function initRatChip(section: HTMLElement): void {
+    const chip = section.querySelector<HTMLButtonElement>('[data-rat]');
+    if (!chip) return;
+    const lines = [
+      'Stewards’ note: the RAT is, in fact, a cat. No further action.',
+      'Callsign RAT confirmed. The cat has lodged a protest.',
+      'FIA: “It’s just the first three letters.” The cat: 😾',
+      'Team Principal (RAT) reminded that chasing his own callsign is not a race strategy.',
+    ];
+    let n = 0;
+    chip.addEventListener('click', () => {
+      emit('bilal:toast', { message: lines[n % lines.length] ?? lines[0]!, tone: 'gold' });
+      n += 1;
+      sound.play('meow');
+      chip.classList.remove('is-squeak');
+      void chip.offsetWidth; // restart the CSS animation
+      chip.classList.add('is-squeak');
+    });
+  }
+
+  /* ---------- Collectible cards: 3D tilt, holo glare, flip ---------- */
+  function initCard(section: HTMLElement, card: HTMLElement, reduced: boolean): void {
+    const btn = card.id ? section.querySelector<HTMLButtonElement>(`[data-flip][aria-controls="${card.id}"]`) : null;
+    const label = btn?.querySelector<HTMLElement>('[data-flip-label]');
+    const front = card.querySelector<HTMLElement>('[data-tcard-front]');
+    const back = card.querySelector<HTMLElement>('[data-tcard-back]');
+
+    btn?.addEventListener('click', () => {
+      const flipped = card.classList.toggle('is-flipped');
+      btn.setAttribute('aria-pressed', String(flipped));
+      if (label) label.textContent = flipped ? 'Show the front' : 'Flip the card';
+      // Only the face that is showing is exposed to assistive tech.
+      const [shown, hidden] = flipped ? [back, front] : [front, back];
+      shown?.removeAttribute('aria-hidden');
+      hidden?.setAttribute('aria-hidden', 'true');
+      sound.play('whoosh', { volume: 0.5 });
+    });
+
+    if (reduced) return;
+
+    const max = isLowPowerDevice() ? 10 : 20;
+    let rect: DOMRect | null = null;
+    let raf = 0;
+    let px = 0.5;
+    let py = 0.3;
+
+    const apply = () => {
+      raf = 0;
+      card.style.setProperty('--rx', `${((0.5 - py) * max).toFixed(2)}deg`);
+      card.style.setProperty('--ry', `${((px - 0.5) * max * 1.3).toFixed(2)}deg`);
+      card.style.setProperty('--mx', `${(px * 100).toFixed(1)}%`);
+      card.style.setProperty('--my', `${(py * 100).toFixed(1)}%`);
+    };
+
+    card.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'touch') return;
+      rect = card.getBoundingClientRect();
+      card.classList.add('is-tilting');
+      card.style.setProperty('--glare', '1');
+    });
+    card.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      if (!rect) rect = card.getBoundingClientRect();
+      px = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      py = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+      if (!raf) raf = requestAnimationFrame(apply);
+    });
+    card.addEventListener('pointerleave', () => {
+      rect = null;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      card.classList.remove('is-tilting');
+      card.style.setProperty('--rx', '0deg');
+      card.style.setProperty('--ry', '0deg');
+      card.style.setProperty('--glare', '0');
+    });
+    window.addEventListener('scroll', () => (rect = null), { passive: true });
+  }
+</script>

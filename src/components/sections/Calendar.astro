@@ -1,0 +1,1754 @@
+---
+/**
+ * 06 · Calendar — the 2026/27 season.
+ * Live split-flap countdown to the next Grand Prix (computed in the browser),
+ * then a drag/scroll-snap carousel of hand-drawn circuits that can morph into a
+ * grid with the View Transitions API. Circuit maps draw themselves in view and
+ * a comet "car" laps them on hover.
+ */
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import { races, raceEnd, pathStart, pathEnd, type WeatherIcon } from '@/data/calendar';
+import { sinhala } from '@/data/lore';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+const slTime = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Asia/Colombo',
+});
+const slDay = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'Asia/Colombo',
+});
+
+// Build-time guess at the next race (the browser recomputes it live).
+const buildNow = Date.now();
+const buildNext = races.find((r) => raceEnd(r) > buildNow) ?? races[races.length - 1];
+
+const weatherIcons: Record<WeatherIcon, string> = {
+  sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7"/>',
+  moon: '<path d="M20 14.6A8.2 8.2 0 1 1 9.4 4a6.6 6.6 0 0 0 10.6 10.6Z"/>',
+  wind: '<path d="M3 8.5h11a3 3 0 1 0-3-3M3 12.5h15.5a3 3 0 1 1-3 3M3 16.5h7"/>',
+  rain: '<path d="M6.8 15.5a4 4 0 0 1-.6-8 5.6 5.6 0 0 1 10.8-1.2 4 4 0 0 1 .6 9.2Z"/><path d="M8.5 18.5 7.6 21M12.5 18.5l-.9 2.5M16.5 18.5l-.9 2.5"/>',
+  cold: '<path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6M9.6 4 12 6.4 14.4 4M9.6 20 12 17.6l2.4 2.4"/>',
+  mist: '<path d="M3 7.5h18M5 11.5h14M3 15.5h18M7 19.5h10"/>',
+  hot: '<path d="M10 14.4V5a2 2 0 1 1 4 0v9.4a4 4 0 1 1-4 0Z"/><path d="M12 9v7.5"/>',
+  wave: '<path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/>',
+};
+
+const cards = races.map((r) => {
+  const startMs = Date.parse(r.start);
+  const [sx, sy] = pathStart(r.path);
+  const end = r.open ? pathEnd(r.path) : null;
+  return {
+    ...r,
+    startMs,
+    endMs: raceEnd(r),
+    sx,
+    sy,
+    end,
+    lightsOut: slTime.format(startMs),
+    dayLabel: slDay.format(startMs),
+  };
+});
+
+const units = [
+  { key: 'd', label: 'Days' },
+  { key: 'h', label: 'Hrs' },
+  { key: 'm', label: 'Min' },
+  { key: 's', label: 'Sec' },
+] as const;
+---
+
+<section class="section cal" id="calendar" aria-labelledby="calendar-title" data-cal data-view="row">
+  <div class="cal__bgword" aria-hidden="true">
+    <span>Season 26/27</span>
+  </div>
+
+  <div class="container">
+    <SectionHeading
+      index="06"
+      kicker="Calendar"
+      title="2026/27 <em>Season</em>"
+      id="calendar-title"
+      si={sinhala.subaGaman.si}
+      lead="Nine rounds. One island. Two drivers flat out, one owner napping through all of it."
+    />
+
+    <!-- ============ Live countdown ============ -->
+    <div class="cd" data-cd data-reveal="up" data-mode="next">
+      <div class="cd__info">
+        <p class="cd__label t-mono">
+          <span class="cd__live" aria-hidden="true"></span>
+          <span data-cd-status>Next session · Round {pad(buildNext.round)}</span>
+        </p>
+        <p class="cd__race t-condensed" data-cd-name>{buildNext.name}</p>
+        <p class="cd__meta t-mono" data-cd-meta>
+          {slDay.format(Date.parse(buildNext.start))} · Lights out {slTime.format(Date.parse(buildNext.start))} SLST
+        </p>
+        <p class="cd__local" data-cd-local hidden></p>
+        <div class="cd__map" data-cd-map aria-hidden="true"></div>
+      </div>
+
+      <div class="cd__clock">
+        <div class="cd__board" role="timer" aria-live="off">
+          <p class="visually-hidden" data-cd-sr>Countdown to {buildNext.name}.</p>
+          <div class="cd__units" aria-hidden="true">
+            {
+              units.map((u, i) => (
+                <>
+                  {i > 0 && <span class="cd__sep">:</span>}
+                  <div class:list={['cd__unit', `cd__unit--${u.key}`]}>
+                    <div class="cd__digits" data-unit={u.key}>
+                      {[0, 1].map(() => (
+                        <span class="fd" data-fd>
+                          <span class="fd__half fd__top">
+                            <span>0</span>
+                          </span>
+                          <span class="fd__half fd__bot">
+                            <span>0</span>
+                          </span>
+                          <span class="fd__flap fd__flap--top">
+                            <span>0</span>
+                          </span>
+                          <span class="fd__flap fd__flap--bot">
+                            <span>0</span>
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                    <span class="cd__unit-label t-mono">{u.label}</span>
+                  </div>
+                </>
+              ))
+            }
+          </div>
+        </div>
+        <p class="cd__quip" data-cd-quip>Estimated owner arrival on the pit wall: lights out + 9 minutes.</p>
+      </div>
+    </div>
+
+    <!-- ============ Carousel controls ============ -->
+    <div class="cal__bar" data-reveal="fade">
+      <p class="cal__count t-mono" aria-hidden="true">
+        <span class="cal__count-now" data-cal-now>01</span><span class="cal__count-sep">/</span>{pad(races.length)}
+      </p>
+      <div class="cal__progress" aria-hidden="true"><span data-cal-progress></span></div>
+      <div class="cal__btns">
+        <button type="button" class="cal__view t-mono" data-cal-view aria-pressed="false">
+          <svg class="cal__ico-grid" viewBox="0 0 20 20" aria-hidden="true"
+            ><rect x="2" y="2" width="7" height="7" rx="1.5"></rect><rect x="11" y="2" width="7" height="7" rx="1.5"
+            ></rect><rect x="2" y="11" width="7" height="7" rx="1.5"></rect><rect
+              x="11"
+              y="11"
+              width="7"
+              height="7"
+              rx="1.5"></rect></svg
+          >
+          <!-- a row of cards: shown while the grid is active, as the way back -->
+          <svg class="cal__ico-rows" viewBox="0 0 20 20" aria-hidden="true"
+            ><rect x="1.5" y="4" width="5" height="12" rx="1.3"></rect><rect x="7.5" y="4" width="5" height="12" rx="1.3"
+            ></rect><rect x="13.5" y="4" width="5" height="12" rx="1.3"></rect></svg
+          >
+          <span data-cal-view-label>Grid view</span>
+        </button>
+        <button type="button" class="cal__nav" data-cal-prev aria-label="Previous rounds">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"></path></svg>
+        </button>
+        <button type="button" class="cal__nav" data-cal-next aria-label="Next rounds">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Rounds ============ -->
+  <div
+    class="cal__viewport"
+    data-cal-scroller
+    tabindex="0"
+    role="region"
+    aria-label="Season rounds — scroll sideways or use the arrow buttons"
+    data-lenis-prevent-horizontal
+  >
+    <ol class="cal__track" data-cal-track>
+      {
+        cards.map((r) => (
+          <li
+            class="rc"
+            data-race
+            data-accent={r.accent}
+            data-start={r.startMs}
+            data-end={r.endMs}
+            data-name={r.name}
+            data-round={r.round}
+            data-day={r.dayLabel}
+            data-time={r.lightsOut}
+          >
+            <article class="rc__card" aria-labelledby={`rc-${r.id}`}>
+              <span class="rc__bignum" aria-hidden="true">
+                {pad(r.round)}
+              </span>
+              <header class="rc__top">
+                <span class="rc__round t-mono">Round {pad(r.round)}</span>
+                <span class="rc__status t-mono" data-status>
+                  {r.tag}
+                </span>
+              </header>
+
+              <figure class="rc__map">
+                <svg viewBox="0 0 200 120" role="img" aria-label={`Circuit map: ${r.circuit}`}>
+                  {r.decor && <path class="rc__decor" d={r.decor} />}
+                  <path class="rc__asphalt" d={r.path} />
+                  <path class="rc__line" d={r.path} pathLength="1000" />
+                  <path class="rc__trail" d={r.path} pathLength="1000" />
+                  <path class="rc__car" d={r.path} pathLength="1000" />
+                  <g class="rc__flag" transform={`translate(${r.sx} ${r.sy})`}>
+                    <rect x="-4.5" y="-4.5" width="9" height="9" fill="#f4f1ea" />
+                    <rect x="-4.5" y="-4.5" width="4.5" height="4.5" fill="#07070b" />
+                    <rect x="0" y="0" width="4.5" height="4.5" fill="#07070b" />
+                  </g>
+                  {r.end && (
+                    <g class="rc__flag" transform={`translate(${r.end[0]} ${r.end[1]})`}>
+                      <rect x="-4.5" y="-4.5" width="9" height="9" fill="#f4f1ea" />
+                      <rect x="-4.5" y="-4.5" width="4.5" height="4.5" fill="#07070b" />
+                      <rect x="0" y="0" width="4.5" height="4.5" fill="#07070b" />
+                    </g>
+                  )}
+                </svg>
+                <figcaption class="rc__turn t-mono">{r.turn1}</figcaption>
+              </figure>
+
+              <p class="rc__weekend t-condensed">{r.weekend}</p>
+              <h3 class="rc__venue t-condensed" id={`rc-${r.id}`}>
+                {r.venue}
+                <span class="visually-hidden">— {r.name}</span>
+              </h3>
+              <p class="rc__name" aria-hidden="true">
+                {r.name}
+              </p>
+              <p class="rc__circuit t-mono">{r.circuit}</p>
+
+              <dl class="rc__stats">
+                <div>
+                  <dt class="t-mono">Laps</dt>
+                  <dd class="t-condensed">{r.laps}</dd>
+                </div>
+                <div>
+                  <dt class="t-mono">Length</dt>
+                  <dd class="t-condensed">
+                    {r.lengthKm.toFixed(1)}
+                    <small>km</small>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="t-mono">Lights out</dt>
+                  <dd class="t-condensed">{r.lightsOut}</dd>
+                </div>
+              </dl>
+
+              <p class="rc__weather">
+                <svg viewBox="0 0 24 24" aria-hidden="true" set:html={weatherIcons[r.weather.icon]} />
+                <span>
+                  <span class="visually-hidden">Forecast: </span>
+                  {r.weather.text}
+                </span>
+              </p>
+              <p class="rc__joke">{r.joke}</p>
+              <p class="rc__result t-mono" data-result hidden>
+                <span>Result</span> {r.result}
+              </p>
+            </article>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .cal {
+    overflow-x: clip;
+    timeline-scope: --cal-x;
+  }
+
+  /* ---------- Giant background word (CSS scroll-driven) ---------- */
+  .cal__bgword {
+    position: absolute;
+    inset: calc(var(--section-pad) * 0.35) 0 auto;
+    z-index: -1;
+    pointer-events: none;
+    white-space: nowrap;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    font-size: clamp(7rem, 22vw, 22rem);
+    line-height: 0.8;
+    text-transform: uppercase;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in oklab, var(--c-chalk) 9%, transparent);
+    opacity: 0.9;
+  }
+
+  .cal__bgword span {
+    display: inline-block;
+    translate: 4% 0;
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .cal__bgword span {
+        animation: cal-drift linear both;
+      }
+
+      /* Timeline in its own, more specific rule: the minifier otherwise folds it into the
+         `animation` shorthand, which browsers reject. Drifts sideways while the word
+         itself crosses the viewport. */
+      .cal__bgword > span {
+        animation-timeline: view();
+        animation-range: cover 0% cover 100%;
+      }
+    }
+  }
+
+  @keyframes cal-drift {
+    from {
+      translate: 6% 0;
+    }
+    to {
+      translate: -38% 0;
+    }
+  }
+
+  /* ---------- Countdown ---------- */
+  .cd {
+    position: relative;
+    display: grid;
+    gap: var(--space-6);
+    padding: clamp(1.25rem, 0.8rem + 2.4vw, 2.75rem);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-l);
+    background:
+      radial-gradient(90% 120% at 100% 0%, rgb(255 197 46 / 0.1), transparent 55%),
+      radial-gradient(70% 90% at 0% 100%, rgb(160 21 62 / 0.18), transparent 60%),
+      repeating-linear-gradient(90deg, rgb(255 255 255 / 0.018) 0 2px, transparent 2px 6px),
+      linear-gradient(180deg, var(--c-graphite), var(--c-asphalt));
+    box-shadow:
+      0 40px 80px -40px rgb(0 0 0 / 0.8),
+      inset 0 1px 0 rgb(255 255 255 / 0.06);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  /* corner brackets, pit-wall monitor style */
+  .cd::before,
+  .cd::after {
+    content: '';
+    position: absolute;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid var(--c-gold);
+    pointer-events: none;
+  }
+
+  .cd::before {
+    top: 0.75rem;
+    left: 0.75rem;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .cd::after {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    border-left: 0;
+    border-top: 0;
+  }
+
+  .cd__info {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .cd__label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--c-mute);
+  }
+
+  .cd__live {
+    position: relative;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+  }
+
+  /* sonar ping — transform/opacity only, so it stays on the compositor */
+  .cd__live::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid var(--c-red);
+    animation: cd-ping 1.6s var(--ease-out-expo) infinite;
+  }
+
+  .cd[data-mode='done'] .cd__live {
+    background: var(--c-faint);
+    box-shadow: none;
+  }
+
+  .cd[data-mode='done'] .cd__live::after {
+    display: none;
+  }
+
+  .cd__race {
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-size: clamp(2.2rem, 1.2rem + 4.2vw, 4.6rem);
+    line-height: 0.88;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  .cd__meta {
+    color: var(--c-gold);
+    letter-spacing: 0.12em;
+  }
+
+  .cd__local {
+    color: var(--c-mute);
+    font-size: var(--fs-small);
+  }
+
+  .cd__map {
+    width: min(62%, 17rem);
+    margin-top: var(--space-2);
+  }
+
+  .cd__map :global(svg) {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .cd__clock {
+    container-type: inline-size;
+    display: grid;
+    align-content: center;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .cd__units {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.4cqi;
+    font-size: clamp(2rem, 11cqi, 6rem);
+  }
+
+  .cd__unit {
+    display: grid;
+    justify-items: center;
+    gap: 0.55rem;
+  }
+
+  .cd__digits {
+    display: flex;
+    gap: 0.06em;
+  }
+
+  .cd__unit-label {
+    color: var(--c-mute);
+    font-size: max(0.62rem, 0.13em);
+  }
+
+  .cd__sep {
+    align-self: flex-start;
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: 0.7em;
+    line-height: 1.55;
+    color: var(--c-gold);
+  }
+
+  .cd__quip {
+    color: var(--c-mute);
+    font-size: var(--fs-small);
+    font-style: italic;
+    padding-right: var(--space-5);
+  }
+
+  @media (min-width: 64rem) {
+    .cd__quip {
+      text-align: right;
+    }
+  }
+
+  /* ---- Split-flap digit ---- */
+  .fd {
+    --fd-h: 1.18em;
+    position: relative;
+    display: block;
+    width: 0.74em;
+    height: var(--fd-h);
+    perspective: 5em;
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    color: var(--c-chalk);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cd__unit--s .fd {
+    color: var(--c-gold);
+  }
+
+  .fd__half,
+  .fd__flap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #23232f, #191922);
+    backface-visibility: hidden;
+  }
+
+  .fd__top,
+  .fd__flap--top {
+    top: 0;
+    border-radius: 0.09em 0.09em 0 0;
+    transform-origin: 50% 100%;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+  }
+
+  .fd__bot,
+  .fd__flap--bot {
+    bottom: 0;
+    border-radius: 0 0 0.09em 0.09em;
+    transform-origin: 50% 0%;
+    background: linear-gradient(180deg, #16161e, #1e1e28);
+  }
+
+  .fd__flap--bot {
+    transform: rotateX(90deg);
+  }
+
+  .fd__half > span,
+  .fd__flap > span {
+    display: block;
+    height: var(--fd-h);
+    line-height: var(--fd-h);
+    text-align: center;
+  }
+
+  .fd__bot > span,
+  .fd__flap--bot > span {
+    translate: 0 -50%;
+  }
+
+  /* hinge */
+  .fd::after {
+    content: '';
+    position: absolute;
+    inset: calc(50% - 1px) 0 auto;
+    height: 2px;
+    background: var(--c-carbon);
+    z-index: 3;
+  }
+
+  .fd__flap {
+    z-index: 2;
+  }
+
+  /* ---------- Carousel bar ---------- */
+  .cal__bar {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'count btns'
+      'bar bar';
+    align-items: center;
+    gap: var(--space-4) var(--space-5);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-5);
+  }
+
+  @media (min-width: 48rem) {
+    .cal__bar {
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas: 'count bar btns';
+    }
+  }
+
+  .cal__count {
+    grid-area: count;
+    display: flex;
+    align-items: baseline;
+    gap: 0.35em;
+    color: var(--c-mute);
+    font-size: var(--fs-small);
+  }
+
+  .cal__count-now {
+    color: var(--c-chalk);
+    font-size: 1.35rem;
+    letter-spacing: 0.04em;
+  }
+
+  .cal__count-sep {
+    color: var(--c-faint);
+  }
+
+  .cal__progress {
+    grid-area: bar;
+    height: 2px;
+    background: var(--c-line-strong);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .cal__progress span {
+    display: block;
+    height: 100%;
+    background: var(--g-livery);
+    transform-origin: 0 50%;
+    transform: scaleX(0.12);
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .cal__progress span {
+      animation: cal-progress linear both;
+    }
+
+    /* Timeline in its own, more specific rule (see .cal__bgword). */
+    .cal__progress > span {
+      animation-timeline: --cal-x;
+    }
+  }
+
+  @keyframes cal-progress {
+    from {
+      transform: scaleX(0.12);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  .cal__btns {
+    grid-area: btns;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .cal__view,
+  .cal__nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: 2.75rem;
+    border: 1px solid var(--c-line-strong);
+    border-radius: 999px;
+    color: var(--c-chalk);
+    background: rgb(255 255 255 / 0.03);
+    transition:
+      background-color var(--dur-fast),
+      border-color var(--dur-fast),
+      color var(--dur-fast),
+      transform var(--dur-fast) var(--ease-out-back);
+  }
+
+  .cal__view {
+    padding-inline: 1rem;
+    white-space: nowrap;
+  }
+
+  /* One card per row on phones makes the grid a very long list: phones keep the carousel. */
+  @media (max-width: 47.99rem) {
+    .cal__view {
+      display: none;
+    }
+  }
+
+  .cal__view[aria-pressed='true'] .cal__ico-grid,
+  .cal__view:not([aria-pressed='true']) .cal__ico-rows {
+    display: none;
+  }
+
+  .cal__nav {
+    width: 2.75rem;
+  }
+
+  .cal__view svg,
+  .cal__nav svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .cal__view svg rect {
+    fill: currentColor;
+    stroke: none;
+    opacity: 0.85;
+  }
+
+  .cal__view:hover,
+  .cal__nav:hover:not(:disabled) {
+    border-color: var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  .cal__nav:active:not(:disabled) {
+    transform: scale(0.92);
+  }
+
+  .cal__nav:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .cal__view[aria-pressed='true'] {
+    background: var(--c-gold);
+    border-color: var(--c-gold);
+    color: var(--c-on-gold);
+  }
+
+  /* Grid view: the arrows go (so the toggle sits flush right); count and bar keep their space. */
+  .cal[data-view='grid'] .cal__nav {
+    display: none;
+  }
+
+  .cal[data-view='grid'] .cal__progress,
+  .cal[data-view='grid'] .cal__count {
+    visibility: hidden;
+  }
+
+  /* ---------- Carousel viewport ---------- */
+  .cal__viewport {
+    --edge: max(var(--gutter), calc((100% - var(--maxw)) / 2));
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--edge);
+    padding: var(--space-4) var(--edge) var(--space-7);
+    scrollbar-width: none;
+    scroll-timeline: --cal-x inline;
+    cursor: grab;
+  }
+
+  .cal__viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cal__viewport:focus-visible {
+    outline-offset: -4px;
+  }
+
+  .cal__viewport.is-dragging {
+    scroll-snap-type: none;
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  .cal__track {
+    display: flex;
+    gap: clamp(0.85rem, 0.5rem + 1vw, 1.5rem);
+    list-style: none;
+    padding: 0;
+    perspective: 1400px;
+  }
+
+  .rc {
+    flex: 0 0 clamp(16.75rem, 78vw, 21.5rem);
+    scroll-snap-align: start;
+    display: flex;
+    perspective: 1400px;
+  }
+
+  /* grid view — morphs in via View Transitions */
+  .cal[data-view='grid'] .cal__viewport {
+    display: block;
+    overflow: visible;
+    cursor: auto;
+    padding-inline: 0;
+    width: min(100% - 2 * var(--gutter), var(--maxw));
+    margin-inline: auto;
+  }
+
+  .cal[data-view='grid'] .cal__track {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 40rem) {
+    .cal[data-view='grid'] .cal__track {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .cal[data-view='grid'] .cal__track {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .cal[data-view='grid'] .rc {
+    flex: none;
+  }
+
+  /* ---------- Race card ---------- */
+  .rc[data-accent='gold'] {
+    --accent: var(--c-gold);
+  }
+  .rc[data-accent='saffron'] {
+    --accent: var(--c-saffron);
+  }
+  .rc[data-accent='teal'] {
+    --accent: var(--c-teal);
+  }
+  .rc[data-accent='purple'] {
+    --accent: var(--c-purple);
+  }
+  .rc[data-accent='red'] {
+    --accent: var(--c-red);
+  }
+  .rc[data-accent='maroon'] {
+    --accent: #e0426b;
+  }
+
+  .rc__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-5);
+    border-radius: var(--radius-l);
+    border: 1px solid var(--c-line-strong);
+    background:
+      radial-gradient(120% 70% at 100% 0%, color-mix(in oklab, var(--accent) 17%, transparent), transparent 62%),
+      linear-gradient(180deg, var(--c-graphite), var(--c-asphalt) 70%);
+    overflow: hidden;
+    isolation: isolate;
+    /* hover lift uses `translate`; `transform` is reserved for the GSAP entrance */
+    transition:
+      translate var(--dur-med) var(--ease-out-expo),
+      border-color var(--dur-med),
+      box-shadow var(--dur-med);
+  }
+
+  /* livery stripe */
+  .rc__card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: var(--space-5);
+    width: 4.5rem;
+    height: 4px;
+    background: var(--accent);
+    transform: skewX(var(--skew));
+    box-shadow: 0 0 18px var(--accent);
+  }
+
+  .rc__bignum {
+    position: absolute;
+    top: -0.12em;
+    right: -0.04em;
+    z-index: -1;
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-stretch: var(--stretch-condensed);
+    font-variation-settings: 'wdth' 62;
+    font-size: 9.5rem;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1.5px color-mix(in oklab, var(--accent) 38%, transparent);
+    transition:
+      translate var(--dur-slow) var(--ease-out-expo),
+      -webkit-text-stroke-color var(--dur-med);
+  }
+
+  .rc__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .rc__round {
+    color: var(--c-mute);
+  }
+
+  .rc__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: 0.3em 0.7em;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
+    color: var(--c-chalk);
+    /* opaque, so the outlined round numeral behind never cuts through the label */
+    background: color-mix(in oklab, var(--accent) 16%, var(--c-asphalt));
+    font-size: 0.64rem;
+    white-space: nowrap;
+  }
+
+  .rc.is-next .rc__status::before,
+  .rc.is-live .rc__status::before {
+    content: '';
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+  }
+
+  .rc.is-next .rc__status {
+    border-color: var(--c-red);
+    background: color-mix(in oklab, var(--c-red) 14%, var(--c-asphalt));
+  }
+
+  .rc__map {
+    position: relative;
+    margin: var(--space-2) calc(var(--space-2) * -1) 0;
+  }
+
+  .rc__map svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .rc__decor {
+    fill: none;
+    stroke: color-mix(in oklab, var(--c-chalk) 22%, transparent);
+    stroke-width: 1.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rc__asphalt {
+    fill: none;
+    stroke: var(--c-steel);
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rc__line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    transition: stroke-dashoffset 2.2s var(--ease-in-out) var(--draw-delay, 0ms);
+  }
+
+  .rc.is-drawn .rc__line {
+    stroke-dashoffset: 0;
+  }
+
+  .rc__trail,
+  .rc__car {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transition: opacity var(--dur-med);
+    animation: 2.6s linear infinite paused;
+  }
+
+  .rc__trail {
+    stroke: var(--c-chalk);
+    stroke-width: 4;
+    stroke-dasharray: 90 910;
+    animation-name: rc-trail;
+    stroke-opacity: 0.35;
+  }
+
+  .rc__car {
+    stroke: var(--c-chalk);
+    stroke-width: 7;
+    stroke-dasharray: 0.5 999.5;
+    animation-name: rc-car;
+  }
+
+  /* The comet only laps while you look at a circuit (hover / keyboard focus),
+     plus the one in the countdown panel — paint-heavy loops stay rare. */
+  .rc:hover .rc__trail,
+  .rc:hover .rc__car,
+  .rc:focus-within .rc__trail,
+  .rc:focus-within .rc__car,
+  .cd__map .rc__trail,
+  .cd__map .rc__car {
+    opacity: 1;
+    animation-play-state: running;
+  }
+
+  .cal:not(.is-live) .rc__trail,
+  .cal:not(.is-live) .rc__car,
+  .cal:not(.is-live) .cd__live::after {
+    animation-play-state: paused !important;
+  }
+
+  @keyframes rc-car {
+    from {
+      stroke-dashoffset: 1000;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes rc-trail {
+    from {
+      stroke-dashoffset: 1089.5;
+    }
+    to {
+      stroke-dashoffset: 89.5;
+    }
+  }
+
+  .rc__turn {
+    position: absolute;
+    right: var(--space-2);
+    bottom: -0.35rem;
+    color: var(--c-mute);
+    font-size: 0.6rem;
+    transition: color var(--dur-med);
+  }
+
+  .rc__weekend {
+    margin-top: var(--space-3);
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: 1.35rem;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  .rc__venue {
+    font-size: clamp(2.4rem, 2rem + 1.6vw, 3.1rem);
+    line-height: 0.86;
+    text-transform: uppercase;
+    font-weight: 850;
+  }
+
+  .rc__name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+
+  .rc__circuit {
+    color: var(--c-mute);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.1em;
+    line-height: 1.5;
+    /* names run to two lines at most; reserving both keeps the stats rows level across cards */
+    min-height: 3em;
+  }
+
+  .rc__stats {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-block: var(--space-3) var(--space-1);
+    padding-block: var(--space-3);
+    border-block: 1px solid var(--c-line-strong);
+  }
+
+  .rc__stats dt {
+    color: var(--c-mute);
+    font-size: 0.6rem;
+  }
+
+  .rc__stats dd {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: 1.6rem;
+    line-height: 1.05;
+  }
+
+  .rc__stats small {
+    font-size: 0.55em;
+    font-weight: 600;
+    color: var(--c-mute);
+  }
+
+  .rc__weather {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--fs-small);
+    line-height: 1.4;
+  }
+
+  .rc__weather svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rc__joke {
+    margin-top: auto;
+    padding-top: var(--space-3);
+    color: var(--c-mute);
+    font-size: var(--fs-small);
+    line-height: 1.5;
+  }
+
+  .rc__result {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-s);
+    background: rgb(255 255 255 / 0.05);
+    color: var(--c-chalk);
+    font-size: 0.66rem;
+    line-height: 1.5;
+    letter-spacing: 0.08em;
+  }
+
+  .rc__result span {
+    color: var(--c-gold);
+  }
+
+  .rc.is-done .rc__card {
+    filter: saturate(0.35);
+  }
+
+  .rc.is-done .rc__status {
+    border-color: var(--c-line-strong);
+    background: repeating-conic-gradient(rgb(255 255 255 / 0.12) 0 25%, transparent 0 50%) 0 0 / 8px 8px var(--c-asphalt);
+  }
+
+  @media (hover: hover) {
+    .rc:hover .rc__card {
+      translate: 0 -6px;
+      border-color: color-mix(in oklab, var(--accent) 70%, transparent);
+      box-shadow:
+        0 30px 60px -30px color-mix(in oklab, var(--accent) 45%, transparent),
+        0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent);
+    }
+
+    .rc:hover .rc__bignum {
+      translate: -0.1em 0.06em;
+      -webkit-text-stroke-color: color-mix(in oklab, var(--accent) 70%, transparent);
+    }
+
+    .rc:hover .rc__turn {
+      color: var(--accent);
+    }
+  }
+
+  .rc.is-next .rc__card {
+    border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+  }
+
+  /* ---------- Larger screens ---------- */
+  @media (min-width: 64rem) {
+    .cd {
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
+      align-items: center;
+      gap: var(--space-7);
+    }
+  }
+
+  /* ---------- View Transition choreography for row ↔ grid ----------
+     Names are only applied during the toggle (see script), so these rules are inert otherwise. */
+  :global(::view-transition-group(cal-round-1)),
+  :global(::view-transition-group(cal-round-2)),
+  :global(::view-transition-group(cal-round-3)),
+  :global(::view-transition-group(cal-round-4)),
+  :global(::view-transition-group(cal-round-5)),
+  :global(::view-transition-group(cal-round-6)),
+  :global(::view-transition-group(cal-round-7)),
+  :global(::view-transition-group(cal-round-8)),
+  :global(::view-transition-group(cal-round-9)) {
+    animation-duration: 680ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  :global(::view-transition-group(cal-round-2)) {
+    animation-delay: 30ms;
+  }
+  :global(::view-transition-group(cal-round-3)) {
+    animation-delay: 60ms;
+  }
+  :global(::view-transition-group(cal-round-4)) {
+    animation-delay: 90ms;
+  }
+  :global(::view-transition-group(cal-round-5)) {
+    animation-delay: 120ms;
+  }
+  :global(::view-transition-group(cal-round-6)) {
+    animation-delay: 150ms;
+  }
+  :global(::view-transition-group(cal-round-7)) {
+    animation-delay: 180ms;
+  }
+  :global(::view-transition-group(cal-round-8)) {
+    animation-delay: 210ms;
+  }
+  :global(::view-transition-group(cal-round-9)) {
+    animation-delay: 240ms;
+  }
+
+  /* ---------- No JS: hide the live clock, keep the static next-race info ---------- */
+  :global(html:not(.js)) .cd__clock {
+    display: none;
+  }
+
+  @keyframes cd-ping {
+    from {
+      transform: scale(1);
+      opacity: 0.9;
+    }
+    to {
+      transform: scale(3.2);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rc__line {
+      stroke-dashoffset: 0;
+      transition: none;
+    }
+
+    .rc__trail,
+    .rc__car {
+      display: none;
+    }
+
+    .cd__live::after {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, prefersReducedMotion } from '@/scripts/motion';
+  import { sound } from '@/scripts/audio';
+
+  const pad = (n: number) => String(Math.max(0, n)).padStart(2, '0');
+
+  interface RaceRef {
+    el: HTMLElement;
+    start: number;
+    end: number;
+    name: string;
+    round: number;
+    day: string;
+    time: string;
+  }
+
+  /* ---------------- Split-flap digit ---------------- */
+  class FlipDigit {
+    private top: HTMLElement;
+    private bot: HTMLElement;
+    private flapTop: HTMLElement;
+    private flapBot: HTMLElement;
+    private anims: Animation[] = [];
+    value = '0';
+
+    constructor(el: HTMLElement) {
+      const q = (s: string) => el.querySelector<HTMLElement>(`${s} > span`)!;
+      this.top = q('.fd__top');
+      this.bot = q('.fd__bot');
+      this.flapTop = q('.fd__flap--top');
+      this.flapBot = q('.fd__flap--bot');
+    }
+
+    /** Set without animation (reduced motion, scramble, first paint). */
+    snap(v: string): void {
+      this.anims.forEach((a) => a.cancel());
+      this.anims = [];
+      this.value = v;
+      this.top.textContent = v;
+      this.bot.textContent = v;
+      this.flapTop.textContent = v;
+      this.flapBot.textContent = v;
+    }
+
+    flip(v: string): void {
+      if (v === this.value) return;
+      const old = this.value;
+      this.anims.forEach((a) => a.cancel());
+      this.value = v;
+      this.top.textContent = v;
+      this.bot.textContent = old;
+      this.flapTop.textContent = old;
+      this.flapBot.textContent = v;
+      const topFlap = this.flapTop.parentElement!;
+      const botFlap = this.flapBot.parentElement!;
+      const a = topFlap.animate([{ transform: 'rotateX(0deg)' }, { transform: 'rotateX(-90deg)' }], {
+        duration: 240,
+        easing: 'cubic-bezier(0.55, 0, 1, 0.45)',
+        fill: 'forwards',
+      });
+      const b = botFlap.animate(
+        [{ transform: 'rotateX(90deg)' }, { transform: 'rotateX(-8deg)', offset: 0.8 }, { transform: 'rotateX(0deg)' }],
+        { duration: 300, delay: 240, easing: 'ease-out', fill: 'both' },
+      );
+      this.anims = [a, b];
+      b.finished
+        .then(() => {
+          this.bot.textContent = v;
+          this.flapTop.textContent = v;
+          a.cancel();
+          b.cancel();
+        })
+        .catch(() => {
+          /* cancelled by a newer flip */
+        });
+    }
+  }
+
+  function initCalendar(): void {
+    const root = document.querySelector<HTMLElement>('[data-cal]');
+    if (!root) return;
+    const reduce = prefersReducedMotion();
+
+    const races: RaceRef[] = Array.from(root.querySelectorAll<HTMLElement>('[data-race]')).map((el) => ({
+      el,
+      start: Number(el.dataset.start),
+      end: Number(el.dataset.end),
+      name: el.dataset.name ?? '',
+      round: Number(el.dataset.round),
+      day: el.dataset.day ?? '',
+      time: el.dataset.time ?? '',
+    }));
+    if (!races.length) return;
+
+    /* ---------- Race statuses ---------- */
+    type Mode = 'next' | 'live' | 'done';
+    function target(now: number): { mode: Mode; race: RaceRef } {
+      const live = races.find((r) => now >= r.start && now < r.end);
+      if (live) return { mode: 'live', race: live };
+      const next = races.find((r) => r.start > now);
+      if (next) return { mode: 'next', race: next };
+      return { mode: 'done', race: races[races.length - 1] };
+    }
+
+    let current = target(Date.now());
+
+    function paintStatuses(now: number): void {
+      const t = target(now);
+      races.forEach((r) => {
+        const chip = r.el.querySelector<HTMLElement>('[data-status]');
+        const result = r.el.querySelector<HTMLElement>('[data-result]');
+        const done = now >= r.end;
+        const live = now >= r.start && now < r.end;
+        const isNext = t.mode === 'next' && t.race === r;
+        r.el.classList.toggle('is-done', done);
+        r.el.classList.toggle('is-live', live);
+        r.el.classList.toggle('is-next', isNext);
+        if (result) result.hidden = !done;
+        if (chip) {
+          chip.dataset.tag ??= chip.textContent?.trim() ?? '';
+          chip.textContent = done ? 'Chequered' : live ? 'Live now' : isNext ? 'Next up' : chip.dataset.tag;
+        }
+      });
+    }
+    paintStatuses(Date.now());
+
+    /* ---------- Countdown ---------- */
+    const cd = root.querySelector<HTMLElement>('[data-cd]');
+    const digits: Record<string, FlipDigit[]> = {};
+    root.querySelectorAll<HTMLElement>('[data-unit]').forEach((unit) => {
+      digits[unit.dataset.unit!] = Array.from(unit.querySelectorAll<HTMLElement>('[data-fd]')).map(
+        (el) => new FlipDigit(el),
+      );
+    });
+    const nameEl = root.querySelector<HTMLElement>('[data-cd-name]');
+    const statusEl = root.querySelector<HTMLElement>('[data-cd-status]');
+    const metaEl = root.querySelector<HTMLElement>('[data-cd-meta]');
+    const localEl = root.querySelector<HTMLElement>('[data-cd-local]');
+    const srEl = root.querySelector<HTMLElement>('[data-cd-sr]');
+    const quipEl = root.querySelector<HTMLElement>('[data-cd-quip]');
+    const mapSlot = root.querySelector<HTMLElement>('[data-cd-map]');
+
+    const quips: Record<Mode, string> = {
+      next: 'Estimated owner arrival on the pit wall: lights out + 9 minutes.',
+      live: 'Race in progress. #13 and #17 are on track. The owner has been located: garage, box, napping.',
+      done: 'Season complete. Pre-season testing resumes when the owner wakes up.',
+    };
+
+    function paintTarget(): void {
+      const { mode, race } = current;
+      if (cd) cd.dataset.mode = mode;
+      if (nameEl) nameEl.textContent = race.name;
+      if (statusEl) {
+        statusEl.textContent =
+          mode === 'live'
+            ? `Live now · Round ${pad(race.round)}`
+            : mode === 'done'
+              ? 'Season complete · Final round'
+              : `Next session · Round ${pad(race.round)}`;
+      }
+      if (metaEl) metaEl.textContent = `${race.day} · Lights out ${race.time} SLST`;
+      if (quipEl) quipEl.textContent = quips[mode];
+      if (localEl) {
+        try {
+          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (tz === 'Asia/Colombo') {
+            localEl.textContent = 'Same time zone as the team. No excuses.';
+          } else {
+            const local = new Intl.DateTimeFormat(undefined, {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            }).format(race.start);
+            localEl.textContent = `Your time: ${local}. Set an alarm. The owner won’t.`;
+          }
+          localEl.hidden = false;
+        } catch {
+          localEl.hidden = true;
+        }
+      }
+      // Clone the target circuit into the countdown panel.
+      const svg = race.el.querySelector('svg');
+      if (mapSlot && svg) {
+        const clone = svg.cloneNode(true) as SVGElement;
+        clone.removeAttribute('role');
+        clone.removeAttribute('aria-label');
+        mapSlot.replaceChildren(clone);
+        mapSlot.classList.add('rc', 'is-drawn', 'is-next');
+        mapSlot.dataset.accent = race.el.dataset.accent;
+      }
+    }
+    paintTarget();
+
+    function parts(ms: number): Record<'d' | 'h' | 'm' | 's', number> {
+      const total = Math.max(0, Math.floor(ms / 1000));
+      return {
+        d: Math.min(99, Math.floor(total / 86400)),
+        h: Math.floor((total % 86400) / 3600),
+        m: Math.floor((total % 3600) / 60),
+        s: total % 60,
+      };
+    }
+
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+    let lastSrMinute = -1;
+    function render(animate: boolean): void {
+      const now = Date.now();
+      const next = target(now);
+      if (next.race !== current.race || next.mode !== current.mode) {
+        current = next;
+        paintStatuses(now);
+        paintTarget();
+      }
+      const ms = current.mode === 'next' ? current.race.start - now : 0;
+      const p = parts(ms);
+      (Object.keys(p) as Array<keyof typeof p>).forEach((k) => {
+        const str = pad(p[k]);
+        digits[k]?.forEach((d, i) => {
+          const ch = str[i] ?? '0';
+          if (animate && !reduce) d.flip(ch);
+          else d.snap(ch);
+        });
+      });
+      const minute = Math.floor(ms / 60000);
+      if (srEl && minute !== lastSrMinute) {
+        lastSrMinute = minute;
+        srEl.textContent =
+          current.mode === 'next'
+            ? `${current.race.name}: lights out in ${plural(p.d, 'day')}, ${plural(p.h, 'hour')} and ${plural(p.m, 'minute')}.`
+            : current.mode === 'live'
+              ? `${current.race.name} is live now.`
+              : 'The season is complete.';
+      }
+    }
+
+    let timer = 0;
+    let running = false;
+    function loop(): void {
+      render(true);
+      timer = window.setTimeout(loop, 1000 - (Date.now() % 1000) + 8);
+    }
+    function start(): void {
+      if (running) return;
+      running = true;
+      render(false);
+      timer = window.setTimeout(loop, 1000 - (Date.now() % 1000) + 8);
+    }
+    function stop(): void {
+      running = false;
+      window.clearTimeout(timer);
+    }
+
+    // Slot-machine scramble the first time the clock is seen.
+    let scrambled = false;
+    function scramble(): void {
+      if (scrambled || reduce) return;
+      scrambled = true;
+      stop();
+      const all = Object.values(digits).flat();
+      let n = 0;
+      const id = window.setInterval(() => {
+        all.forEach((d) => d.snap(String(Math.floor(Math.random() * 10))));
+        if (++n > 14) {
+          window.clearInterval(id);
+          all.forEach((d) => d.snap('0'));
+          render(true);
+          if (sectionVisible && !document.hidden) start();
+        }
+      }, 55);
+    }
+
+    render(false);
+
+    /* ---------- Visibility: pause everything offscreen / hidden tab ---------- */
+    let sectionVisible = false;
+    const sectionIO = new IntersectionObserver(
+      ([entry]) => {
+        sectionVisible = entry.isIntersecting;
+        root.classList.toggle('is-live', sectionVisible);
+        if (sectionVisible && !document.hidden) start();
+        else stop();
+      },
+      { rootMargin: '150px 0px' },
+    );
+    sectionIO.observe(root);
+
+    if (cd) {
+      const cdIO = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            scramble();
+            cdIO.disconnect();
+          }
+        },
+        { threshold: 0.5 },
+      );
+      cdIO.observe(cd);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop();
+      else if (sectionVisible) start();
+    });
+
+    /* ---------- Carousel ---------- */
+    const scroller = root.querySelector<HTMLElement>('[data-cal-scroller]');
+    const prev = root.querySelector<HTMLButtonElement>('[data-cal-prev]');
+    const next = root.querySelector<HTMLButtonElement>('[data-cal-next]');
+    const nowEl = root.querySelector<HTMLElement>('[data-cal-now]');
+    const bar = root.querySelector<HTMLElement>('[data-cal-progress]');
+    const viewBtn = root.querySelector<HTMLButtonElement>('[data-cal-view]');
+    const viewLabel = root.querySelector<HTMLElement>('[data-cal-view-label]');
+    const items = races.map((r) => r.el);
+    if (!scroller) return;
+
+    const supportsTimeline = CSS.supports('animation-timeline: scroll()');
+    const smooth = (): ScrollBehavior => (prefersReducedMotion() ? 'auto' : 'smooth');
+
+    let stepW = 1;
+    function measure(): void {
+      stepW = items[1] ? items[1].offsetLeft - items[0].offsetLeft : items[0].offsetWidth || 1;
+    }
+    measure();
+
+    let raf = 0;
+    function onScroll(): void {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (!scroller) return;
+        const max = scroller.scrollWidth - scroller.clientWidth;
+        const x = scroller.scrollLeft;
+        const idx = Math.min(items.length, Math.round(x / stepW) + 1);
+        if (nowEl) nowEl.textContent = pad(idx);
+        if (prev) prev.disabled = x <= 2;
+        if (next) next.disabled = x >= max - 2;
+        if (!supportsTimeline && bar) {
+          const p = max > 0 ? x / max : 1;
+          bar.style.transform = `scaleX(${0.12 + 0.88 * p})`;
+        }
+      });
+    }
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener(
+      'resize',
+      () => {
+        measure();
+        onScroll();
+      },
+      { passive: true },
+    );
+    onScroll();
+
+    // Later in the season, park the carousel on the next race.
+    const nextIdx = items.findIndex((el) => el.classList.contains('is-next') || el.classList.contains('is-live'));
+    if (nextIdx > 0) scroller.scrollLeft = nextIdx * stepW;
+
+    function go(dir: 1 | -1): void {
+      if (!scroller) return;
+      const visible = Math.max(1, Math.floor(scroller.clientWidth / stepW) - 1);
+      scroller.scrollBy({ left: dir * visible * stepW, behavior: smooth() });
+      sound.play('click');
+    }
+    prev?.addEventListener('click', () => go(-1));
+    next?.addEventListener('click', () => go(1));
+
+    // Mouse drag (touch/pen use native scrolling).
+    let dragging = false;
+    let moved = 0;
+    let startX = 0;
+    let startLeft = 0;
+    scroller.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || root.dataset.view === 'grid') return;
+      dragging = true;
+      moved = 0;
+      startX = e.clientX;
+      startLeft = scroller.scrollLeft;
+    });
+    scroller.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      if (!scroller.classList.contains('is-dragging') && Math.abs(dx) > 4) {
+        scroller.classList.add('is-dragging');
+        scroller.setPointerCapture(e.pointerId);
+      }
+      moved = Math.max(moved, Math.abs(dx));
+      if (scroller.classList.contains('is-dragging')) scroller.scrollLeft = startLeft - dx;
+    });
+    const endDrag = (e: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      if (!scroller.classList.contains('is-dragging')) return;
+      if (scroller.hasPointerCapture(e.pointerId)) scroller.releasePointerCapture(e.pointerId);
+      const target = Math.round(scroller.scrollLeft / stepW) * stepW;
+      scroller.classList.remove('is-dragging');
+      scroller.scrollTo({ left: target, behavior: smooth() });
+    };
+    scroller.addEventListener('pointerup', endDrag);
+    scroller.addEventListener('pointercancel', endDrag);
+    scroller.addEventListener(
+      'click',
+      (e) => {
+        if (moved > 6) {
+          e.preventDefault();
+          e.stopPropagation();
+          moved = 0;
+        }
+      },
+      true,
+    );
+
+    // Row ↔ grid, morphed with the View Transitions API.
+    const setView = (toGrid: boolean, animate: boolean): void => {
+      if ((root.dataset.view === 'grid') === toGrid) return;
+      const apply = () => {
+        root.dataset.view = toGrid ? 'grid' : 'row';
+        viewBtn?.setAttribute('aria-pressed', String(toGrid));
+        if (viewLabel) viewLabel.textContent = toGrid ? 'Row view' : 'Grid view';
+        if (!toGrid) {
+          measure();
+          scroller.scrollLeft = 0;
+        }
+        onScroll();
+      };
+      if (!animate || !document.startViewTransition || prefersReducedMotion()) {
+        apply();
+        window.dispatchEvent(new Event('resize'));
+        return;
+      }
+      items.forEach((li, i) => (li.style.viewTransitionName = `cal-round-${i + 1}`));
+      const vt = document.startViewTransition(apply);
+      vt.finished.finally(() => {
+        items.forEach((li) => (li.style.viewTransitionName = ''));
+        window.dispatchEvent(new Event('resize')); // lets ScrollTrigger & friends re-measure
+      });
+    };
+    viewBtn?.addEventListener('click', () => {
+      sound.play('click');
+      setView(root.dataset.view !== 'grid', true);
+    });
+    // The toggle is hidden on phones (CSS); if the viewport shrinks while the grid is open, go back to the row.
+    window.matchMedia('(max-width: 47.99rem)').addEventListener('change', (e) => {
+      if (e.matches) setView(false, false);
+    });
+
+    /* ---------- Circuits draw themselves in view ---------- */
+    if (reduce || !('IntersectionObserver' in window)) {
+      items.forEach((el) => el.classList.add('is-drawn'));
+    } else {
+      const drawIO = new IntersectionObserver(
+        (entries) => {
+          let k = 0;
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target as HTMLElement;
+            el.style.setProperty('--draw-delay', `${150 + k++ * 140}ms`);
+            el.classList.add('is-drawn');
+            drawIO.unobserve(el);
+          });
+        },
+        { threshold: 0.45 },
+      );
+      items.forEach((el) => drawIO.observe(el));
+    }
+
+    /* ---------- Choreographed entrance: cards peel out of the pit lane ----------
+       Animate the inner cards, never the <li> snap targets — moving those makes
+       the browser re-snap mid-animation and swallow button presses. */
+    const cardEls = items
+      .map((li) => li.querySelector<HTMLElement>('.rc__card'))
+      .filter((el): el is HTMLElement => el !== null);
+    if (!reduce && cardEls.length) {
+      gsap.from(cardEls, {
+        xPercent: 55,
+        rotateY: -24,
+        opacity: 0,
+        stagger: 0.07,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: scroller,
+          start: 'top 95%',
+          end: 'top 50%',
+          scrub: 0.8,
+        },
+      });
+    }
+  }
+
+  initCalendar();
+</script>

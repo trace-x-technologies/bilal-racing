@@ -1,0 +1,681 @@
+---
+/**
+ * Intro: five start lights, lights out, a paw swipe tears the screen open.
+ * Plays once per session (sessionStorage['bilal:skip-intro']), ≤ 3 s, skippable
+ * (button, click/tap anywhere, Escape). Never shown without JS (gated on html.js).
+ * Calls markReady() as the page is revealed so sections can choreograph entrances.
+ */
+import Emblem from '@/components/ui/Emblem.astro';
+import { team, drivers } from '@/data/lore';
+
+// One status line per red light (read by the script from each pod's data-line).
+const status = [
+  'Engine · purring',
+  'Tyres · kneaded',
+  `${drivers.map((d) => `#${d.number}`).join(' · ')} · visors down`,
+  'Pit wall · ears up',
+  'Tail · tucked in',
+];
+// Four torn shards between three claw lines (x% at top → x% at bottom).
+const claws = [
+  [60, 16],
+  [70, 26],
+  [80, 36],
+];
+const [c1, c2, c3] = claws as [number[], number[], number[]];
+const shards = [
+  `polygon(0 0, ${c1[0]}% 0, ${c1[1]}% 100%, 0 100%)`,
+  `polygon(${c1[0] - 0.4}% 0, ${c2[0] + 0.4}% 0, ${c2[1] + 0.4}% 100%, ${c1[1] - 0.4}% 100%)`,
+  `polygon(${c2[0] - 0.4}% 0, ${c3[0] + 0.4}% 0, ${c3[1] + 0.4}% 100%, ${c2[1] - 0.4}% 100%)`,
+  `polygon(${c3[0]}% 0, 100% 0, 100% 100%, ${c3[1]}% 100%)`,
+];
+---
+
+<script is:inline>
+  // Before first paint: returning visitors (same session) never see the loader.
+  try {
+    if (sessionStorage.getItem('bilal:skip-intro')) document.documentElement.dataset.intro = 'skip';
+  } catch (e) {}
+</script>
+
+<div class="loader" data-loader>
+  <div class="loader-shards" aria-hidden="true">
+    {shards.map((clip, i) => <div class="shard" data-shard={i} style={`clip-path:${clip}`} />)}
+  </div>
+
+  <!-- Claw shapes are computed in pixel space at runtime (tapered, so they need real px). -->
+  <svg class="loader-claws" aria-hidden="true" data-claws>
+    {
+      claws.map(([top, bottom], i) => (
+        <g class="claw" data-claw={i} data-top={top} data-bottom={bottom}>
+          <path class="claw-glow" />
+          <path class="claw-core" />
+        </g>
+      ))
+    }
+  </svg>
+
+  <div class="loader-stage" data-stage aria-hidden="true">
+    <div class="loader-corner loader-tl t-mono">
+      <span class="rec" aria-hidden="true"></span>
+      {team.name} · Formation lap
+    </div>
+    <div class="loader-corner loader-tr t-mono">Lap 0 / ∞</div>
+
+    <div class="loader-glow" data-glow></div>
+
+    <div class="loader-emblem" data-emblem>
+      <Emblem size="100%" title="" />
+    </div>
+
+    <div class="gantry" data-gantry>
+      <div class="gantry-beam"></div>
+      <div class="pods">
+        {
+          status.map((line) => (
+            <div class="pod" data-pod data-line={line}>
+              <i class="lamp" />
+              <i class="lamp" />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="loader-readout">
+      <p class="loader-status t-mono" data-status>Grid · waking the owner</p>
+      <p class="loader-go t-condensed" data-go>
+        <span class="go-line">
+          {['Lights', 'out'].map((w) => <span class="go-word">{w}</span>)}
+        </span>
+        <span class="go-line go-sub">
+          {['and', 'away', 'we', 'go'].map((w) => <span class="go-word">{w}</span>)}
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <button type="button" class="loader-skip t-mono" data-skip>
+    Skip intro <kbd>Esc</kbd>
+  </button>
+  <p class="visually-hidden" role="status">Intro playing: start lights. Press Escape to skip.</p>
+</div>
+
+<style>
+  .loader {
+    --lamp: 2.35rem;
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-loader);
+    overflow: hidden;
+    background: var(--c-carbon);
+    color: var(--c-chalk);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Only with JS, and only if this session hasn't seen it. */
+  :global(html.js:not([data-intro='skip'])) .loader {
+    display: block;
+    /* Failsafe: if the script never runs, get out of the way anyway. */
+    animation: loader-failsafe 400ms ease 7s forwards;
+  }
+
+  /* Same specificity as the failsafe rule above (and later), so a running intro keeps it. */
+  :global(html.js[data-intro='running']) .loader {
+    animation: none;
+  }
+
+  @keyframes loader-failsafe {
+    to {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+  }
+
+  .loader.is-clear {
+    background: transparent;
+  }
+
+  /* ---------- Shards (torn by the claws) ---------- */
+  .loader-shards,
+  .shard {
+    position: absolute;
+    inset: 0;
+  }
+
+  .shard {
+    background:
+      radial-gradient(90% 70% at 50% 45%, #14141d, var(--c-carbon) 70%),
+      var(--c-carbon);
+    will-change: transform;
+  }
+
+  .shard::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.5;
+    background: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.018) 0 1px, transparent 1px 7px);
+  }
+
+  /* ---------- Claw marks ---------- */
+  .loader-claws {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    filter: drop-shadow(0 0 6px rgb(255 197 46 / 0.9)) drop-shadow(0 0 22px rgb(255 106 19 / 0.7));
+  }
+
+  .claw {
+    /* Revealed top → bottom (a swipe) by animating the inset. */
+    clip-path: inset(0 0 100% 0);
+  }
+
+  .claw-glow {
+    fill: var(--c-gold);
+  }
+
+  .claw-core {
+    fill: #fff6d6;
+  }
+
+  /* ---------- Stage ---------- */
+  .loader-stage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: clamp(1.25rem, 3.5vh, 2.25rem);
+    padding: var(--space-7) var(--gutter);
+    text-align: center;
+  }
+
+  .loader-glow {
+    position: absolute;
+    left: 50%;
+    top: 48%;
+    width: min(120vw, 70rem);
+    aspect-ratio: 2 / 1;
+    translate: -50% -50%;
+    background: radial-gradient(closest-side, rgb(255 45 58 / 0.34), rgb(160 21 62 / 0.14) 55%, transparent);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .loader-corner {
+    position: absolute;
+    top: max(var(--space-5), env(safe-area-inset-top));
+    color: var(--c-mute);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .loader-tl {
+    left: var(--gutter);
+  }
+
+  .loader-tr {
+    right: var(--gutter);
+  }
+
+  .rec {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    animation: rec-blink 1s steps(2, jump-none) infinite;
+  }
+
+  @keyframes rec-blink {
+    50% {
+      opacity: 0.25;
+    }
+  }
+
+  .loader-emblem {
+    width: clamp(3.5rem, 8vw, 5rem);
+    aspect-ratio: 1;
+    filter: drop-shadow(0 0 18px rgb(255 197 46 / 0.35));
+  }
+
+  /* ---------- Start lights ---------- */
+  .gantry {
+    position: relative;
+    display: grid;
+    justify-items: center;
+  }
+
+  .gantry-beam {
+    width: calc(100% + 2.5rem);
+    height: 0.6rem;
+    border-radius: 3px;
+    background: linear-gradient(to bottom, var(--c-steel), var(--c-graphite));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 6px 14px -6px #000;
+  }
+
+  .pods {
+    display: flex;
+    gap: clamp(0.45rem, 1.6vw, 1rem);
+    margin-top: -0.15rem;
+  }
+
+  .pod {
+    position: relative;
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.55rem 0.5rem 0.65rem;
+    border-radius: 0.6rem;
+    background: linear-gradient(to bottom, #15151d, #0b0b10);
+    border: 1px solid var(--c-steel);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 12px 24px -12px #000;
+  }
+
+  /* Every pod has ears. It's that kind of team. */
+  .pod::before,
+  .pod::after {
+    content: '';
+    position: absolute;
+    top: -0.55rem;
+    width: 0.8rem;
+    height: 0.7rem;
+    background: #15151d;
+    border-top: 1px solid var(--c-steel);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  }
+
+  .pod::before {
+    left: 0.2rem;
+    transform: rotate(-14deg);
+  }
+
+  .pod::after {
+    right: 0.2rem;
+    transform: rotate(14deg);
+  }
+
+  .lamp {
+    display: block;
+    width: var(--lamp);
+    height: var(--lamp);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #3a1016, #1a0508 70%);
+    box-shadow: inset 0 0 0 2px rgb(0 0 0 / 0.6), inset 0 -4px 8px rgb(0 0 0 / 0.5);
+    transition:
+      background-color 60ms linear,
+      box-shadow 60ms linear;
+  }
+
+  .pod.is-on .lamp {
+    background: radial-gradient(circle at 38% 34%, #fff2f0 0 8%, #ff8a8f 22%, var(--c-red) 55%, #b3000c 100%);
+    box-shadow:
+      inset 0 0 0 2px rgb(0 0 0 / 0.35),
+      0 0 0.5rem rgb(255 45 58 / 0.95),
+      0 0 1.6rem rgb(255 45 58 / 0.65),
+      0 0 3.5rem rgb(255 45 58 / 0.35);
+  }
+
+  /* ---------- Readout ---------- */
+  .loader-readout {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    min-height: clamp(6.5rem, 17vw, 12rem);
+    width: min(100%, 64rem);
+  }
+
+  .loader-status {
+    color: var(--c-mute);
+    min-height: 1.2em;
+  }
+
+  .loader-go {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    gap: 0.1em;
+    margin: 0;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-style: normal;
+    line-height: 0.86;
+    visibility: hidden;
+  }
+
+  .go-line {
+    display: flex;
+    justify-content: center;
+    gap: 0.22em;
+    font-size: clamp(3rem, 1.2rem + 9vw, 8.5rem);
+    transform: skewX(var(--skew));
+    white-space: nowrap;
+  }
+
+  /* Gradient per word: background-clip:text can't reach transformed children. */
+  .go-word {
+    display: inline-block;
+    padding-inline: 0.04em;
+    background: linear-gradient(100deg, var(--c-chalk) 20%, #ffe6a3 60%, var(--c-gold));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .go-sub {
+    font-size: clamp(1.4rem, 0.8rem + 3.4vw, 3.4rem);
+    letter-spacing: 0.08em;
+  }
+
+  .go-sub .go-word {
+    background: none;
+    color: var(--c-gold);
+  }
+
+  /* ---------- Skip ---------- */
+  .loader-skip {
+    position: absolute;
+    right: var(--gutter);
+    bottom: max(var(--space-5), env(safe-area-inset-bottom));
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.75rem;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--c-line-strong);
+    border-radius: 999px;
+    color: var(--c-chalk);
+    background: rgb(16 16 23 / 0.7);
+    transition:
+      border-color var(--dur-fast) ease,
+      color var(--dur-fast) ease;
+  }
+
+  .loader-skip:hover {
+    border-color: var(--c-gold);
+    color: var(--c-gold);
+  }
+
+  kbd {
+    font: inherit;
+    font-size: 0.58rem;
+    padding: 0.15em 0.45em;
+    border-radius: 4px;
+    border: 1px solid var(--c-line-strong);
+    color: var(--c-mute);
+  }
+
+  @media (pointer: coarse) {
+    kbd {
+      display: none;
+    }
+  }
+
+  @media (max-width: 30em) {
+    .loader {
+      --lamp: 1.85rem;
+    }
+
+    .loader-tr {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { initMotion, lockScroll, gsap, prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
+  import { markReady } from '@/scripts/bus';
+  import { sound } from '@/scripts/audio';
+
+  const KEY = 'bilal:skip-intro';
+  const LIGHT_START = 0.1;
+  const LIGHT_GAP = 0.33;
+  const root = document.documentElement;
+  const loader = document.querySelector<HTMLElement>('[data-loader]');
+
+  const seen = (() => {
+    try {
+      return Boolean(sessionStorage.getItem(KEY));
+    } catch {
+      return false;
+    }
+  })();
+
+  // JS that arrives this late (slow network, cold cache) would start the intro just as the CSS
+  // failsafe hides it: the page would sit inert and invisible. Skip it instead.
+  const tooLate =
+    performance.now() > 6000 || (loader !== null && getComputedStyle(loader).visibility === 'hidden');
+
+  if (!loader || seen || root.dataset.intro === 'skip' || tooLate) {
+    if (tooLate) {
+      try {
+        sessionStorage.setItem(KEY, '1');
+      } catch {
+        /* storage blocked: nothing to remember */
+      }
+    }
+    loader?.remove();
+    markReady();
+  } else {
+    runIntro(loader);
+  }
+
+  function runIntro(el: HTMLElement): void {
+    // Make sure Lenis exists before we stop it (this script can run before Base's).
+    initMotion();
+    root.dataset.intro = 'running';
+    try {
+      sessionStorage.setItem(KEY, '1');
+    } catch {
+      /* storage blocked: the intro simply plays again next time */
+    }
+
+    // Keep keyboard/AT focus inside the intro while it plays.
+    const inerted: HTMLElement[] = [];
+    for (const child of Array.from(document.body.children)) {
+      if (child instanceof HTMLElement && child !== el && !child.inert && child.tagName !== 'SCRIPT') {
+        child.inert = true;
+        inerted.push(child);
+      }
+    }
+    lockScroll(true);
+
+    let released = false;
+    let finished = false;
+    let skipHandler: () => void = () => {};
+
+    /** Hand the page back: called as the reveal starts. */
+    const release = () => {
+      if (released) return;
+      released = true;
+      inerted.forEach((c) => (c.inert = false));
+      lockScroll(false);
+      markReady();
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') skipHandler();
+    };
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      release();
+      root.dataset.intro = 'done';
+      window.removeEventListener('keydown', onKey);
+      el.remove();
+    };
+
+    window.addEventListener('keydown', onKey);
+    el.addEventListener('click', () => skipHandler());
+
+    const stage = el.querySelector<HTMLElement>('[data-stage]');
+    const emblem = el.querySelector<HTMLElement>('[data-emblem]');
+    const gantry = el.querySelector<HTMLElement>('[data-gantry]');
+    const glow = el.querySelector<HTMLElement>('[data-glow]');
+    const go = el.querySelector<HTMLElement>('[data-go]');
+    const status = el.querySelector<HTMLElement>('[data-status]');
+    const skipBtn = el.querySelector<HTMLElement>('[data-skip]');
+    const pods = Array.from(el.querySelectorAll<HTMLElement>('[data-pod]'));
+    const words = Array.from(el.querySelectorAll<HTMLElement>('.go-word'));
+    const claws = Array.from(el.querySelectorAll<SVGGElement>('[data-claw]'));
+    const shards = Array.from(el.querySelectorAll<HTMLElement>('[data-shard]'));
+
+    /* ---------- Reduced motion (or broken markup): a short, calm fade ---------- */
+    if (prefersReducedMotion() || !stage || !emblem || !gantry || !glow || !go || shards.length !== 4) {
+      const fade = el.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 320,
+        delay: 60,
+        easing: 'ease-out',
+        fill: 'forwards',
+      });
+      fade.finished.then(finish, finish);
+      skipHandler = finish;
+      return;
+    }
+
+    /* ---------- Full sequence (about 2.9 s) ---------- */
+    const say = (text: string) => {
+      if (status) status.textContent = text;
+    };
+    const [left, stripA, stripB, right] = shards as [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
+
+    /** Lens-shaped (tapered) claw scratches along the shard seams, in real pixels. */
+    const drawClaws = () => {
+      const svg = el.querySelector<SVGSVGElement>('[data-claws]');
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      if (!svg) return;
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      const lens = (x0: number, y0: number, x1: number, y1: number, w: number) => {
+        const len = Math.hypot(x1 - x0, y1 - y0) || 1;
+        const nx = (-(y1 - y0) / len) * 2 * w;
+        const ny = ((x1 - x0) / len) * 2 * w;
+        const mx = (x0 + x1) / 2;
+        const my = (y0 + y1) / 2;
+        const f = (n: number) => n.toFixed(1);
+        return `M${f(x0)} ${f(y0)} Q${f(mx + nx)} ${f(my + ny)} ${f(x1)} ${f(y1)} Q${f(mx - nx)} ${f(my - ny)} ${f(x0)} ${f(y0)}Z`;
+      };
+      claws.forEach((g, i) => {
+        const top = (Number(g.dataset.top) / 100) * W;
+        const bottom = (Number(g.dataset.bottom) / 100) * W;
+        const over = 0.08; // overshoot past the edges
+        const x0 = top + (top - bottom) * over;
+        const x1 = bottom - (top - bottom) * over;
+        const y0 = -H * over;
+        const y1 = H * (1 + over);
+        const w = Math.min(9, Math.max(3.5, W * 0.0055)) * (i === 1 ? 1.15 : 1);
+        const [glowPath, corePath] = Array.from(g.querySelectorAll('path'));
+        glowPath?.setAttribute('d', lens(x0, y0, x1, y1, w));
+        corePath?.setAttribute('d', lens(x0, y0, x1, y1, w * 0.38));
+      });
+    };
+    drawClaws();
+
+    /** The paw swipe + tear (about 0.7 s). `fast` for skips. */
+    let tearing = false;
+    const lowPower = isLowPowerDevice();
+    const tear = (fast = false) => {
+      tearing = true;
+      const k = fast ? 0.7 : 1;
+      const t = gsap.timeline({ onComplete: finish });
+      t.fromTo(
+        claws,
+        { clipPath: 'inset(0% 0% 100% 0%)' },
+        { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.15 * k, stagger: 0.035 * k, ease: 'power2.in' },
+      )
+        .call(() => {
+          el.classList.add('is-clear');
+          release();
+        })
+        .to(stage, { opacity: 0, scale: 1.05, filter: lowPower ? 'none' : 'blur(6px)', duration: 0.28 * k, ease: 'power2.in' }, '<')
+        .to(claws, { opacity: 0, duration: 0.22 * k }, '<0.12')
+        .to(left, { xPercent: -104, yPercent: 5, rotate: -3, duration: 0.46 * k, ease: 'expo.in' }, '<-0.1')
+        .to(right, { xPercent: 104, yPercent: -5, rotate: 3, duration: 0.46 * k, ease: 'expo.in' }, '<')
+        .to(stripA, { yPercent: 118, rotate: 6, duration: 0.42 * k, ease: 'power3.in' }, '<0.02')
+        .to(stripB, { yPercent: -118, rotate: -6, duration: 0.42 * k, ease: 'power3.in' }, '<0.03');
+      if (skipBtn) t.to(skipBtn, { opacity: 0, duration: 0.15 }, 0);
+      return t;
+    };
+
+    const tl = gsap.timeline({ delay: 0.05, paused: true });
+    tl.from(emblem, { scale: 0.6, opacity: 0, rotate: -12, duration: 0.5, ease: 'back.out(2)' }, 0).from(
+      gantry,
+      { y: -24, opacity: 0, duration: 0.45, ease: 'expo.out' },
+      0.03,
+    );
+
+    pods.forEach((pod, i) => {
+      const at = LIGHT_START + i * LIGHT_GAP;
+      tl.call(
+        () => {
+          pod.classList.add('is-on');
+          say(pod.dataset.line ?? '');
+          sound.play('beep');
+        },
+        undefined,
+        at,
+      )
+        .to(glow, { opacity: 0.25 + i * 0.19, duration: 0.18, ease: 'power1.out' }, at)
+        .fromTo(pod, { scale: 1.1 }, { scale: 1, duration: 0.3, ease: 'power3.out' }, at);
+    });
+
+    // Hold on five reds, with a pinch of randomness like the real thing.
+    const fifth = LIGHT_START + 4 * LIGHT_GAP;
+    const out = fifth + 0.28 + Math.random() * 0.08;
+    tl.call(() => say('Hold… hold…'), undefined, fifth + 0.1)
+      .call(
+        () => {
+          pods.forEach((p) => p.classList.remove('is-on'));
+          say('');
+          sound.play('go');
+          go.style.visibility = 'visible';
+        },
+        undefined,
+        out,
+      )
+      .to(glow, { opacity: 0, duration: 0.1 }, out)
+      .to([gantry, emblem], { opacity: 0.28, duration: 0.25 }, out)
+      .from(words, { yPercent: 80, opacity: 0, skewX: -20, duration: 0.3, stagger: 0.035, ease: 'expo.out' }, out)
+      .call(
+        () => {
+          tl.kill();
+          tear();
+        },
+        undefined,
+        out + 0.38,
+      );
+
+    skipHandler = () => {
+      if (finished || tearing) return;
+      tl.kill();
+      pods.forEach((p) => p.classList.remove('is-on'));
+      tear(true);
+    };
+
+    // A background tab would fast-forward GSAP on return, so start once it's seen.
+    const play = () => {
+      tl.play();
+      // Failsafe: whatever happens, hand the page back.
+      window.setTimeout(finish, 6000);
+    };
+    if (document.hidden) {
+      const onVisible = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', onVisible);
+        play();
+      };
+      document.addEventListener('visibilitychange', onVisible);
+    } else {
+      play();
+    }
+  }
+</script>

@@ -1,0 +1,103 @@
+---
+/**
+ * Renders a real photo (optimised <Picture>) or, if the file isn't there yet,
+ * a styled placeholder card. Always fills its container (object-fit: cover).
+ */
+import { Picture } from 'astro:assets';
+import { resolvePhoto, type PhotoEntry } from '@/data/photos';
+import Emblem from './Emblem.astro';
+
+interface Props {
+  photo: PhotoEntry;
+  /** `sizes` attribute for responsive images. */
+  sizes?: string;
+  widths?: number[];
+  loading?: 'lazy' | 'eager';
+  class?: string;
+}
+
+const {
+  photo,
+  sizes = '(min-width: 1024px) 33vw, 90vw',
+  widths = [360, 640, 960, 1400],
+  loading = 'lazy',
+  class: className,
+} = Astro.props;
+const resolved = resolvePhoto(photo);
+---
+
+{
+  resolved.src ? (
+    <Picture
+      src={resolved.src}
+      alt={resolved.alt}
+      formats={['avif', 'webp']}
+      widths={widths}
+      sizes={sizes}
+      loading={loading}
+      pictureAttributes={{ class: 'photo-slot-pic' }}
+      class:list={['photo-slot', className]}
+      style={resolved.focal ? `object-position: ${resolved.focal}` : undefined}
+    />
+  ) : (
+    <div class:list={['photo-slot', 'photo-placeholder', className]} role="img" aria-label={`${resolved.alt} (photo coming soon)`}>
+      <Emblem size="100%" class="ph-emblem" title="" />
+      <span class="ph-label t-mono">{resolved.placeholder ?? 'Photo incoming'}</span>
+      <span class="ph-sub t-mono">{photo.folder === 'team' ? 'Owner is napping · photo pending' : 'Photo pending'}</span>
+    </div>
+  )
+}
+
+<style>
+  .photo-slot {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* The <picture> wrapper must fill fixed-aspect frames too, or the img
+     falls back to its natural aspect and object-position is ignored. In
+     auto-height contexts 100% resolves to auto, so natural flow is unchanged. */
+  :global(picture.photo-slot-pic) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  :global(picture.photo-slot) :global(img),
+  :global(img.photo-slot) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .photo-placeholder {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    text-align: center;
+    background:
+      radial-gradient(120% 90% at 30% 10%, rgb(255 197 46 / 0.14), transparent 60%),
+      repeating-linear-gradient(135deg, rgb(255 255 255 / 0.03) 0 12px, transparent 12px 24px),
+      var(--c-graphite);
+    border: 1px dashed var(--c-line-strong);
+    color: var(--c-mute);
+    min-height: 12rem;
+  }
+
+  .ph-label {
+    color: var(--c-chalk);
+  }
+
+  .ph-sub {
+    font-size: 0.62rem;
+  }
+
+  .photo-placeholder :global(.ph-emblem) {
+    width: clamp(3.5rem, 30%, 7rem);
+    height: auto;
+    opacity: 0.85;
+  }
+</style>

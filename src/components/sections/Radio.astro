@@ -1,0 +1,1768 @@
+---
+/**
+ * 08 · TEAM RADIO — an F1-TV-style onboard with the radio overlay.
+ * Plays lore.radioMessages: the owner (Poosa, callsign RAT) on the pit wall
+ * talking to both drivers, #13 Isuru (DHA) and #17 Yasas (DEE). Typewriter
+ * transcript, per-speaker name bar + team colour, canvas waveform, squelch
+ * in/out and (sound on) garbled "cat-speak" blips pitched per speaker — the
+ * owner is the cattiest. Autoplays the first exchange when seen.
+ */
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import Emblem from '@/components/ui/Emblem.astro';
+import PhotoSlot from '@/components/ui/PhotoSlot.astro';
+import { drivers, owner, radioMessages, sinhala, team, type Driver, type RadioSpeaker } from '@/data/lore';
+import { driverPortraits, type PhotoEntry } from '@/data/photos';
+
+interface Speaker {
+  id: RadioSpeaker;
+  /** Name on the transcript ("Poosa", "Isuru"). */
+  name: string;
+  /** Big name on the name bar. */
+  surname: string;
+  /** Pit-wall callsign (owner) or timing code (drivers). */
+  code: string;
+  /** Car number; null = pit wall. */
+  car: number | null;
+  /** Small line under the name. */
+  role: string;
+  /** Decorative avatar (the name bar is aria-hidden, so alt stays empty). */
+  photo: PhotoEntry;
+  /** Avatar crop: zoom into the portrait around `origin`, then nudge sideways to centre the face. */
+  zoom: number;
+  origin: string;
+  shift: string;
+}
+
+const OWNER: RadioSpeaker = 'Poosa';
+
+/** Face crops into the full driver portraits (the owner already has a face-cropped avatar). */
+const CROPS: Record<Driver['id'], { focal: string; zoom: number; origin: string; shift: string }> = {
+  dha: { focal: '36% 43%', zoom: 1.7, origin: '36% 50%', shift: '12%' },
+  dee: { focal: '48% 60%', zoom: 1.45, origin: '48% 50%', shift: '2%' },
+};
+
+const driverSpeaker = (id: Exclude<RadioSpeaker, 'Poosa'>): Speaker => {
+  const d = drivers.find((x) => x.firstName === id) ?? drivers[0];
+  const crop = CROPS[d.id];
+  return {
+    id,
+    name: d.firstName,
+    surname: d.lastName,
+    code: d.code,
+    car: d.number,
+    role: `${d.code} · ${team.name}`,
+    photo: { ...driverPortraits[d.id], id: `radio-${d.id}`, alt: '', focal: crop.focal },
+    zoom: crop.zoom,
+    origin: crop.origin,
+    shift: crop.shift,
+  };
+};
+
+const speakers: Record<RadioSpeaker, Speaker> = {
+  Poosa: {
+    id: 'Poosa',
+    name: owner.nicknameLatin,
+    surname: owner.lastName,
+    code: owner.callsign,
+    car: null,
+    role: `${owner.nicknameLatin} · Team Principal`,
+    photo: { id: 'radio-owner', folder: 'crew', file: 'nirod-rathnaweera.jpg', alt: '', caption: '', focal: '50% 45%' },
+    zoom: 1,
+    origin: '50% 50%',
+    shift: '0%',
+  },
+  Isuru: driverSpeaker('Isuru'),
+  Yasas: driverSpeaker('Yasas'),
+};
+const cast = [speakers.Poosa, speakers.Isuru, speakers.Yasas];
+
+type Line = { from: RadioSpeaker; text: string };
+type Exchange = { lap: number; car: RadioSpeaker; lines: Line[] };
+
+/**
+ * Group the radio into exchanges that each end on the owner's punchline
+ * (driver asks → cat answers). An exchange's car is the driver in it.
+ */
+const laps = [9, 13, 17, 31, 44, 57];
+const exchanges: Exchange[] = [];
+const close = (lines: Line[]) =>
+  exchanges.push({
+    lap: laps[exchanges.length] ?? 57,
+    car: lines.find((l) => l.from !== OWNER)?.from ?? 'Isuru',
+    lines,
+  });
+let pending: Line[] = [];
+for (const m of radioMessages) {
+  pending.push({ from: m.from, text: m.text });
+  if (m.from === OWNER && pending.some((l) => l.from !== OWNER)) {
+    close(pending);
+    pending = [];
+  }
+}
+if (pending.length) close(pending);
+
+const totalLaps = 57;
+const slots = Math.max(2, ...exchanges.map((ex) => ex.lines.length));
+const firstCar = speakers[exchanges[0]?.car ?? 'Isuru'];
+const route = (ex: Exchange) => {
+  const opener = speakers[ex.lines[0].from];
+  const car = speakers[ex.car];
+  return opener.car == null ? `Pit wall → Car ${car.car}` : `Car ${opener.car} → Pit wall`;
+};
+const spoken = (ex: Exchange) =>
+  `Lap ${ex.lap}, ${route(ex).replace('→', 'to')}. ${ex.lines.map((l) => `${l.from}: ${l.text}`).join(' ')}`;
+const payload = JSON.stringify(exchanges);
+const speakerPayload = JSON.stringify(
+  Object.fromEntries(cast.map((s) => [s.id, { name: s.name, code: s.code, car: s.car }])),
+);
+---
+
+<section class="section radio" id="radio" aria-labelledby="radio-title">
+  <div class="container">
+    <SectionHeading
+      index="08"
+      kicker="Team Radio"
+      id="radio-title"
+      title="Box, box?<br/><em>Say less.</em>"
+      lead={`Genuine* pit-wall radio: the owner (callsign ${owner.callsign}) versus cars ${speakers.Isuru.car} and ${speakers.Yasas.car}. Transcribed by the stewards. Switch on the meow engine for the full, deeply unprofessional audio. *Not genuine.`}
+      si={sinhala.hari.si}
+    />
+
+    <div class="rd-layout" data-rd-root data-exchanges={payload} data-speakers={speakerPayload}>
+      <div class="rd-main">
+        <div class="rd-screen" data-rd-screen data-reveal="up">
+          <!-- ======== onboard camera ======== -->
+          <div class="rd-cam" aria-hidden="true">
+            <svg class="rd-sky" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="rd-sky-g" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#05050a"></stop>
+                  <stop offset="0.36" stop-color="#140b22"></stop>
+                  <stop offset="0.5" stop-color="#3a1330"></stop>
+                  <stop offset="0.565" stop-color="#8a3222"></stop>
+                  <stop offset="0.6" stop-color="#1a0f16"></stop>
+                  <stop offset="1" stop-color="#0e0d13"></stop>
+                </linearGradient>
+                <radialGradient id="rd-flood" cx="0.5" cy="0.5" r="0.5">
+                  <stop offset="0" stop-color="#fff6d8"></stop>
+                  <stop offset="0.25" stop-color="#ffc52e" stop-opacity="0.55"></stop>
+                  <stop offset="1" stop-color="#ffc52e" stop-opacity="0"></stop>
+                </radialGradient>
+                <pattern id="rd-windows" width="14" height="16" patternUnits="userSpaceOnUse">
+                  <rect width="14" height="16" fill="#0b0912"></rect>
+                  <rect x="4" y="5" width="3" height="4" fill="#ffc52e" opacity="0.35"></rect>
+                </pattern>
+              </defs>
+              <rect width="1600" height="900" fill="url(#rd-sky-g)"></rect>
+              <!-- skyline -->
+              <path
+                transform="translate(0 -90)"
+                fill="url(#rd-windows)"
+                d="M0 610V520h60v-40h50v60h40v-110h70v130h30v-70h90v90h40v-150h55v150h60v-60h80v80h50v-30h60v40h110v-40h70v30h60v-80h50v-40h60v120h70v-60h40v40h50v-130h60v90h80v-50h70v80h40v-100h90v130h60v-40h60v40h55v100z"
+              ></path>
+              <!-- floodlight towers -->
+              <g class="rd-floods" transform="translate(0 -90)">
+                <g transform="translate(160 330)">
+                  <rect x="-3" y="0" width="6" height="280" fill="#16131d"></rect>
+                  <circle r="70" fill="url(#rd-flood)"></circle>
+                </g>
+                <g transform="translate(470 420)">
+                  <rect x="-2" y="0" width="4" height="190" fill="#16131d"></rect>
+                  <circle r="46" fill="url(#rd-flood)"></circle>
+                </g>
+                <g transform="translate(1140 420)">
+                  <rect x="-2" y="0" width="4" height="190" fill="#16131d"></rect>
+                  <circle r="46" fill="url(#rd-flood)"></circle>
+                </g>
+                <g transform="translate(1450 330)">
+                  <rect x="-3" y="0" width="6" height="280" fill="#16131d"></rect>
+                  <circle r="70" fill="url(#rd-flood)"></circle>
+                </g>
+              </g>
+            </svg>
+
+            <!-- Road: a CSS 3D plane; the surface scrolls on the compositor. -->
+            <div class="rd-road">
+              <div class="rd-road-surface">
+                <span class="rd-kerb rd-kerb-l"></span>
+                <span class="rd-edge rd-edge-l"></span>
+                <span class="rd-dash"></span>
+                <span class="rd-edge rd-edge-r"></span>
+                <span class="rd-kerb rd-kerb-r"></span>
+              </div>
+            </div>
+
+            <div class="rd-streaks">
+              <i style="--a: -32deg; --d: 0s"></i>
+              <i style="--a: -8deg; --d: -0.35s"></i>
+              <i style="--a: 14deg; --d: -0.7s"></i>
+              <i style="--a: 196deg; --d: -0.2s"></i>
+              <i style="--a: 172deg; --d: -0.55s"></i>
+              <i style="--a: 150deg; --d: -0.9s"></i>
+            </div>
+
+            <!-- Cockpit foreground: halo, nose, tyres, mirrors. -->
+            <svg class="rd-cockpit" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+              <defs>
+                <linearGradient id="rd-carbon" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#1c1c26"></stop>
+                  <stop offset="1" stop-color="#050507"></stop>
+                </linearGradient>
+                <linearGradient id="rd-livery" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0" stop-color="#a0153e"></stop>
+                  <stop offset="0.5" stop-color="#ff6a13"></stop>
+                  <stop offset="1" stop-color="#ffc52e"></stop>
+                </linearGradient>
+                <linearGradient id="rd-mirror" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#2a2340"></stop>
+                  <stop offset="1" stop-color="#0c0a14"></stop>
+                </linearGradient>
+                <linearGradient id="rd-halo" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#050507"></stop>
+                  <stop offset="0.42" stop-color="#15151c"></stop>
+                  <stop offset="0.5" stop-color="#2a2a36"></stop>
+                  <stop offset="0.58" stop-color="#15151c"></stop>
+                  <stop offset="1" stop-color="#050507"></stop>
+                </linearGradient>
+              </defs>
+              <!-- front tyres (Purrelli soft, yellow band) -->
+              <g>
+                <rect x="70" y="600" width="330" height="360" rx="70" fill="#0a0a0d"></rect>
+                <rect x="96" y="600" width="18" height="300" rx="9" fill="#ffc52e" opacity="0.7"></rect>
+                <rect x="1200" y="600" width="330" height="360" rx="70" fill="#0a0a0d"></rect>
+                <rect x="1486" y="600" width="18" height="300" rx="9" fill="#ffc52e" opacity="0.7"></rect>
+              </g>
+              <!-- front wing -->
+              <path d="M180 900 L260 842 H1340 L1420 900 Z" fill="#0d0d12"></path>
+              <path d="M260 842 H1340 L1350 852 H250 Z" fill="#ffc52e" opacity="0.8"></path>
+              <!-- nose with livery stripe + number -->
+              <path d="M700 900 L770 600 Q800 580 830 600 L900 900 Z" fill="url(#rd-carbon)"></path>
+              <path d="M786 604 L814 604 L846 900 H754 Z" fill="url(#rd-livery)" opacity="0.9"></path>
+              <text x="800" y="840" text-anchor="middle" font-family="Saira Variable, sans-serif" font-weight="900" font-size="58" fill="#07070b" data-rd-carnum>{firstCar.car}</text>
+              <!-- cockpit sides -->
+              <path d="M0 900 V700 Q150 690 300 760 Q420 820 520 900 Z" fill="url(#rd-carbon)"></path>
+              <path d="M1600 900 V700 Q1450 690 1300 760 Q1180 820 1080 900 Z" fill="url(#rd-carbon)"></path>
+              <path d="M0 712 Q150 702 300 772 Q420 830 505 900 H480 Q400 840 290 786 Q150 722 0 728 Z" fill="#a0153e"></path>
+              <path d="M1600 712 Q1450 702 1300 772 Q1180 830 1095 900 H1120 Q1200 840 1310 786 Q1450 722 1600 728 Z" fill="#a0153e"></path>
+              <!-- mirrors (the car behind is 0.4 s back) -->
+              <g>
+                <path d="M360 700 L420 648" stroke="#0a0a0d" stroke-width="10"></path>
+                <rect x="250" y="600" width="190" height="70" rx="22" fill="#08080b"></rect>
+                <rect x="262" y="610" width="166" height="50" rx="16" fill="url(#rd-mirror)"></rect>
+                <circle cx="330" cy="640" r="5" fill="#fff6d8"></circle>
+                <circle cx="356" cy="640" r="5" fill="#fff6d8"></circle>
+                <path d="M1240 700 L1180 648" stroke="#0a0a0d" stroke-width="10"></path>
+                <rect x="1160" y="600" width="190" height="70" rx="22" fill="#08080b"></rect>
+                <rect x="1172" y="610" width="166" height="50" rx="16" fill="url(#rd-mirror)"></rect>
+              </g>
+              <!-- halo: hoop + centre pillar (close to the lens) -->
+              <g>
+                <path d="M-80 170 Q800 -70 1680 170" stroke="#08080b" stroke-width="84" fill="none"></path>
+                <path d="M-80 130 Q800 -110 1680 130" stroke="#2c2c38" stroke-width="6" fill="none" opacity="0.8"></path>
+                <path d="M778 60 L822 60 L846 720 Q800 736 754 720 Z" fill="url(#rd-halo)"></path>
+                <path d="M796 70 L801 70 L804 700 L797 700 Z" fill="#4a4a5a" opacity="0.55"></path>
+              </g>
+            </svg>
+            <div class="rd-scan"></div>
+          </div>
+
+          <!-- ======== broadcast HUD ======== -->
+          <div class="rd-hud" aria-hidden="true">
+            <div class="rd-lap">
+              <span class="t-mono">Lap</span>
+              <b data-rd-lap>{exchanges[0].lap}</b>
+              <span class="rd-lap-total">/{totalLaps}</span>
+            </div>
+            <div class="rd-live t-mono">
+              <i></i> Live · Onboard <span data-rd-onboard>#{firstCar.car} {firstCar.code}</span>
+            </div>
+          </div>
+
+          <!-- ======== radio overlay ======== -->
+          <div class="rd-overlay" data-rd-overlay data-who="" data-card={firstCar.id}>
+            <p class="rd-tag t-mono" aria-hidden="true">
+              <span class="rd-tag-dot"></span>
+              <span data-rd-dir>Team radio</span>
+            </p>
+            <div class="rd-namebar" aria-hidden="true">
+              <span class="rd-sweep" data-rd-sweep></span>
+              <span class="rd-stripe"></span>
+              <span class="rd-cards">
+                {
+                  cast.map((s) => (
+                    <span class="rd-card" data-spk={s.id}>
+                      <span class="rd-av" style={`--av-zoom: ${s.zoom}; --av-origin: ${s.origin}; --av-shift: ${s.shift}`}>
+                        <PhotoSlot photo={s.photo} widths={[112, 200]} sizes={`${Math.round(48 * s.zoom)}px`} />
+                      </span>
+                      <span class:list={['rd-num t-condensed', { 'is-code': s.car == null }]}>{s.car ?? s.code}</span>
+                      <span class="rd-id">
+                        <b>{s.surname}</b>
+                        <small>
+                          <Emblem size="0.95em" title="" />
+                          <span class="rd-role">{s.role}</span>
+                        </small>
+                      </span>
+                    </span>
+                  ))
+                }
+              </span>
+              <canvas class="rd-wave" data-rd-wave width="160" height="40"></canvas>
+            </div>
+            <div class="rd-transcript" aria-hidden="true">
+              {
+                Array.from({ length: slots }, (_, i) => (
+                  <p class="rd-line" data-rd-line={i} hidden>
+                    <span class="rd-who t-mono" data-rd-who />
+                    <span class="rd-text">
+                      <span class="rd-typed" data-rd-typed />
+                      <span class="rd-rest" data-rd-rest />
+                    </span>
+                  </p>
+                ))
+              }
+              <p class="rd-idle t-mono" data-rd-idle>Channel open · the owner is choosing a box</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ======== controls ======== -->
+        <div class="rd-controls" role="group" aria-label="Team radio controls">
+          <button type="button" class="rd-ctl rd-ctl-play" data-rd-play aria-label="Play team radio">
+            <svg class="rd-i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>
+            <svg class="rd-i-pause" viewBox="0 0 24 24" aria-hidden="true"
+              ><rect x="6" y="4.5" width="4.2" height="15" rx="1"></rect><rect x="13.8" y="4.5" width="4.2" height="15" rx="1"
+              ></rect></svg
+            >
+          </button>
+          <button type="button" class="rd-ctl" data-rd-next aria-label="Next call">
+            <svg viewBox="0 0 24 24" aria-hidden="true"
+              ><path d="M5 5v14l10-7z"></path><rect x="16.5" y="5" width="3" height="14" rx="1"></rect></svg
+            >
+          </button>
+          <button type="button" class="rd-ctl" data-rd-shuffle aria-pressed="false" aria-label="Shuffle">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              ><path d="M16 4h4v4M4 20 20 4M20 16v4h-4M15 15l5 5M4 4l5 5"></path></svg
+            >
+          </button>
+          <div class="rd-progress">
+            <span class="rd-status t-mono" data-rd-status>Call 1 / {exchanges.length} · Lap {exchanges[0].lap}</span>
+            <span class="rd-segs" aria-hidden="true">
+              {exchanges.map((ex, i) => <i data-rd-seg={i} data-spk={ex.car} />)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== radio log ======== -->
+      <aside class="rd-log" aria-labelledby="rd-log-title" data-reveal="up">
+        <div class="rd-log-head">
+          <h3 class="rd-log-title t-condensed" id="rd-log-title">Radio log</h3>
+          <span class="t-mono t-mute">{exchanges.length} {exchanges.length === 1 ? 'call' : 'calls'}</span>
+        </div>
+        <ol class="rd-list">
+          {
+            exchanges.map((ex, i) => (
+              <li>
+                <button type="button" class="rd-item" data-rd-item={i} data-spk={ex.car}>
+                  <span class="rd-item-lap t-mono" aria-hidden="true">L{ex.lap}</span>
+                  <span class="rd-item-body">
+                    <span class="rd-item-route t-mono" aria-hidden="true">
+                      {route(ex)}
+                    </span>
+                    <span class="rd-item-q" aria-hidden="true">
+                      <b class="rd-from" data-spk={ex.lines[0].from}>{ex.lines[0].from}</b> “{ex.lines[0].text}”
+                    </span>
+                    <span class="rd-item-a" aria-hidden="true">
+                      <span class="rd-redact">Reply redacted by the stewards</span>
+                      <span class="rd-reply">
+                        {ex.lines.slice(1).map((l) => (
+                          <span class="rd-reply-line">
+                            <b class="rd-from" data-spk={l.from}>{l.from}</b> “{l.text}”
+                          </span>
+                        ))}
+                      </span>
+                    </span>
+                    <span class="visually-hidden">{spoken(ex)}</span>
+                  </span>
+                  <span class="rd-item-eq" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                </button>
+              </li>
+            ))
+          }
+        </ol>
+      </aside>
+    </div>
+    <p class="visually-hidden" aria-live="polite" data-rd-live></p>
+  </div>
+</section>
+
+<script>
+  import { sound, type Vowel, type BlipOptions } from '@/scripts/audio';
+  import { prefersReducedMotion, isLowPowerDevice } from '@/scripts/motion';
+  import type { RadioSpeaker } from '@/data/lore';
+
+  interface Line {
+    from: RadioSpeaker;
+    text: string;
+  }
+  interface Exchange {
+    lap: number;
+    car: RadioSpeaker;
+    lines: Line[];
+  }
+  interface SpeakerInfo {
+    name: string;
+    code: string;
+    /** null = pit wall (the owner). */
+    car: number | null;
+  }
+  type Who = RadioSpeaker | '';
+
+  /**
+   * How each speaker sounds in cat-speak. The owner is the cattiest: high,
+   * small-mouthed, every syllable a tiny rising mew. #13 talks low and fast
+   * (deploying the overtake); #17 sits in between and keeps losing signal.
+   */
+  interface Voice extends Pick<BlipOptions, 'formant' | 'mew' | 'duration' | 'volume'> {
+    pitch: number;
+    jitter: number;
+    glide: number;
+    /** ms per typed character. */
+    pace: number;
+    /** Share of syllables lost to "no signal" (0–1). */
+    dropout: number;
+  }
+  const VOICES: Record<RadioSpeaker, Voice> = {
+    Poosa: { pitch: 540, jitter: 0.26, formant: 1.25, mew: true, duration: 0.11, glide: 1.14, volume: 0.5, pace: 42, dropout: 0 },
+    Isuru: { pitch: 158, jitter: 0.12, formant: 0.9, duration: 0.068, glide: 0.9, volume: 0.64, pace: 31, dropout: 0 },
+    Yasas: { pitch: 224, jitter: 0.16, formant: 1.04, duration: 0.078, glide: 0.97, volume: 0.58, pace: 35, dropout: 0.22 },
+  };
+  const OWNER: RadioSpeaker = 'Poosa';
+
+  const root = document.querySelector<HTMLElement>('[data-rd-root]');
+  const screen = root?.querySelector<HTMLElement>('[data-rd-screen]');
+
+  function parse(raw: string | undefined): unknown {
+    try {
+      return JSON.parse(raw ?? 'null');
+    } catch {
+      return null;
+    }
+  }
+  const rawExchanges = parse(root?.dataset.exchanges);
+  const exchanges = (Array.isArray(rawExchanges) ? (rawExchanges as Exchange[]) : []).filter(
+    (ex) => ex && Array.isArray(ex.lines) && ex.lines.length > 0,
+  );
+  const rawSpeakers = parse(root?.dataset.speakers);
+  const speakers: Partial<Record<RadioSpeaker, SpeakerInfo>> =
+    rawSpeakers && typeof rawSpeakers === 'object' ? (rawSpeakers as Partial<Record<RadioSpeaker, SpeakerInfo>>) : {};
+
+  if (root && screen && exchanges.length) {
+    function $<T extends Element = HTMLElement>(sel: string): T | null {
+      return root!.querySelector<T>(sel);
+    }
+    const overlay = $('[data-rd-overlay]');
+    const dirEl = $('[data-rd-dir]');
+    const lapEl = $('[data-rd-lap]');
+    const onboardEl = $('[data-rd-onboard]');
+    const carNumEl = $<SVGTextElement>('[data-rd-carnum]');
+    const idleEl = $('[data-rd-idle]');
+    const statusEl = $('[data-rd-status]');
+    const liveEl = document.querySelector<HTMLElement>('[data-rd-live]');
+    const playBtn = $<HTMLButtonElement>('[data-rd-play]');
+    const nextBtn = $<HTMLButtonElement>('[data-rd-next]');
+    const shuffleBtn = $<HTMLButtonElement>('[data-rd-shuffle]');
+    const canvas = $<HTMLCanvasElement>('[data-rd-wave]');
+    const sweep = $('[data-rd-sweep]');
+    const lineEls = Array.from(root.querySelectorAll<HTMLElement>('[data-rd-line]'));
+    const items = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-rd-item]'));
+    const segs = Array.from(root.querySelectorAll<HTMLElement>('[data-rd-seg]'));
+
+    const reduced = prefersReducedMotion();
+
+    // Playback state
+    let current = 0;
+    let playing = false;
+    let continuous = false;
+    let completed = false;
+    let runId = 0;
+    let shuffle = false;
+    let userEngaged = false;
+    let who: Who = '';
+    const heard = new Set<number>();
+
+    // Waveform state
+    const ctx2d = canvas?.getContext('2d') ?? null;
+    const BARS = 22;
+    const heights = new Float32Array(BARS);
+    let speaking = false;
+    let pulse = 0;
+    let level = 0;
+    let raf = 0;
+    let visible = false;
+    let freq: Uint8Array<ArrayBuffer> | null = null;
+    let cw = 0;
+    let chh = 0;
+    let waveColour = '';
+
+    const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+    const isOwner = (from: RadioSpeaker) => from === OWNER;
+    const info = (id: RadioSpeaker): SpeakerInfo => speakers[id] ?? { name: id, code: '', car: null };
+    const carOf = (ex: Exchange) => info(ex.car).car;
+
+    /* ---------------- UI state ---------------- */
+    function setPlaying(value: boolean): void {
+      playing = value;
+      root!.dataset.playing = String(value);
+      playBtn?.setAttribute('aria-label', value ? 'Pause team radio' : 'Play team radio');
+    }
+
+    function setCurrent(idx: number): void {
+      current = idx;
+      const ex = exchanges[idx];
+      const car = info(ex.car);
+      if (lapEl) lapEl.textContent = String(ex.lap);
+      if (statusEl) statusEl.textContent = `Call ${idx + 1} / ${exchanges.length} · Lap ${ex.lap}`;
+      if (onboardEl) onboardEl.textContent = `#${car.car ?? ''} ${car.code}`.trim();
+      if (carNumEl) carNumEl.textContent = String(car.car ?? '');
+      items.forEach((b, i) => {
+        if (i === idx) b.setAttribute('aria-current', 'true');
+        else b.removeAttribute('aria-current');
+      });
+      segs.forEach((s, i) => {
+        s.dataset.state = i === idx ? 'on' : heard.has(i) ? 'done' : '';
+      });
+      setWho('');
+    }
+
+    /** Who's keyed up: drives the name bar card, team colour and the direction tag. */
+    function setWho(from: RadioSpeaker | ''): void {
+      who = from;
+      const ex = exchanges[current];
+      if (overlay) {
+        overlay.dataset.who = who;
+        overlay.dataset.card = who || ex.car;
+      }
+      waveColour = '';
+      if (dirEl) {
+        const car = carOf(ex);
+        dirEl.textContent = !who
+          ? 'Team radio'
+          : isOwner(who)
+            ? `Pit wall → Car ${car ?? ''}`.trim()
+            : `Car ${info(who).car ?? car ?? ''} → Pit wall`;
+      }
+    }
+
+    function setSpeaking(value: boolean): void {
+      speaking = value;
+      kick();
+    }
+
+    function clearLines(): void {
+      lineEls.forEach((el) => {
+        el.hidden = true;
+        el.removeAttribute('data-typing');
+        const typed = el.querySelector<HTMLElement>('[data-rd-typed]');
+        const rest = el.querySelector<HTMLElement>('[data-rd-rest]');
+        if (typed) typed.textContent = '';
+        if (rest) rest.textContent = '';
+      });
+      if (idleEl) idleEl.hidden = false;
+    }
+
+    function markHeard(idx: number): void {
+      heard.add(idx);
+      items[idx]?.setAttribute('data-heard', '');
+      segs[idx]?.setAttribute('data-state', idx === current ? 'on' : 'done');
+    }
+
+    /* ---------------- cat-speak ---------------- */
+    const VOWELS: Record<string, Vowel> = { a: 'a', e: 'e', i: 'i', o: 'o', u: 'u', y: 'i' };
+
+    function syllable(ch: string, from: RadioSpeaker, question: boolean): void {
+      const v = VOICES[from] ?? VOICES.Isuru;
+      // "No signal": some syllables never make it out of the jungle.
+      if (v.dropout && Math.random() < v.dropout) {
+        pulse = 0.25;
+        return;
+      }
+      pulse = 1;
+      if (!sound.enabled) return;
+      sound.blip({
+        pitch: v.pitch * (1 - v.jitter / 2 + Math.random() * v.jitter),
+        vowel: VOWELS[ch.toLowerCase()] ?? 'a',
+        duration: v.duration,
+        formant: v.formant,
+        mew: v.mew,
+        glide: question ? (v.mew ? 1.5 : 1.35) : v.glide,
+        volume: v.volume,
+        radio: true,
+      });
+    }
+
+    /** Transcript label: "Poosa · RAT · Pit wall" / "Isuru · #13 DHA". */
+    function label(from: RadioSpeaker): string {
+      const s = info(from);
+      return s.car == null ? `${s.name} · ${s.code} · Pit wall` : `${s.name} · #${s.car} ${s.code}`;
+    }
+
+    /* ---------------- playback ---------------- */
+    async function speak(el: HTMLElement, line: Line, id: number): Promise<boolean> {
+      const typed = el.querySelector<HTMLElement>('[data-rd-typed]');
+      const rest = el.querySelector<HTMLElement>('[data-rd-rest]');
+      const whoEl = el.querySelector<HTMLElement>('[data-rd-who]');
+      const pace = (VOICES[line.from] ?? VOICES.Isuru).pace;
+      if (whoEl) whoEl.textContent = label(line.from);
+      el.dataset.spk = line.from;
+      // Captions roll like the broadcast: only the last two lines stay up.
+      const idx = lineEls.indexOf(el);
+      if (idx >= 2) lineEls[idx - 2].hidden = true;
+      if (typed) typed.textContent = reduced ? line.text : '';
+      if (rest) rest.textContent = reduced ? '' : line.text;
+      if (!reduced) el.setAttribute('data-typing', '');
+      el.hidden = false;
+      if (idleEl) idleEl.hidden = true;
+      setWho(line.from);
+      if (!reduced && sweep) {
+        sweep.animate(
+          [
+            { transform: 'translateX(-110%)', opacity: 0 },
+            { opacity: 1, offset: 0.2 },
+            { transform: 'translateX(110%)', opacity: 0 },
+          ],
+          { duration: 650, easing: 'cubic-bezier(0.65, 0, 0.35, 1)' },
+        );
+      }
+
+      sound.play('radio', { volume: 0.55 });
+      await wait(260);
+      if (id !== runId) return false;
+
+      setSpeaking(true);
+      const text = line.text;
+      const qIndex = text.lastIndexOf('?');
+      let prevVowel = false;
+      let lastBlip = 0;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (!reduced) {
+          if (typed) typed.textContent = text.slice(0, i + 1);
+          if (rest) rest.textContent = text.slice(i + 1);
+        }
+        const vowel = /[aeiouy]/i.test(ch);
+        const now = performance.now();
+        if (vowel && !prevVowel && now - lastBlip > 62) {
+          syllable(ch, line.from, qIndex > -1 && i > qIndex - 6 && i < qIndex);
+          lastBlip = now;
+        }
+        prevVowel = vowel;
+        const pause = /[.?!…]/.test(ch) ? 190 : ch === ',' ? 130 : ch === ' ' ? 14 : 0;
+        await wait(pace + pause);
+        if (id !== runId) {
+          setSpeaking(false);
+          return false;
+        }
+      }
+      setSpeaking(false);
+      el.removeAttribute('data-typing');
+      sound.play('radio', { pitch: 0.8, volume: 0.45 });
+      await wait(reduced ? 1400 : 1000);
+      return id === runId;
+    }
+
+    async function playExchange(idx: number, announce: boolean): Promise<void> {
+      const id = ++runId;
+      completed = false;
+      setCurrent(idx);
+      clearLines();
+      setPlaying(true);
+      const ex = exchanges[idx];
+      if (announce && liveEl) {
+        liveEl.textContent = `Lap ${ex.lap}. ${ex.lines.map((l) => `${l.from}: ${l.text}`).join(' ')}`;
+      }
+      await wait(220);
+      if (id !== runId) return;
+      for (let i = 0; i < ex.lines.length && i < lineEls.length; i++) {
+        const ok = await speak(lineEls[i], ex.lines[i], id);
+        if (!ok) return;
+      }
+      setWho('');
+      completed = true;
+      markHeard(idx);
+
+      if (continuous) {
+        const next = nextIndex();
+        if (next == null) {
+          setPlaying(false);
+          if (statusEl) statusEl.textContent = 'End of transmission · Poosa is napping';
+          return;
+        }
+        await wait(1100);
+        if (id !== runId) return;
+        void playExchange(next, announce);
+      } else {
+        setPlaying(false);
+        const left = exchanges.length - heard.size;
+        if (statusEl) {
+          statusEl.textContent = left > 0
+            ? `Press play for more · ${left} ${left === 1 ? 'call' : 'calls'} left`
+            : 'End of transmission · Poosa is napping';
+        }
+      }
+    }
+
+    function nextIndex(): number | null {
+      if (shuffle) {
+        const all = exchanges.map((_, i) => i).filter((i) => i !== current);
+        const fresh = all.filter((i) => !heard.has(i));
+        const pool = fresh.length ? fresh : all;
+        return pool.length ? pool[Math.floor(Math.random() * pool.length)] : current;
+      }
+      return current + 1 < exchanges.length ? current + 1 : null;
+    }
+
+    function stop(): void {
+      runId++;
+      setSpeaking(false);
+      setPlaying(false);
+      lineEls.forEach((el) => el.removeAttribute('data-typing'));
+    }
+
+    /* ---------------- controls ---------------- */
+    playBtn?.addEventListener('click', () => {
+      userEngaged = true;
+      if (playing) {
+        stop();
+        return;
+      }
+      continuous = true;
+      const idx = completed ? (nextIndex() ?? 0) : current;
+      void playExchange(idx, true);
+    });
+
+    nextBtn?.addEventListener('click', () => {
+      userEngaged = true;
+      continuous = true;
+      const idx = nextIndex() ?? 0;
+      stop();
+      void playExchange(idx, true);
+    });
+
+    shuffleBtn?.addEventListener('click', () => {
+      shuffle = !shuffle;
+      shuffleBtn.setAttribute('aria-pressed', String(shuffle));
+      sound.play('click');
+    });
+
+    items.forEach((btn, i) => {
+      btn.addEventListener('click', () => {
+        userEngaged = true;
+        continuous = true;
+        stop();
+        void playExchange(i, true);
+      });
+    });
+
+    /* ---------------- waveform (canvas) ---------------- */
+    function resize(): void {
+      if (!canvas || !ctx2d) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, isLowPowerDevice() ? 1.5 : 2);
+      const r = canvas.getBoundingClientRect();
+      cw = Math.max(1, Math.round(r.width * dpr));
+      chh = Math.max(1, Math.round(r.height * dpr));
+      canvas.width = cw;
+      canvas.height = chh;
+      draw(performance.now());
+    }
+
+    /** The speaker's team colour, read once per key-up from the overlay's --who token. */
+    function colour(): string {
+      if (!waveColour) {
+        const v = overlay ? getComputedStyle(overlay).getPropertyValue('--who').trim() : '';
+        waveColour = v || '#6c6a78';
+      }
+      return waveColour;
+    }
+    const centreWeight = (i: number) => 1 - Math.abs(i - (BARS - 1) / 2) / (BARS / 2);
+    const wobble = (i: number, t: number) =>
+      0.45 + 0.55 * Math.abs(Math.sin(i * 1.7 + t * 0.017) * Math.cos(i * 0.6 - t * 0.011));
+
+    function draw(t: number): void {
+      if (!ctx2d || !cw) return;
+      ctx2d.clearRect(0, 0, cw, chh);
+      const analyser = speaking && sound.running ? sound.getAnalyser() : null;
+      if (analyser) {
+        if (!freq || freq.length !== analyser.frequencyBinCount) freq = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(freq);
+      }
+      const binHz = analyser ? analyser.context.sampleRate / analyser.fftSize : 1;
+      const gap = cw / BARS;
+      const bw = Math.max(1, gap * 0.52);
+      ctx2d.fillStyle = colour();
+      for (let i = 0; i < BARS; i++) {
+        let target = level * (0.25 + 0.75 * centreWeight(i)) * wobble(i, t);
+        if (analyser && freq) {
+          const hz = 250 + (i / BARS) * 3800;
+          const v = (freq[Math.min(freq.length - 1, Math.round(hz / binHz))] ?? 0) / 255;
+          target = Math.max(target * 0.6, v * 1.1);
+        }
+        heights[i] += (target - heights[i]) * (target > heights[i] ? 0.55 : 0.2);
+        const h = Math.max(chh * 0.1, Math.min(1, heights[i]) * chh * 0.94);
+        const x = i * gap + (gap - bw) / 2;
+        const y = (chh - h) / 2;
+        ctx2d.globalAlpha = 0.5 + 0.5 * Math.min(1, heights[i] * 1.4);
+        if (typeof ctx2d.roundRect === 'function') {
+          ctx2d.beginPath();
+          ctx2d.roundRect(x, y, bw, h, bw / 2);
+          ctx2d.fill();
+        } else ctx2d.fillRect(x, y, bw, h);
+      }
+      ctx2d.globalAlpha = 1;
+    }
+
+    function frame(t: number): void {
+      raf = 0;
+      const target = speaking ? 0.35 + pulse * 0.65 : 0;
+      level += (target - level) * 0.25;
+      pulse *= 0.86;
+      draw(t);
+      const settled = !speaking && level < 0.01 && heights.every((h) => h < 0.01);
+      if (visible && !document.hidden && !settled) raf = requestAnimationFrame(frame);
+    }
+
+    function kick(): void {
+      if (reduced) {
+        // Static but designed: a frozen mid-word waveform while talking, flat when idle.
+        level = speaking ? 0.85 : 0;
+        for (let i = 0; i < BARS; i++) heights[i] = level * (0.25 + 0.75 * centreWeight(i)) * wobble(i, 420);
+        draw(420);
+        return;
+      }
+      if (!raf && visible && !document.hidden) raf = requestAnimationFrame(frame);
+    }
+
+    if (canvas && ctx2d) {
+      if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas);
+      else resize();
+    }
+
+    /* ---------------- visibility: pause loops, autoplay once ---------------- */
+    let autoplayed = false;
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            visible = e.isIntersecting;
+            screen.classList.toggle('is-live', visible);
+            if (visible) kick();
+            if (visible && e.intersectionRatio >= 0.5 && !autoplayed && !userEngaged) {
+              autoplayed = true;
+              continuous = false;
+              window.setTimeout(() => {
+                if (!userEngaged && !playing) void playExchange(0, false);
+              }, 450);
+            }
+          }
+        },
+        { threshold: [0, 0.5] },
+      );
+      io.observe(screen);
+    } else {
+      visible = true;
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) kick();
+    });
+
+    setCurrent(0);
+  }
+</script>
+
+<style>
+  .radio {
+    overflow: clip;
+    background:
+      radial-gradient(60% 40% at 80% 20%, rgb(20 213 180 / 0.06), transparent 70%),
+      var(--c-carbon);
+  }
+
+  .rd-layout {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  @media (min-width: 1024px) {
+    .rd-layout {
+      grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 1fr);
+      align-items: start;
+    }
+  }
+
+  .rd-main {
+    display: grid;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  /* ======================= Broadcast screen ======================= */
+  .rd-screen {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    isolation: isolate;
+    background: #05050a;
+    border: 1px solid var(--c-line-strong);
+    box-shadow:
+      0 2rem 4rem -1.5rem rgb(0 0 0 / 0.85),
+      inset 0 1px 0 rgb(255 255 255 / 0.06);
+    container-type: inline-size;
+  }
+
+  @media (min-width: 640px) {
+    .rd-screen {
+      aspect-ratio: 16 / 10;
+    }
+  }
+
+  .rd-cam {
+    position: absolute;
+    inset: -1%;
+  }
+
+  .rd-screen.is-live .rd-cam {
+    animation: rd-rumble 0.16s steps(2, jump-none) infinite;
+  }
+
+  @keyframes rd-rumble {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(0.6px, 0.8px, 0);
+    }
+  }
+
+  .rd-sky,
+  .rd-cockpit {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .rd-cockpit {
+    z-index: 3;
+    will-change: transform; /* rasterise once; text above never repaints it */
+  }
+
+  /* ---- road plane ----
+   * A long CSS 3D plane hinged at the bottom edge and tipped away from the
+   * lens; its far end converges on the horizon (perspective-origin). The kerbs
+   * and dashes scroll with transform only, so the "driving" runs on the GPU.
+   */
+  .rd-road {
+    position: absolute;
+    left: 50%;
+    top: 57.8%;
+    bottom: 0;
+    width: 180%;
+    translate: -50% 0;
+    perspective: 240px;
+    perspective-origin: 50% 0;
+    overflow: hidden;
+    z-index: 1;
+    mask-image: linear-gradient(to bottom, transparent, #000 18%);
+  }
+
+  .rd-road-surface {
+    position: absolute;
+    inset: -600% 22% 0;
+    transform-origin: 50% 100%;
+    transform: rotateX(84deg);
+    background: linear-gradient(90deg, #111017, #1c1b24 50%, #111017);
+    overflow: hidden;
+  }
+
+  .rd-kerb,
+  .rd-edge,
+  .rd-dash {
+    position: absolute;
+    top: -240px;
+    bottom: 0;
+  }
+
+  .rd-kerb {
+    width: 5%;
+    background: repeating-linear-gradient(to bottom, var(--c-red) 0 60px, #efece6 60px 120px);
+  }
+
+  .rd-kerb-l {
+    left: 0;
+  }
+
+  .rd-kerb-r {
+    right: 0;
+  }
+
+  .rd-edge {
+    width: 0.8%;
+    background: rgb(255 255 255 / 0.8);
+  }
+
+  .rd-edge-l {
+    left: 5.6%;
+  }
+
+  .rd-edge-r {
+    right: 5.6%;
+  }
+
+  .rd-dash {
+    left: 50%;
+    width: 0.8%;
+    translate: -50% 0;
+    background: repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.55) 0 80px, transparent 80px 240px);
+  }
+
+  .rd-screen.is-live :is(.rd-kerb, .rd-edge) {
+    animation: rd-drive 0.2s linear infinite;
+  }
+
+  .rd-screen.is-live .rd-dash {
+    animation: rd-drive-dash 0.4s linear infinite;
+  }
+
+  @keyframes rd-drive {
+    to {
+      transform: translate3d(0, 120px, 0);
+    }
+  }
+
+  @keyframes rd-drive-dash {
+    to {
+      transform: translate3d(0, 240px, 0);
+    }
+  }
+
+  /* ---- speed streaks from the vanishing point ---- */
+  .rd-streaks {
+    position: absolute;
+    left: 50%;
+    top: 57.8%;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .rd-streaks i {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 34cqi;
+    height: 1.5px;
+    transform-origin: 0 50%;
+    rotate: var(--a);
+    background: linear-gradient(90deg, transparent, rgb(255 246 216 / 0.35) 70%, transparent);
+    opacity: 0;
+  }
+
+  .rd-screen.is-live .rd-streaks i {
+    animation: rd-streak 1.1s linear infinite;
+    animation-delay: var(--d);
+  }
+
+  @keyframes rd-streak {
+    0% {
+      transform: translateX(4cqi) scaleX(0.2);
+      opacity: 0;
+    }
+    30% {
+      opacity: 0.7;
+    }
+    100% {
+      transform: translateX(46cqi) scaleX(1);
+      opacity: 0;
+    }
+  }
+
+  .rd-scan {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px),
+      linear-gradient(to top, rgb(0 0 0 / 0.55), transparent 42%),
+      radial-gradient(130% 100% at 50% 45%, transparent 55%, rgb(0 0 0 / 0.55));
+  }
+
+  /* ======================= HUD ======================= */
+  .rd-hud {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: clamp(0.75rem, 0.5rem + 1.5cqi, 1.5rem);
+  }
+
+  .rd-lap {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 4px;
+    background: rgb(8 8 12 / 0.82);
+    border-left: 3px solid var(--c-red);
+    font-family: var(--f-display);
+  }
+
+  .rd-lap .t-mono {
+    color: var(--c-mute);
+    font-size: 0.6rem;
+  }
+
+  .rd-lap b {
+    font-weight: 850;
+    font-size: 1.15rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rd-lap-total {
+    font-size: 0.8rem;
+    color: var(--c-mute);
+  }
+
+  .rd-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.65rem;
+    border-radius: 4px;
+    background: rgb(8 8 12 / 0.82);
+    font-size: 0.6rem;
+    color: var(--c-chalk);
+  }
+
+  .rd-live i {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--c-red);
+    box-shadow: var(--glow-red);
+    animation: rd-blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes rd-blink {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  /* ======================= Radio overlay ======================= */
+  .rd-overlay {
+    --who: var(--c-mute);
+    position: absolute;
+    left: clamp(0.6rem, 0.3rem + 2cqi, 1.75rem);
+    right: clamp(0.6rem, 0.3rem + 2cqi, 1.75rem);
+    bottom: clamp(0.6rem, 0.3rem + 2cqi, 1.75rem);
+    z-index: 6;
+    max-width: min(30rem, 100%);
+    /* Own layer: the typewriter repaints only the overlay, not the scene. */
+    will-change: transform;
+    contain: layout paint;
+  }
+
+  /* Team colours per voice: the owner is cat-eye gold, #13 saffron, #17 teal. */
+  .radio [data-spk='Poosa'],
+  .rd-overlay[data-card='Poosa'] {
+    --spk: var(--c-gold);
+  }
+
+  .radio [data-spk='Isuru'],
+  .rd-overlay[data-card='Isuru'] {
+    --spk: var(--c-saffron);
+  }
+
+  .radio [data-spk='Yasas'],
+  .rd-overlay[data-card='Yasas'] {
+    --spk: var(--c-teal);
+  }
+
+  .rd-overlay[data-who='Poosa'] {
+    --who: var(--c-gold);
+  }
+
+  .rd-overlay[data-who='Isuru'] {
+    --who: var(--c-saffron);
+  }
+
+  .rd-overlay[data-who='Yasas'] {
+    --who: var(--c-teal);
+  }
+
+  .rd-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 3px;
+    background: rgb(8 8 12 / 0.85);
+    font-size: 0.58rem;
+    color: var(--c-chalk);
+  }
+
+  .rd-tag-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--who);
+    box-shadow: 0 0 0.6rem var(--who);
+    transition: background-color var(--dur-fast) ease;
+  }
+
+  .rd-namebar {
+    position: relative;
+    display: grid;
+    grid-template-columns: 6px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(0.5rem, 0.3rem + 1cqi, 0.9rem);
+    min-height: 3.4rem;
+    padding-right: 0.75rem;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(90deg, rgb(12 12 18 / 0.95), rgb(20 20 28 / 0.92));
+    overflow: hidden;
+  }
+
+  .rd-stripe {
+    align-self: stretch;
+    background: linear-gradient(to bottom, var(--spk, var(--c-gold)), color-mix(in oklab, var(--spk, var(--c-gold)) 45%, var(--c-maroon)));
+  }
+
+  /* One card per speaker, stacked; the keyed-up voice (or the car on track) shows. */
+  .rd-cards {
+    display: grid;
+    align-self: stretch;
+    min-width: 0;
+  }
+
+  .rd-card {
+    grid-area: 1 / 1;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(0.45rem, 0.3rem + 0.8cqi, 0.75rem);
+    min-width: 0;
+    opacity: 0;
+    transform: translateY(40%);
+    /* Outgoing: fade fast, then reset below (unseen) for its next entrance. */
+    transition:
+      opacity 120ms ease,
+      transform 0s linear 120ms;
+  }
+
+  .rd-overlay[data-card='Poosa'] .rd-card[data-spk='Poosa'],
+  .rd-overlay[data-card='Isuru'] .rd-card[data-spk='Isuru'],
+  .rd-overlay[data-card='Yasas'] .rd-card[data-spk='Yasas'] {
+    opacity: 1;
+    transform: none;
+    /* Incoming: rises in once the old card has gone. */
+    transition:
+      opacity var(--dur-fast) ease 100ms,
+      transform var(--dur-med) var(--ease-out-expo) 100ms;
+  }
+
+  .rd-av {
+    position: relative;
+    display: block;
+    width: clamp(2.1rem, 1.7rem + 1.6cqi, 2.6rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--c-graphite);
+    box-shadow:
+      0 0 0 2px var(--spk),
+      0 0 0.9rem color-mix(in oklab, var(--spk) 35%, transparent);
+  }
+
+  .rd-av :global(picture),
+  .rd-av :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .rd-av :global(img) {
+    object-fit: cover;
+    transform: translateX(var(--av-shift, 0%)) scale(var(--av-zoom, 1));
+    transform-origin: var(--av-origin, 50% 50%);
+  }
+
+  /* Light sweep across the name bar when a new line keys up. */
+  .rd-sweep {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--who) 35%, transparent) 50%, transparent 70%);
+    opacity: 0;
+  }
+
+  .rd-num {
+    font-family: var(--f-display);
+    font-weight: 900;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--spk, var(--c-gold));
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The owner has no car number: his pit-wall callsign goes there instead. */
+  .rd-num.is-code {
+    font-size: 1.3rem;
+    letter-spacing: 0.04em;
+  }
+
+  .rd-id {
+    display: grid;
+    min-width: 0;
+    line-height: 1.1;
+  }
+
+  .rd-id b {
+    font-family: var(--f-display);
+    font-weight: 850;
+    font-stretch: var(--stretch-wide);
+    font-variation-settings: 'wdth' 118;
+    font-size: clamp(0.9rem, 0.75rem + 0.9cqi, 1.15rem);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rd-id small {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    font-family: var(--f-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-mute);
+  }
+
+  .rd-role {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rd-wave {
+    width: clamp(4.5rem, 3rem + 10cqi, 8.5rem);
+    height: 1.9rem;
+  }
+
+  /* Phone-sized broadcast: give the names the room, keep the waveform. */
+  @container (max-width: 34rem) {
+    .rd-wave {
+      width: 3.25rem;
+    }
+
+    .rd-num {
+      font-size: 1.7rem;
+    }
+
+    .rd-num.is-code {
+      font-size: 1.1rem;
+    }
+
+    .rd-id b {
+      font-stretch: normal;
+      font-variation-settings: 'wdth' 100;
+      letter-spacing: 0.01em;
+    }
+
+    .rd-id small {
+      letter-spacing: 0.06em;
+    }
+
+    .rd-id small :global(.emblem) {
+      display: none;
+    }
+  }
+
+  .rd-transcript {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.8rem 0.9rem 0.9rem;
+    border-radius: 0 0 6px 6px;
+    background: rgb(10 10 14 / 0.86);
+    border-top: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .rd-line {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .rd-who {
+    font-size: 0.6rem;
+    color: var(--spk, var(--c-mute));
+  }
+
+  .rd-text {
+    font-size: clamp(0.95rem, 0.85rem + 0.8cqi, 1.2rem);
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--c-chalk);
+  }
+
+  .rd-text::before {
+    content: '“';
+    color: var(--c-mute);
+  }
+
+  .rd-rest {
+    visibility: hidden;
+  }
+
+  .rd-line[data-typing] .rd-typed::after {
+    content: '';
+    display: inline-block;
+    width: 0.5em;
+    height: 1em;
+    margin-left: 1px;
+    vertical-align: -0.12em;
+    background: currentColor;
+    animation: rd-caret 0.8s steps(2, jump-none) infinite;
+  }
+
+  @keyframes rd-caret {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .rd-line:not([data-typing]) .rd-text::after {
+    content: '”';
+    color: var(--c-mute);
+  }
+
+  .rd-idle {
+    font-size: 0.62rem;
+    color: var(--c-mute);
+  }
+
+  /* ======================= Controls ======================= */
+  .rd-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .rd-ctl {
+    display: grid;
+    place-items: center;
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 50%;
+    border: 1px solid var(--c-line-strong);
+    color: var(--c-chalk);
+    background: var(--c-asphalt);
+    transition:
+      background-color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease,
+      color var(--dur-fast) ease,
+      transform var(--dur-fast) var(--ease-out-back);
+  }
+
+  .rd-ctl svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: currentColor;
+  }
+
+  .rd-ctl:hover {
+    border-color: var(--c-mute);
+  }
+
+  .rd-ctl:active {
+    transform: scale(0.92);
+  }
+
+  .rd-ctl-play {
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 0;
+    background: var(--c-gold);
+    color: var(--c-on-gold);
+    box-shadow: 0 0.6rem 1.5rem -0.4rem rgb(255 197 46 / 0.55);
+  }
+
+  .rd-ctl-play:hover {
+    background: #ffd65e;
+  }
+
+  .rd-i-pause,
+  [data-playing='true'] .rd-i-play {
+    display: none;
+  }
+
+  [data-playing='true'] .rd-i-pause {
+    display: block;
+  }
+
+  .rd-ctl[aria-pressed='true'] {
+    border-color: var(--c-teal);
+    color: var(--c-teal);
+    background: color-mix(in oklab, var(--c-teal) 12%, var(--c-asphalt));
+  }
+
+  .rd-ctl[data-rd-shuffle] svg {
+    fill: none;
+  }
+
+  .rd-progress {
+    display: grid;
+    gap: 0.4rem;
+    flex: 1 1 12rem;
+    min-width: 0;
+    margin-left: var(--space-2);
+  }
+
+  .rd-status {
+    color: var(--c-mute);
+    font-size: 0.64rem;
+  }
+
+  .rd-segs {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 3px;
+  }
+
+  .rd-segs i {
+    height: 3px;
+    border-radius: 2px;
+    background: var(--c-steel);
+    transition: background-color var(--dur-med) ease;
+  }
+
+  .rd-segs i[data-state='done'] {
+    background: color-mix(in oklab, var(--spk, var(--c-gold)) 45%, var(--c-steel));
+  }
+
+  .rd-segs i[data-state='on'] {
+    background: var(--spk, var(--c-gold));
+    box-shadow: 0 0 0.5rem color-mix(in oklab, var(--spk, var(--c-gold)) 60%, transparent);
+  }
+
+  /* ======================= Radio log ======================= */
+  .rd-log {
+    min-width: 0;
+    padding: clamp(1rem, 0.7rem + 1vw, 1.5rem);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-l);
+    background:
+      linear-gradient(160deg, rgb(255 255 255 / 0.04), transparent 45%),
+      var(--c-asphalt);
+  }
+
+  .rd-log-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .rd-log-title {
+    font-size: var(--fs-h3);
+    font-weight: 850;
+    text-transform: uppercase;
+  }
+
+  .rd-list {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rd-item {
+    display: grid;
+    grid-template-columns: 2.6rem minmax(0, 1fr) 1rem;
+    gap: var(--space-3);
+    align-items: start;
+    width: 100%;
+    padding: 0.75rem 0.8rem;
+    border-radius: var(--radius-m);
+    border: 1px solid transparent;
+    background: rgb(255 255 255 / 0.03);
+    text-align: left;
+    transition:
+      background-color var(--dur-fast) ease,
+      border-color var(--dur-fast) ease,
+      transform var(--dur-fast) var(--ease-out-expo);
+  }
+
+  .rd-item:hover {
+    background: rgb(255 255 255 / 0.06);
+    transform: translateX(3px);
+  }
+
+  .rd-item[aria-current='true'] {
+    border-color: color-mix(in oklab, var(--spk, var(--c-gold)) 45%, transparent);
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--spk, var(--c-gold)) 12%, transparent),
+      color-mix(in oklab, var(--spk, var(--c-gold)) 2%, transparent)
+    );
+  }
+
+  .rd-item-lap {
+    padding-top: 0.2rem;
+    color: var(--spk, var(--c-gold));
+    font-weight: 700;
+  }
+
+  .rd-item-route {
+    font-size: 0.6rem;
+    color: var(--c-mute);
+  }
+
+  .rd-from {
+    margin-right: 0.2em;
+    font-family: var(--f-mono);
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--spk, var(--c-mute));
+  }
+
+  .rd-reply-line {
+    display: block;
+  }
+
+  .rd-item-body {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .rd-item-q {
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--c-chalk);
+  }
+
+  .rd-item-a {
+    font-size: var(--fs-small);
+    line-height: 1.35;
+    color: var(--c-mute);
+  }
+
+  .rd-redact {
+    display: inline;
+    padding: 0.05rem 0.3rem;
+    border-radius: 2px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    background: repeating-linear-gradient(90deg, #2a2a37 0 6px, #22222d 6px 8px);
+    color: transparent;
+    font-size: 0.75rem;
+    user-select: none;
+  }
+
+  .rd-reply {
+    display: none;
+  }
+
+  .rd-item[data-heard] .rd-redact {
+    display: none;
+  }
+
+  .rd-item[data-heard] .rd-reply {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .rd-item-eq {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 0.9rem;
+    margin-top: 0.3rem;
+    opacity: 0;
+  }
+
+  .rd-item-eq i {
+    flex: 1;
+    height: 100%;
+    background: var(--spk, var(--c-gold));
+    border-radius: 1px;
+    transform-origin: bottom;
+    transform: scaleY(0.3);
+  }
+
+  .rd-item[aria-current='true'] .rd-item-eq {
+    opacity: 1;
+  }
+
+  [data-playing='true'] .rd-item[aria-current='true'] .rd-item-eq i {
+    animation: rd-eq 0.7s ease-in-out infinite alternate;
+  }
+
+  [data-playing='true'] .rd-item[aria-current='true'] .rd-item-eq i:nth-child(2) {
+    animation-duration: 0.45s;
+  }
+
+  [data-playing='true'] .rd-item[aria-current='true'] .rd-item-eq i:nth-child(3) {
+    animation-duration: 0.9s;
+  }
+
+  @keyframes rd-eq {
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  /* ======================= Reduced motion ======================= */
+  @media (prefers-reduced-motion: reduce) {
+    .rd-screen.is-live .rd-cam,
+    .rd-screen.is-live :is(.rd-kerb, .rd-edge, .rd-dash),
+    .rd-screen.is-live .rd-streaks i,
+    .rd-live i,
+    [data-playing='true'] .rd-item[aria-current='true'] .rd-item-eq i {
+      animation: none;
+    }
+
+    .rd-streaks {
+      display: none;
+    }
+
+    .rd-item:hover {
+      transform: none;
+    }
+
+    /* Name-bar cards simply crossfade. */
+    .rd-card {
+      transform: none;
+    }
+  }
+</style>

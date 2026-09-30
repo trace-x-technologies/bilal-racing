@@ -1,0 +1,64 @@
+---
+import '@fontsource-variable/saira/wdth.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
+import '@/styles/global.css';
+import sinhalaWoff2 from '@fontsource-variable/noto-sans-sinhala/files/noto-sans-sinhala-sinhala-wght-normal.woff2?url';
+
+// Only the Sinhala subset of Noto: its latin faces were fetched just for the
+// space inside Sinhala phrases (Saira covers latin). Inlined so the face is
+// known before the main stylesheet arrives.
+const sinhalaFace = `@font-face{font-family:'Noto Sans Sinhala Variable';font-style:normal;font-display:swap;font-weight:100 900;src:url(${sinhalaWoff2}) format('woff2-variations');unicode-range:U+0964-0965,U+0D81-0DF4,U+1CF2,U+200C-200D,U+25CC,U+111E1-111F4;}`;
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Bilal Racing — Nine lives. Zero pit-stop discipline.',
+  description = 'The official (fictional) Formula 1 team owned by a cat: Team Principal Nirod “Poosa” Rathnaweera, drivers #13 Isuru Dharmadasa and #17 Yasas Deegala. Lights out, ears up.',
+} = Astro.props;
+
+const ogImage = new URL('/og.png', Astro.site ?? Astro.url).href;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <style is:inline set:html={sinhalaFace} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#07070b" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Runs before paint so reveal states never flash. -->
+    <script is:inline>
+      document.documentElement.classList.add('js');
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('js-motion');
+      }
+    </script>
+    <noscript><style>[data-reveal]{opacity:1!important;transform:none!important;clip-path:none!important;filter:none!important}</style></noscript>
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+    <script>
+      import { initMotion } from '@/scripts/motion';
+      initMotion();
+    </script>
+  </body>
+</html>

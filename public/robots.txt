@@ -1,0 +1,14 @@
+# Bilal Racing is a private joke among friends. Search engines: please stay in the garage.
+# Link-preview bots may fetch pages so shared links get a card.
+User-agent: Twitterbot
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: WhatsApp
+User-agent: Slackbot-LinkExpanding
+User-agent: Discordbot
+User-agent: TelegramBot
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: *
+Disallow: /

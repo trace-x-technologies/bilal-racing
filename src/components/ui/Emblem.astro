@@ -1,0 +1,58 @@
+---
+/**
+ * Bilal Racing emblem: a cat head shaped like a race helmet, gold visor, slit pupils.
+ * Inherits size from font-size (1em) unless `size` is given.
+ */
+interface Props {
+  size?: string;
+  class?: string;
+  title?: string;
+}
+const { size = '1em', class: className, title = 'Bilal Racing emblem' } = Astro.props;
+// Unique gradient ids so several emblems can share a page.
+const uid = `em${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<svg
+  class:list={['emblem', className]}
+  viewBox="0 0 64 64"
+  width={size}
+  height={size}
+  role={title ? 'img' : undefined}
+  aria-label={title || undefined}
+  aria-hidden={title ? undefined : 'true'}
+>
+  <defs>
+    <linearGradient id={`${uid}-shell`} x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a2a37"></stop>
+      <stop offset="1" stop-color="#07070b"></stop>
+    </linearGradient>
+    <linearGradient id={`${uid}-visor`} x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff6a13"></stop>
+      <stop offset="1" stop-color="#ffc52e"></stop>
+    </linearGradient>
+  </defs>
+  <!-- helmet / head -->
+  <path
+    d="M8 24 L13 4 L26 15 H38 L51 4 L56 24 V35 C56 49 45 59 32 59 C19 59 8 49 8 35 Z"
+    fill={`url(#${uid}-shell)`}
+    stroke="#ffc52e"
+    stroke-width="2.5"
+    stroke-linejoin="round"></path>
+  <!-- inner ears -->
+  <path d="M14.5 10 L22 16.5 L16 21 Z M49.5 10 L42 16.5 L48 21 Z" fill="#a0153e"></path>
+  <!-- visor -->
+  <path d="M13 27 H53 L50 38 H16 Z" fill={`url(#${uid}-visor)`}></path>
+  <!-- cat-eye slits -->
+  <ellipse cx="25" cy="32.5" rx="1.7" ry="4.2" fill="#07070b"></ellipse>
+  <ellipse cx="41" cy="32.5" rx="1.7" ry="4.2" fill="#07070b"></ellipse>
+  <!-- chin stripe / race number -->
+  <path d="M26 46 H38 L36 50 H28 Z" fill="#ffc52e"></path>
+</svg>
+
+<style>
+  .emblem {
+    flex: none;
+    overflow: visible;
+  }
+</style>
