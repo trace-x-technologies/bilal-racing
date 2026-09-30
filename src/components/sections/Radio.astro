@@ -124,7 +124,7 @@ const speakerPayload = JSON.stringify(
       kicker="Team Radio"
       id="radio-title"
       title="Box, box?<br/><em>Say less.</em>"
-      lead={`Genuine* pit-wall radio: the owner (callsign ${owner.callsign}, species: cat) versus cars ${speakers.Isuru.car} and ${speakers.Yasas.car}. Transcribed by the stewards. Switch on the meow engine for the full, deeply unprofessional audio. *Not genuine.`}
+      lead={`Genuine* pit-wall radio: the owner (callsign ${owner.callsign}) versus cars ${speakers.Isuru.car} and ${speakers.Yasas.car}. Transcribed by the stewards. Switch on the meow engine for the full, deeply unprofessional audio. *Not genuine.`}
       si={sinhala.hari.si}
     />
 
@@ -334,7 +334,7 @@ const speakerPayload = JSON.stringify(
               ></rect></svg
             >
           </button>
-          <button type="button" class="rd-ctl" data-rd-next aria-label="Next message">
+          <button type="button" class="rd-ctl" data-rd-next aria-label="Next call">
             <svg viewBox="0 0 24 24" aria-hidden="true"
               ><path d="M5 5v14l10-7z"></path><rect x="16.5" y="5" width="3" height="14" rx="1"></rect></svg
             >
@@ -345,7 +345,7 @@ const speakerPayload = JSON.stringify(
             >
           </button>
           <div class="rd-progress">
-            <span class="rd-status t-mono" data-rd-status>Message 1 / {exchanges.length} · Lap {exchanges[0].lap}</span>
+            <span class="rd-status t-mono" data-rd-status>Call 1 / {exchanges.length} · Lap {exchanges[0].lap}</span>
             <span class="rd-segs" aria-hidden="true">
               {exchanges.map((ex, i) => <i data-rd-seg={i} data-spk={ex.car} />)}
             </span>
@@ -357,7 +357,7 @@ const speakerPayload = JSON.stringify(
       <aside class="rd-log" aria-labelledby="rd-log-title" data-reveal="up">
         <div class="rd-log-head">
           <h3 class="rd-log-title t-condensed" id="rd-log-title">Radio log</h3>
-          <span class="t-mono t-mute">{exchanges.length} messages</span>
+          <span class="t-mono t-mute">{exchanges.length} {exchanges.length === 1 ? 'call' : 'calls'}</span>
         </div>
         <ol class="rd-list">
           {
@@ -526,7 +526,7 @@ const speakerPayload = JSON.stringify(
       const ex = exchanges[idx];
       const car = info(ex.car);
       if (lapEl) lapEl.textContent = String(ex.lap);
-      if (statusEl) statusEl.textContent = `Message ${idx + 1} / ${exchanges.length} · Lap ${ex.lap}`;
+      if (statusEl) statusEl.textContent = `Call ${idx + 1} / ${exchanges.length} · Lap ${ex.lap}`;
       if (onboardEl) onboardEl.textContent = `#${car.car ?? ''} ${car.code}`.trim();
       if (carNumEl) carNumEl.textContent = String(car.car ?? '');
       items.forEach((b, i) => {
@@ -707,7 +707,12 @@ const speakerPayload = JSON.stringify(
         void playExchange(next, announce);
       } else {
         setPlaying(false);
-        if (statusEl) statusEl.textContent = `Press play for more · ${exchanges.length - heard.size} messages left`;
+        const left = exchanges.length - heard.size;
+        if (statusEl) {
+          statusEl.textContent = left > 0
+            ? `Press play for more · ${left} ${left === 1 ? 'call' : 'calls'} left`
+            : 'End of transmission · Poosa is napping';
+        }
       }
     }
 
