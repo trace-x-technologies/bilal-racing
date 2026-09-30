@@ -25,5 +25,6 @@ npm-debug.log*
 /test-results/
 /playwright-report/
 
-# agent worktrees (local only)
+# Claude Code: agent worktrees + personal permission overrides (local only)
 /.claude/worktrees/
+/.claude/settings.local.json

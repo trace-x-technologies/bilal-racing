@@ -46,7 +46,7 @@ creates the DNS record and certificate) and also serves on `bilal-racing.<accoun
 Requirements: Node ≥ 22.12 (`nvm use` reads `.nvmrc`) and a Cloudflare account that owns `tracex.tech`.
 
 ```bash
-git switch main && git pull
+git fetch origin && git switch main && git pull
 npm ci
 npx wrangler login     # once; opens a browser (or export CLOUDFLARE_API_TOKEN)
 npm run cf:whoami      # confirm the account that owns tracex.tech
@@ -55,14 +55,20 @@ npm run preview:cf     # optional: serve dist/ through wrangler on http://localh
 npm run deploy         # type-check + build + publish
 ```
 
+If `whoami` lists several accounts, add `"account_id"` to `wrangler.jsonc` (or export
+`CLOUDFLARE_ACCOUNT_ID`) so non-interactive runs pick the right one. Run the **first** deploy in
+a real terminal: when stdout isn't a TTY, wrangler silently replaces any existing DNS record or
+custom domain for `bilal.tracex.tech` instead of asking.
+
 Verify: `curl -sSI https://bilal.tracex.tech/` → `200` with `x-robots-tag: noindex, nofollow`;
 `/og.png` → `200 image/png`; an unknown path → `404` (the "DNF" page).
-Roll back with `npx wrangler deployments list` and `npx wrangler rollback`.
+Roll back: `npx wrangler deployments list`, then `npx wrangler rollback <version-id>`.
 
 Using Claude Code locally? The repo ships a `deploy` skill (`.claude/skills/deploy/`) with this
-exact procedure and a project `.claude/settings.json` that pre-approves the safe steps (build,
-check, dry-run, whoami, curl) and always asks before `npm run deploy`, `wrangler deploy` or
-`wrangler rollback`.
+exact procedure and a project `.claude/settings.json` that pre-approves build, check,
+`npm run deploy:dry`, `whoami`, `deployments`/`versions list` and the exact live-check `curl`s,
+and asks before any `npm run deploy`, `wrangler deploy` / `versions deploy` / `triggers deploy`,
+`rollback` or `delete`. Personal overrides go in `.claude/settings.local.json` (git-ignored).
 
 Prefer Git-connected auto-deploys instead? Cloudflare dashboard → Workers & Pages → Import a
 repository → `trace-x-technologies/bilal-racing`, build `npm run build`, deploy

@@ -33,6 +33,12 @@ npx wrangler whoami
 - `whoami` lists the accounts. The one you deploy to **must also own the `tracex.tech` zone**
   (the `routes` entry uses `custom_domain: true`). If it doesn't, stop and ask: either add the
   zone to that account, or deploy to `*.workers.dev` only by removing the `routes` block.
+- **More than one account listed?** Your shell is non-interactive, so wrangler can't show its
+  account picker: `deploy`, `deployments list` and `rollback` fail with "More than one account
+  available…", or silently reuse a cached account. Ask the human which account owns
+  `tracex.tech`, then either add `"account_id": "<id>"` to `wrangler.jsonc` (not a secret;
+  commit it) or have them `export CLOUDFLARE_ACCOUNT_ID=<id>` before starting Claude Code. Don't
+  prefix commands with `VAR=… npm run …` — that stops the permission rules from matching.
 
 ## 2. Validate without publishing
 
@@ -42,29 +48,49 @@ npm run deploy:dry   # astro check → astro build → wrangler deploy --dry-run
 
 Expect `0 errors` from `astro check`, `[build] Complete!`, and
 `✨ Read ~390 files from the assets directory …/dist` with `--dry-run: exiting now.`
-Optional local look at the real Workers asset behaviour (404 page, `_headers`):
+Optional local look at the real Workers asset behaviour (404 page, `_headers`).
+`preview:cf` is a long-running server: start it in the background (Bash `run_in_background`),
+poll it, then stop it.
 
 ```bash
-npm run preview:cf   # http://localhost:8787 — try / and /this-does-not-exist
+npm run preview:cf   # background → http://localhost:8787
+curl -sSI http://localhost:8787/                     # 200 + x-robots-tag: noindex, nofollow
+curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:8787/this-does-not-exist   # 404
 ```
 
 ## 3. Deploy (production — confirm first)
 
 This publishes to the public internet. Unless the user already explicitly asked to deploy in
-this conversation, confirm before running:
+this conversation, confirm before running.
+
+**First deploy only — DNS pre-flight.** Your Bash tool is not a TTY, and in non-interactive
+mode wrangler **silently overrides** a conflicting DNS record or a custom domain attached to
+another Worker (it only prompts in a real terminal). So before the first production deploy:
+
+```bash
+dig +short bilal.tracex.tech        # or: nslookup bilal.tracex.tech
+curl -sSI https://bilal.tracex.tech/
+```
+
+If the name already resolves or serves something that isn't this site, stop and ask the owner.
+If in doubt, ask the human to run the first `npm run deploy` in their own terminal window, where
+wrangler asks before replacing anything. Later deploys only update this Worker.
 
 ```bash
 npm run deploy       # astro check → astro build → wrangler deploy
 ```
 
-Wrangler prints the deployment ID, the `*.workers.dev` URL and `bilal.tracex.tech` as a custom
-domain. The first custom-domain deploy can take a few minutes for DNS + certificate.
+Wrangler prints the **Current Version ID**, the `*.workers.dev` URL and `bilal.tracex.tech` as a
+custom domain. The first custom-domain deploy can take a few minutes for DNS + certificate.
 
 Common failures:
-- *"Hostname already has externally managed DNS records"* → an existing DNS record for
-  `bilal.tracex.tech` is in the way. Ask the owner before deleting it in the dashboard, then redeploy.
 - *"Could not find zone for bilal.tracex.tech"* / auth error 10000 → wrong account or token
   permissions (step 1).
+- *"More than one account available but unable to select one in non-interactive mode"* → set
+  the account (step 1).
+- *"…or register a workers.dev subdomain here: https://dash.cloudflare.com/…/workers/onboarding"*
+  → the account has no `workers.dev` subdomain yet (`workers_dev: true`). The human opens that
+  link once to pick one, then redeploy.
 - Asset limits: max 20,000 files and 25 MiB per file — the build is ~390 files, largest < 1 MB.
 
 ## 4. Verify live
@@ -81,11 +107,14 @@ Optionally screenshot it: `node tools/shoot.mjs --url https://bilal.tracex.tech/
 (needs `npx playwright-core install chromium` once, or `CHROME_PATH`). The page must log no
 console errors.
 
-## 5. Roll back
+## 5. Roll back (production — confirm first)
+
+Rollback moves 100% of production traffic to another version, and in a non-interactive shell
+wrangler answers its own "Are you sure?" with yes. Treat it like a deploy: confirm with the user.
 
 ```bash
-npx wrangler deployments list
-npx wrangler rollback            # previous version; or `npx wrangler rollback <version-id>`
+npx wrangler deployments list    # or: npx wrangler versions list — note the Version ID
+npx wrangler rollback <version-id> --message "Roll back: <reason>"
 ```
 
 ## Rules

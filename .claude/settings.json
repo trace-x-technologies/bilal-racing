@@ -14,20 +14,34 @@
       "Bash(npx astro build)",
       "Bash(npx wrangler --version)",
       "Bash(npx wrangler whoami)",
-      "Bash(npx wrangler deploy --dry-run *)",
       "Bash(npx wrangler deployments list)",
-      "Bash(npx wrangler deployments list *)",
+      "Bash(npx wrangler versions list)",
       "Bash(node tools/shoot.mjs *)",
-      "Bash(curl -sSI https://bilal.tracex.tech*)",
-      "Bash(curl -sS -o /dev/null -w * https://bilal.tracex.tech*)"
+      "Bash(dig +short bilal.tracex.tech)",
+      "Bash(nslookup bilal.tracex.tech)",
+      "Bash(curl -sSI http://localhost:8787/)",
+      "Bash(curl -sS -o /dev/null -w \"%{http_code}\\n\" http://localhost:8787/this-does-not-exist)",
+      "Bash(curl -sSI https://bilal.tracex.tech/)",
+      "Bash(curl -sSI https://bilal.tracex.tech/og.png)",
+      "Bash(curl -sS https://bilal.tracex.tech/robots.txt)",
+      "Bash(curl -sS -o /dev/null -w \"%{http_code}\\n\" https://bilal.tracex.tech/definitely-missing)"
     ],
     "ask": [
       "Bash(npm run deploy)",
+      "Bash(npm run deploy *)",
       "Bash(npx wrangler deploy)",
+      "Bash(npx wrangler deploy *)",
+      "Bash(npx wrangler versions deploy *)",
+      "Bash(npx wrangler versions upload *)",
+      "Bash(npx wrangler triggers deploy *)",
       "Bash(npx wrangler rollback)",
       "Bash(npx wrangler rollback *)",
       "Bash(npx wrangler delete)",
-      "Bash(npx wrangler delete *)"
+      "Bash(npx wrangler delete *)",
+      "Bash(wrangler deploy *)",
+      "Bash(wrangler versions deploy *)",
+      "Bash(wrangler rollback *)",
+      "Bash(wrangler delete *)"
     ]
   }
 }
