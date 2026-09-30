@@ -577,15 +577,18 @@ const buildDriver = drivers.find((d) => d.id === 'dha');
     box-shadow: 0 20px 40px -20px rgb(0 0 0 / 0.8);
   }
 
+  /* Animate the wrapper, not .doc: a (fill-mode) transform would make .doc a stacking
+     context and paint its z-index:-1 under-sheet on top of the paper. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      .doc {
+      .doc-wrap {
+        transform-origin: 50% 0%;
         animation: doc-settle linear both;
       }
 
       /* Timeline in its own, more specific rule: the minifier otherwise folds it into the
          `animation` shorthand, which browsers reject. */
-      .doc-wrap > .doc {
+      .regs__layout > .doc-wrap {
         animation-timeline: view();
         animation-range: entry 0% entry 70%;
       }

@@ -2,6 +2,10 @@
 import { defineConfig } from 'astro/config';
 // @ts-ignore -- Node built-in, build time only; the project has no @types/node (no new deps).
 import { readFile, writeFile, readdir, unlink } from 'node:fs/promises';
+// @ts-ignore -- Node built-in (see above).
+import { join } from 'node:path';
+// @ts-ignore -- Node built-in (see above).
+import { fileURLToPath } from 'node:url';
 
 /**
  * Astro emits one <script type="module"> per component script, and the shared
@@ -57,45 +61,55 @@ const modulePreload = {
  * (see sizeOf() in Gallery.astro). After the build, delete any dist/_astro file that
  * is byte-identical to a photo in src/assets/photos and that no page references.
  */
-/** @type {URL | undefined} */
+/** @type {string | undefined} */
 let projectRoot;
 /** @type {import('astro').AstroIntegration} */
 const dropPhotoOriginals = {
   name: 'bilal-drop-photo-originals',
   hooks: {
     'astro:config:done': ({ config }) => {
-      projectRoot = config.root;
+      projectRoot = fileURLToPath(config.root);
     },
     'astro:build:done': async ({ dir, logger }) => {
       if (!projectRoot) return;
       const IMAGE = /\.(jpe?g|png|webp|avif)$/i;
-      const photosDir = new URL('src/assets/photos/', projectRoot);
+      // Plain paths, not new URL(name, base): '#', '?' and '%' in file names break URLs.
+      const photosDir = join(projectRoot, 'src', 'assets', 'photos');
+      const outDir = fileURLToPath(dir);
+      const astroDir = join(outDir, '_astro');
+      /** @type {string[]} */
+      let photoFiles;
+      try {
+        photoFiles = await readdir(photosDir, { recursive: true });
+      } catch (err) {
+        if (/** @type {any} */ (err)?.code === 'ENOENT') return; // no photos yet: nothing to drop
+        throw err;
+      }
       /** @type {Map<number, any[]>} source photo bytes, bucketed by size */
       const sources = new Map();
-      for (const rel of await readdir(photosDir, { recursive: true })) {
+      for (const rel of photoFiles) {
         if (!IMAGE.test(rel)) continue;
-        const buf = await readFile(new URL(rel, photosDir));
+        const buf = await readFile(join(photosDir, rel));
         sources.set(buf.length, [...(sources.get(buf.length) ?? []), buf]);
       }
-      const astroDir = new URL('_astro/', dir);
       /** @type {string[]} */
       const originals = [];
       for (const name of await readdir(astroDir)) {
         if (!IMAGE.test(name)) continue;
-        const buf = await readFile(new URL(name, astroDir));
+        const buf = await readFile(join(astroDir, name));
         if ((sources.get(buf.length) ?? []).some((s) => s.equals(buf))) originals.push(name);
       }
       if (!originals.length) return;
       let text = '';
-      for (const rel of await readdir(dir, { recursive: true })) {
-        if (/\.(html|css|js|json|xml|txt)$/.test(rel)) text += await readFile(new URL(rel, dir), 'utf8');
+      for (const rel of await readdir(outDir, { recursive: true })) {
+        if (/\.(html|css|js|json|xml|txt)$/.test(rel)) text += await readFile(join(outDir, rel), 'utf8');
       }
       for (const name of originals) {
         if (text.includes(name)) {
           logger.warn(`original photo ${name} is referenced by a page; kept (it may carry metadata)`);
           continue;
         }
-        await unlink(new URL(name, astroDir));
+        await unlink(join(astroDir, name));
         logger.info(`removed unreferenced original photo _astro/${name}`);
       }
     },

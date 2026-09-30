@@ -14,17 +14,34 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-const args = Object.fromEntries(
-  process.argv.slice(2).reduce((acc, cur, i, all) => {
-    if (cur.startsWith('--')) {
-      const next = all[i + 1];
-      acc.push([cur.slice(2), next && !next.startsWith('--') ? next : true]);
-    }
-    return acc;
-  }, []),
-);
+const pairs = process.argv.slice(2).reduce((acc, cur, i, all) => {
+  if (cur.startsWith('--')) {
+    const next = all[i + 1];
+    acc.push([cur.slice(2), next && !next.startsWith('--') ? next : true]);
+  }
+  return acc;
+}, []);
+const repeated = pairs.map(([k]) => k).filter((k, i, keys) => keys.indexOf(k) !== i);
+if (repeated.length) {
+  console.error(`shoot.mjs: flag given more than once: --${repeated[0]}`);
+  process.exit(1);
+}
+const args = Object.fromEntries(pairs);
 
-const url = args.url ?? 'http://localhost:4321/';
+// Pre-approved for Claude Code (.claude/settings.json), so it only opens local previews
+// and the live site — never an arbitrary page or a file:// path.
+const url = typeof args.url === 'string' ? args.url : 'http://localhost:4321/';
+const ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', 'bilal.tracex.tech'];
+let target;
+try {
+  target = new URL(url);
+} catch {
+  target = null;
+}
+if (!target || !['http:', 'https:'].includes(target.protocol) || !ALLOWED_HOSTS.includes(target.hostname)) {
+  console.error(`shoot.mjs: refusing ${url} (only local previews or https://bilal.tracex.tech)`);
+  process.exit(1);
+}
 const out = typeof args.out === 'string' ? args.out : join(tmpdir(), 'bilal-shots', 'page');
 const selector = typeof args.selector === 'string' ? args.selector : null;
 const scrollFrac = args.scroll ? Number(args.scroll) : 0; // 0..1 through the target section
@@ -105,7 +122,8 @@ for (const vp of viewports) {
   }
   await page.waitForTimeout(wait);
   const file = `${out}-${vp}.png`;
-  await page.screenshot({ path: file, fullPage: Boolean(args.full) });
+  // Full-page captures of this long page take ~30-40 s with software GL.
+  await page.screenshot({ path: file, fullPage: Boolean(args.full), timeout: args.full ? 120_000 : 30_000 });
   console.log(`saved ${file}`);
   if (errors.length) {
     hadErrors = true;

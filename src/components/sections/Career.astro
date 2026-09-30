@@ -565,7 +565,8 @@ const track =
     width: 2px;
     border-radius: 2px;
     background: var(--c-line-strong);
-    overflow: hidden;
+    /* clip, not hidden: a scroll container would capture .rail-fill's view() timeline. */
+    overflow: clip;
   }
 
   .rail-fill {

@@ -18,7 +18,7 @@ Pronouns: the owner is referred to as "he"; for everyone else avoid gendered pro
 - Deploy: Cloudflare Workers static assets (`wrangler.jsonc`), domain `bilal.tracex.tech`, via the
   Wrangler CLI — follow the `deploy` skill (`.claude/skills/deploy/SKILL.md`). `npm run deploy:dry`
   validates without publishing; `npm run deploy` publishes (always confirm with the user first).
-- Node ≥ 22.12 (`package.json` engines; `.nvmrc` = 22). `npm ci` · `npm run build` · `npx astro check` · `npx astro preview --port <port>`
+- Node ≥ 22.19 (`package.json` engines; `.nvmrc` = 22). `npm ci` · `npm run build` · `npx astro check` · `npx astro preview --port <port>`
 - Visual QA: `node tools/shoot.mjs --url http://localhost:<port>/ --selector "#car" --scroll 0.5 --out <dir>/car`
   (viewports desktop,mobile by default; prints console/page errors; exit 2 if errors). Locally it
   needs `npx playwright-core install chromium` once, or `CHROME_PATH` pointing at Chrome.

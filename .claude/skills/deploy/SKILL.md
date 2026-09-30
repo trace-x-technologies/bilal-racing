@@ -12,7 +12,7 @@ in the repo. Production = the `main` branch.
 ## 0. Preconditions (check, don't assume)
 
 ```bash
-node -v                      # must be >= 22.12 (package.json engines); .nvmrc only pins major 22
+node -v                      # must be >= 22.19 (package.json engines); .nvmrc only pins major 22
 git status --short           # clean tree
 git rev-parse --abbrev-ref HEAD   # normally `main`; say so if deploying another branch
 npm ci                       # exact lockfile install
