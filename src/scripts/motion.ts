@@ -87,7 +87,12 @@ export function lockScroll(locked: boolean): void {
     else lenis.start();
   }
   document.documentElement.classList.toggle('is-scroll-locked', locked);
-  document.body.style.overflow = locked ? 'hidden' : '';
+  // `clip`, not `hidden`: once Lenis puts overflow on <html>, a hidden <body> becomes a
+  // scroll container and every view() timeline re-binds to it (effects jump). `hidden`
+  // stays as the fallback where `clip` isn't supported (the second write is ignored).
+  const { style } = document.body;
+  style.overflow = locked ? 'hidden' : '';
+  if (locked) style.overflow = 'clip';
 }
 
 /** Stagger step (ms) for children of [data-reveal-stagger] parents. */

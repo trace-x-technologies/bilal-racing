@@ -64,7 +64,14 @@ let browser;
 try {
   browser = await chromium.launch({
     executablePath,
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+    args: [
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+      '--ignore-gpu-blocklist',
+      // Only allowed hosts resolve, so redirects and page scripts can't reach anywhere else.
+      `--host-resolver-rules=MAP * ~NOTFOUND, ${ALLOWED_HOSTS.map((h) => `EXCLUDE ${h}`).join(', ')}`,
+    ],
   });
 } catch (err) {
   console.error(
@@ -98,8 +105,21 @@ for (const vp of viewports) {
     if (msg.type() === 'error') errors.push(`console: ${msg.text()}`);
   });
   page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
+  page.on('request', (req) => {
+    const u = new URL(req.url());
+    if (/^(http|ws)s?:$/.test(u.protocol) && !ALLOWED_HOSTS.includes(u.hostname)) {
+      errors.push(`off-list request: ${req.url()}`);
+    }
+  });
 
-  await page.goto(url, { waitUntil: 'networkidle' });
+  try {
+    await page.goto(url, { waitUntil: 'networkidle' });
+  } catch (err) {
+    // e.g. a redirect to a host that isn't allowed (it doesn't resolve).
+    console.error(`[${vp}] could not load ${url}: ${err.message.split('\n')[0]}`);
+    await browser.close();
+    process.exit(2);
+  }
   if (selector) {
     await page.evaluate(
       async ({ selector, scrollFrac }) => {
