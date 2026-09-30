@@ -5,7 +5,7 @@
  * run in opposite directions, speed up with scroll velocity, reverse when
  * scrolling up, pause on hover or via the flag button. Reduced motion: static tapes.
  */
-import { team, owner, drivers, sinhala } from '@/data/lore';
+import { team, drivers, sinhala } from '@/data/lore';
 
 /** "#13 DHA · #17 DEE" — timing-screen style. */
 const grid = drivers.map((d) => `#${d.number} ${d.code}`).join(' · ');
@@ -21,7 +21,7 @@ const jokes = [
   'DRS: Deploy Rest Sequence',
   `${team.engine}`,
   'Undercut? The owner prefers a cushion',
-  `Pit wall callsign ${owner.callsign} · yes, a cat called RAT`,
+  'Pit wall: one cat, one box, zero urgency',
   'Blue flags ignored · laser pointer spotted',
   'Official partner: the warm bonnet',
 ];
