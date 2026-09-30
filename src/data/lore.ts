@@ -116,7 +116,7 @@ export const drivers: Driver[] = [
       { label: 'Websites built instead of practising', value: 1, suffix: '', note: 'You are looking at it.' },
       { label: 'Top speed', value: 313, suffix: ' km/h', note: 'Downhill. Tailwind. Allegedly.' },
       { label: 'Reaction time', value: 0.13, suffix: ' s', decimals: 2, note: 'Number-matched on purpose.' },
-      { label: 'Team orders ignored', value: 13, suffix: '', note: 'This season. It’s September.' },
+      { label: 'Team orders ignored', value: 13, suffix: '', note: 'So far. The owner slept through all of them.' },
     ],
   },
   {
