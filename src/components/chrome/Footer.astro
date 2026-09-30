@@ -14,20 +14,24 @@ interface Props {
 }
 const { base = '' } = Astro.props;
 
-// The site was built by car #13 (lore: "built this entire website instead of doing a single practice lap").
+// The site came out of car #13's garage (the DHA bio and stat carry the "instead of practising" joke).
 const builder = drivers.find((d) => d.id === 'dha');
-/** "Bilal Racing · #13 DHA · #17 DEE · Team Principal: Poosa (RAT) · Built by car #13 … · …" */
+/**
+ * "© 2026 Bilal Racing · #13 DHA · #17 DEE · Team Principal: Poosa (RAT) · Built with Astro in the #13 garage · …"
+ * Each credit renders as its own nowrap span with a trailing "·", so the line only breaks
+ * between credits, never inside one, and no line starts with a separator.
+ */
 const credits = [
   team.name,
   ...drivers.map((d) => `#${d.number} ${d.code}`),
   `Team Principal: ${owner.nicknameLatin} (${owner.callsign})`,
-  builder ? `Built by car #${builder.number} instead of practising, with Astro` : 'Built with Astro',
+  builder ? `Built with Astro in the #${builder.number} garage` : 'Built with Astro',
   'served from Cloudflare’s edge',
-].join(' · ');
+];
 
 const links = [
   { id: 'driver', label: 'Line-up' },
-  { id: 'career', label: 'Career' },
+  { id: 'career', label: 'History' },
   { id: 'car', label: 'Car' },
   { id: 'crew', label: 'Crew' },
   { id: 'paddock', label: 'Paddock' },
@@ -129,7 +133,22 @@ const year = new Date().getFullYear();
 
   <div class="container f-bottom">
     <p class="f-credits t-mono">
-      © <span data-year>{year}</span> {credits}
+      {
+        credits.map((c, i) => (
+          <>
+            {i > 0 && ' '}
+            <span class="f-credit">
+              {i === 0 && (
+                <>
+                  © <span data-year>{year}</span>{' '}
+                </>
+              )}
+              {c}
+              {i < credits.length - 1 && ' ·'}
+            </span>
+          </>
+        ))
+      }
     </p>
     <p class="f-disclaimer">
       Bilal Racing is a fictional team made by friends for fun. No cats were harmed. Several naps were.
@@ -489,6 +508,10 @@ const year = new Date().getFullYear();
     color: var(--c-mute);
     line-height: 1.8;
     font-size: 0.62rem;
+  }
+
+  .f-credit {
+    white-space: nowrap;
   }
 
   .f-disclaimer {
