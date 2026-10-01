@@ -107,11 +107,11 @@ export const pages: SitePage[] = [
     label: 'Play',
     icon: 'gamepad',
     title: 'The arcade',
-    sub: 'Four quick games, one timing tower, bragging rights for all nine lives.',
+    sub: 'Five quick games, one timing tower, bragging rights for all nine lives.',
     description:
-      'The Bilal Racing arcade: stack the boxes, change four wheels, catch the laser dot, collect the tuna. One live timing tower, one championship.',
+      'The Bilal Racing arcade: beat the start lights, stack the boxes, change four wheels, catch the laser dot, collect the tuna. One live timing tower, one championship.',
     sections: [
-      { id: 'games', label: 'Games', sub: 'Four ways to out-pounce the crew' },
+      { id: 'games', label: 'Games', sub: 'Five ways to out-pounce the crew' },
       { id: 'tower', label: 'Timing tower', sub: 'The championship, live' },
     ],
   },

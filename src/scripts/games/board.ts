@@ -17,8 +17,8 @@ import { ApiError, api, getMe, getStatus, openPassGate, postJson, setMe, withPas
 import { on, store } from '@/scripts/bus';
 import { GAME_LABELS, POINTS, SCORE_GAMES, SCORE_RULES, type ScoreGame } from '@/data/games';
 
-/** The four arcade games. Lights Out (on the Race page) shares the tower but has no cabinet here. */
-export type GameId = Exclude<ScoreGame, 'lights'>;
+/** The five arcade games: every table on the tower has a cabinet. Lights Out also lives on the Race page. */
+export type GameId = ScoreGame;
 export type { ScoreGame };
 
 export interface GameDef {
@@ -33,6 +33,7 @@ export interface GameDef {
 }
 
 export const GAMES: Record<GameId, GameDef> = {
+  lights: { id: 'lights', label: GAME_LABELS.lights, ...SCORE_RULES.lights, brag: (s) => `reacted in ${s} at lights out` },
   box: { id: 'box', label: GAME_LABELS.box, ...SCORE_RULES.box, brag: (s) => `stacked ${s}` },
   pit: { id: 'pit', label: GAME_LABELS.pit, ...SCORE_RULES.pit, brag: (s) => `changed four wheels in ${s}` },
   laser: { id: 'laser', label: GAME_LABELS.laser, ...SCORE_RULES.laser, brag: (s) => `landed nine pounces in ${s}` },
@@ -232,7 +233,7 @@ export async function refreshBoards(): Promise<boolean> {
 /** One game's table, best first. */
 export function boardRows(game: ScoreGame): Row[] {
   if (shared) return shared[game];
-  return game === 'lights' ? [] : readLocal()[game];
+  return readLocal()[game];
 }
 
 export interface Standing {

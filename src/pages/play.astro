@@ -1,7 +1,8 @@
 ---
 /**
  * One of the site's six pages (see data/site.ts for the map): the arcade.
- * Four quick games and one timing tower.
+ * Five quick games and one timing tower. Lights Out is here as well as on the
+ * Race page; both post to the same Lights Out table.
  *
  * The lobby is a tab list; each game is a cabinet (tab panel) and only the
  * picked one is shown. A game's code is fetched the first time its cabinet
@@ -18,6 +19,7 @@ import PassGate from '@/components/chrome/PassGate.astro';
 import { pageById } from '@/data/site';
 import { GAME_LABELS, type ScoreGame } from '@/data/games';
 
+import StartLights from '@/components/games/StartLights.astro';
 import BoxStack from '@/components/games/BoxStack.astro';
 import PitStop from '@/components/games/PitStop.astro';
 import LaserPounce from '@/components/games/LaserPounce.astro';
@@ -27,7 +29,12 @@ import Board from '@/components/games/Board.astro';
 const page = pageById('play');
 
 /** Lobby cards: a 24 × 24 line pictogram and one line about the game. */
-const lobby: { id: Exclude<ScoreGame, 'lights'>; sub: string; icon: string }[] = [
+const lobby: { id: ScoreGame; sub: string; icon: string }[] = [
+  {
+    id: 'lights',
+    sub: 'Wait for lights out. Pounce.',
+    icon: '<rect x="2.5" y="8" width="19" height="8" rx="2"/><circle cx="7" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="17" cy="12" r="1.6"/><path d="M12 3v5"/>',
+  },
   {
     id: 'box',
     sub: 'Tap to drop. Highest tower wins.',
@@ -127,6 +134,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
         <div class="ar-floor">
           <div class="ar-cabs">
+            <StartLights />
             <BoxStack />
             <PitStop />
             <LaserPounce />
@@ -162,6 +170,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
   /** Each game is its own chunk, fetched when its cabinet first opens. */
   const LOADERS: Record<GameId, () => Promise<{ default: GameFactory }>> = {
+    lights: () => import('@/scripts/games/lights'),
     box: () => import('@/scripts/games/box'),
     pit: () => import('@/scripts/games/pit'),
     laser: () => import('@/scripts/games/laser'),
@@ -245,7 +254,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
       const id = window.location.hash.slice(1);
       return isGameId(id) ? id : null;
     };
-    select(fromHash() ?? 'box');
+    select(fromHash() ?? 'lights');
     window.addEventListener('hashchange', () => {
       const id = fromHash();
       if (id) select(id);
@@ -340,10 +349,19 @@ const pad = (n: number) => String(n).padStart(2, '0');
     gap: var(--space-2);
   }
 
+  /* Five cards in two columns: the classic (Lights Out) takes the whole first row. */
+  .ar-card:first-child {
+    grid-column: 1 / -1;
+  }
+
   @media (min-width: 52rem) {
     .ar-lobby {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: var(--space-3);
+    }
+
+    .ar-card:first-child {
+      grid-column: auto;
     }
   }
 

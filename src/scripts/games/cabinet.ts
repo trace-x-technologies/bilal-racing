@@ -139,7 +139,8 @@ export function mountCabinet(root: HTMLElement, make: GameFactory): CabinetHandl
     setState('done');
     lockedUntil = performance.now() + RESULT_LOCK_MS;
     const value = Math.round(raw);
-    const shown = def.dir === 'high' || value >= def.min ? formatScore(id, value) : def.label;
+    // A timed score outside the board's range (a guess, or no pounce at all) shows the game's name, not a number.
+    const shown = def.dir === 'high' || (value >= def.min && value <= def.max) ? formatScore(id, value) : def.label;
     if (verdictEl) verdictEl.textContent = shown;
     if (goLabel) goLabel.textContent = 'Go again';
 

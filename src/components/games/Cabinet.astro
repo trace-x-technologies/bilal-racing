@@ -8,7 +8,7 @@
 import { GAME_LABELS, type ScoreGame } from '@/data/games';
 
 interface Props {
-  id: Exclude<ScoreGame, 'lights'>;
+  id: ScoreGame;
   /** Mono line above the title. */
   kicker: string;
   /** HUD labels. */

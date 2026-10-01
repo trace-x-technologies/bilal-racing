@@ -156,9 +156,7 @@ const SHORT: Record<ScoreGame, string> = { lights: 'Lights', box: 'Box', pit: 'P
         emptyEl.textContent =
           view === 'all'
             ? 'No scores yet. Set the first one and lead the championship.'
-            : view === 'lights' && !isShared()
-              ? 'Lights Out times show here once the shared tower is on air.'
-              : `Nobody on the ${LABELS[view]} table yet. P1 is yours for the taking.`;
+            : `Nobody on the ${LABELS[view]} table yet. P1 is yours for the taking.`;
       }
       if (unitEl) unitEl.textContent = view === 'all' ? 'Points' : SCORE_RULES[view].dir === 'low' ? 'Fastest first' : 'Most first';
       if (statusEl) {

@@ -13,8 +13,8 @@ It is six pages (Home, Team, Car, Paddock, Race, Play) with a top bar on desktop
 phones. Friends with the team passcode can also write to it:
 
 - **Live leaderboard** for Lights Out (Race page). Put a name down once; new bests post themselves.
-- **Arcade** (Play page): four quick games (Box, Box, Box · Pit Stop Paws · Laser Pounce · Tuna
-  Run) on one timing tower, plus a championship across all five games. Without the API it keeps
+- **Arcade** (Play page): five quick games (Lights Out · Box, Box, Box · Pit Stop Paws · Laser
+  Pounce · Tuna Run) on one timing tower, plus a championship across all five. Without the API it keeps
   scores on the device, so friends can pass one phone round.
 - **Fan wall** (Paddock page). Upload a photo; it is resized in the browser (2000 px, ≤ 1.5 MB,
   location data removed) and appears for everyone.

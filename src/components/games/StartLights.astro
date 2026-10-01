@@ -1,0 +1,161 @@
+---
+/**
+ * Lights Out in the arcade (logic: scripts/games/lights.ts). A five-pod start
+ * gantry: two red lamps per pod, plus an amber lamp that flashes on a keen
+ * start. Times share the Lights Out table with the game on the Race page.
+ */
+import Cabinet from './Cabinet.astro';
+import { team } from '@/data/lore';
+
+const pods = [1, 2, 3, 4, 5];
+---
+
+<Cabinet
+  id="lights"
+  kicker="Game 01 · the classic"
+  scoreLabel="Reaction"
+  auxLabel="Lights"
+  pitch="Five red lights. Wait for them to go out, then pounce. Same table as the Race page."
+  how={[
+    'Five red lights come on, one a second.',
+    'When they all go out, tap as fast as you can.',
+    'Too keen? The lights reset. No penalty, just go again.',
+  ]}
+  keys="Space"
+>
+  <div class="sl" data-sl data-phase="idle" aria-hidden="true">
+    <div class="sl-gantry">
+      <p class="sl-beam t-mono">Purrelli · {team.name} · start control</p>
+      <div class="sl-pods">
+        {
+          pods.map(() => (
+            <div class="sl-pod" data-sl-pod>
+              <span class="sl-lamp sl-lamp--amber" />
+              <span class="sl-lamp sl-lamp--red" />
+              <span class="sl-lamp sl-lamp--red" />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+    <p class="sl-call t-condensed" data-sl-call>Five red lights</p>
+  </div>
+</Cabinet>
+
+<style>
+  .sl {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: clamp(1.25rem, 5cqh, 2.5rem);
+    padding: var(--space-5);
+    container-type: size;
+  }
+
+  .sl-gantry {
+    display: grid;
+    gap: var(--space-3);
+    width: min(100%, 30rem);
+    padding: var(--space-3) var(--space-3) var(--space-4);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-m);
+    background: var(--c-carbon);
+  }
+
+  .sl-beam {
+    color: var(--c-mute);
+    font-size: 0.58rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sl-pods {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: clamp(0.35rem, 2cqw, 0.9rem);
+  }
+
+  .sl-pod {
+    display: grid;
+    gap: clamp(0.3rem, 1.6cqw, 0.6rem);
+    padding: clamp(0.3rem, 1.6cqw, 0.55rem);
+    border-radius: 999px;
+    background: var(--c-graphite);
+  }
+
+  .sl-lamp {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--c-red) 14%, var(--c-carbon));
+    box-shadow: inset 0 3px 6px rgb(0 0 0 / 0.85);
+  }
+
+  .sl-lamp--amber {
+    background: color-mix(in oklab, var(--c-saffron) 12%, var(--c-carbon));
+  }
+
+  /* The glow is its own layer and only its opacity changes: lights on and out are compositor work. */
+  .sl-lamp::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 50ms linear;
+  }
+
+  .sl-lamp--red::before {
+    background: radial-gradient(circle at 42% 38%, var(--c-chalk) 0 6%, var(--c-red) 45%, var(--c-maroon) 90%);
+    box-shadow: var(--glow-red);
+  }
+
+  .sl-lamp--amber::before {
+    background: radial-gradient(circle at 42% 38%, var(--c-chalk) 0 6%, var(--c-gold) 40%, var(--c-saffron) 90%);
+    box-shadow: var(--glow-gold);
+  }
+
+  .sl-pod[data-on] .sl-lamp--red::before {
+    opacity: 1;
+  }
+
+  /* Lights out is the moment that counts: no fade. */
+  .sl[data-phase='go'] .sl-lamp::before {
+    transition: none;
+  }
+
+  .sl[data-phase='keen'] .sl-lamp--amber::before {
+    opacity: 1;
+  }
+
+  :global(.js-motion) .sl[data-phase='keen'] .sl-lamp--amber::before {
+    animation: sl-amber 0.36s steps(1, end) 3;
+  }
+
+  @keyframes sl-amber {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .sl-call {
+    font-family: var(--f-display);
+    font-size: clamp(1.8rem, 1.2rem + 3vw, 3rem);
+    font-weight: 850;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--c-mute);
+  }
+
+  .sl[data-phase='go'] .sl-call {
+    color: var(--c-gold);
+  }
+
+  .sl[data-phase='keen'] .sl-call {
+    color: var(--c-saffron);
+  }
+</style>
